@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import type { DropResult, DroppableProvided, DraggableProvided } from '@hello-pangea/dnd';
-import { Plus, Trash2, Save, ArrowLeft, GripVertical, CheckCircle, AlertCircle, Info, X, FileText, ExternalLink } from 'lucide-react';
+import { Save, ArrowLeft, Info, X, FileText, ExternalLink, CheckCircle, AlertCircle } from 'lucide-react';
 import { supabase } from '../../services/supabase';
 import type { FormQuestion, QuestionType } from '../../types';
 
@@ -11,14 +9,7 @@ interface FormEditorProps {
     onSaveSuccess: () => void;
 }
 
-const QUESTION_TYPES: { type: QuestionType; label: string }[] = [
-    { type: 'short_text', label: 'Texto Curto' },
-    { type: 'long_text', label: 'Texto Longo' },
-    { type: 'choice', label: 'Múltipla Escolha' },
-    { type: 'select', label: 'Seleção (Dropdown)' },
-    { type: 'rating', label: 'Avaliação (Escala)' },
-    { type: 'section_break', label: 'Quebra de Seção' },
-];
+
 
 
 // MOCK DATA FOR HIERARCHY LOGIC
@@ -179,40 +170,6 @@ export const FormEditor: React.FC<FormEditorProps> = ({ formId, onBack, onSaveSu
         }
     };
 
-    const handleAddQuestion = () => {
-        const newQ: Partial<FormQuestion> = {
-            temp_id: 'q_' + Date.now(),
-            label: '',
-            question_type: 'short_text',
-            required: false,
-            question_order: questions.length
-        };
-        setQuestions([...questions, newQ]);
-    };
-
-    const handleDeleteQuestion = (index: number) => {
-        const updated = [...questions];
-        updated.splice(index, 1);
-        setQuestions(updated);
-    };
-
-    const handleQuestionChange = (index: number, field: keyof FormQuestion, value: any) => {
-        const updated = [...questions];
-        updated[index] = { ...updated[index], [field]: value };
-        setQuestions(updated);
-    };
-
-    const handleDragEnd = (result: DropResult) => {
-        if (!result.destination) return;
-
-        const items = Array.from(questions);
-        const [reorderedItem] = items.splice(result.source.index, 1);
-        items.splice(result.destination.index, 0, reorderedItem);
-
-        // Update order property
-        const updated = items.map((item, index) => ({ ...item, question_order: index }));
-        setQuestions(updated);
-    };
 
     const handleSave = async () => {
         if (!title) {

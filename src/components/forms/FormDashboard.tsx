@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, FileText, Search, BarChart2, Edit, ExternalLink, Calendar, Users, MoreHorizontal, Copy, CheckCircle, AlertCircle, Filter } from 'lucide-react';
+import { Plus, FileText, Search, BarChart2, Edit, ExternalLink, Calendar, Users, Filter, Trash2 } from 'lucide-react';
 import type { Form } from '../../types';
 
 interface FormDashboardProps {

@@ -1,6 +1,6 @@
 import React from 'react';
 import { DashboardLayout } from '../layouts/DashboardLayout';
-import { FileText, CheckCircle, Info, Plus } from 'lucide-react';
+import { FileText, Info, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const MOCK_TEMPLATES = [
