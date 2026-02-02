@@ -13,8 +13,11 @@ export const Formularios: React.FC = () => {
     const [selectedForm, setSelectedForm] = useState<Form | null>(null);
     const [editorFormId, setEditorFormId] = useState<number | null>(null);
 
+    const [initialFormData, setInitialFormData] = useState<any>(null);
+
     // Handlers
-    const handleCreateForm = () => {
+    const handleCreateForm = (data?: any) => {
+        setInitialFormData(data || null);
         setEditorFormId(null);
         setView('editor');
     };
@@ -54,6 +57,7 @@ export const Formularios: React.FC = () => {
                 {view === 'editor' && (
                     <FormEditor
                         formId={editorFormId}
+                        initialData={initialFormData}
                         onBack={handleBackToDashboard}
                         onSaveSuccess={handleSaveSuccess}
                     />

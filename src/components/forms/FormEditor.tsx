@@ -5,6 +5,7 @@ import type { FormQuestion, QuestionType } from '../../types';
 
 interface FormEditorProps {
     formId?: number | null; // null for new form
+    initialData?: any;
     onBack: () => void;
     onSaveSuccess: () => void;
 }
@@ -61,7 +62,7 @@ const MOCK_TEMPLATES = [
     }
 ];
 
-export const FormEditor: React.FC<FormEditorProps> = ({ formId, onBack, onSaveSuccess }) => {
+export const FormEditor: React.FC<FormEditorProps> = ({ formId, initialData, onBack, onSaveSuccess }) => {
     const [loading, setLoading] = useState(false);
 
     // Step State
@@ -80,6 +81,24 @@ export const FormEditor: React.FC<FormEditorProps> = ({ formId, onBack, onSaveSu
     const [companyId, setCompanyId] = useState<number | ''>('');
     const [unitId, setUnitId] = useState<number | ''>('');
     const [sectorName, setSectorName] = useState('');
+
+    // Handle initialData from Quick Generation
+    useEffect(() => {
+        if (initialData && !formId) {
+            setCompanyId(initialData.company_id);
+            setUnitId(initialData.unit_id);
+            setSectorName(initialData.sector || '');
+            setCurrentStep(2); // Auto-advance to details
+
+            // Auto-generate title if possible
+            const company = MOCK_COMPANIES.find(c => c.id === initialData.company_id);
+            const unit = company?.units.find(u => u.id === initialData.unit_id);
+            if (company && unit) {
+                const baseTitle = `Levantamento - ${company.name} (${unit.name})`;
+                setTitle(initialData.sector && initialData.sector !== 'Geral' ? `${baseTitle} - ${initialData.sector}` : baseTitle);
+            }
+        }
+    }, [initialData, formId]);
 
     // Derived State helpers
     const selectedCompany = MOCK_COMPANIES.find(c => c.id === Number(companyId));

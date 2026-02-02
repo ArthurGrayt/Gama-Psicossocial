@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText, Settings, LogOut, Users, LayoutTemplate } from 'lucide-react';
+import { Settings, LogOut, LayoutTemplate, LayoutDashboard, PlusCircle, Building } from 'lucide-react';
 import { useLocation, Link } from 'react-router-dom';
 
 interface DashboardLayoutProps {
@@ -7,9 +7,10 @@ interface DashboardLayoutProps {
 }
 
 const MENU_ITEMS = [
-    { icon: <FileText size={18} />, label: 'Meus Levantamentos', path: '/' },
+    { icon: <LayoutDashboard size={18} />, label: 'Dashboard', path: '/dashboard' },
+    { icon: <PlusCircle size={18} />, label: 'Cadastro', path: '/cadastro' },
+    { icon: <Building size={18} />, label: 'Empresas', path: '/' },
     { icon: <LayoutTemplate size={18} />, label: 'Modelos', path: '/modelos' },
-    { icon: <Users size={18} />, label: 'Colaboradores', path: '/colaboradores' },
     { icon: <Settings size={18} />, label: 'Configurações', path: '/settings' },
 ];
 
