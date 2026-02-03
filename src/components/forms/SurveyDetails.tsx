@@ -45,23 +45,17 @@ const QUESTIONS_LIST = [
 export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) => {
     const [activeTab, setActiveTab] = useState('overview');
     const [selectedSector, setSelectedSector] = useState<string>('');
-    const [selectedParticipant, setSelectedParticipant] = useState<any>(null);
+    const [selectedParticipant, setSelectedParticipant] = useState<any | null>(null);
+    const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
-    // Derive Sectors from Participants
-    const distinctSectors = Array.from(new Set(PARTICIPANTS.map(p => p.sector)));
-
-    // Filter Logic
-    const filteredParticipants = selectedSector
-        ? PARTICIPANTS.filter(p => p.sector === selectedSector)
-        : PARTICIPANTS;
-
-    // Custom renderer for Polar Area (Rose) Chart
+    // Custom shape function defined inside to access hoveredIndex
     const renderCustomPolarSector = (props: any) => {
-        const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, value } = props;
+        const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, value, index } = props;
         const maxValue = 4;
         // Calculate radius based on value (0 to 4) relative to the available radius space
-        // We keep a small innerRadius for the 'donut' hole, then expand from there.
         const r = innerRadius + (outerRadius - innerRadius) * (Math.min(value, maxValue) / maxValue);
+
+        const isHovered = index === hoveredIndex;
 
         return (
             <g>
@@ -73,12 +67,33 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
                     startAngle={startAngle}
                     endAngle={endAngle}
                     fill={fill}
-                    stroke="#fff"
-                    strokeWidth={1}
+                    stroke={isHovered ? "#fff" : "none"}
+                    strokeWidth={2}
+                    style={{ filter: isHovered ? 'brightness(1.1)' : 'none', transition: 'all 0.3s ease' }}
                 />
+                {isHovered && (
+                    <text
+                        x={cx + (innerRadius + (r - innerRadius) * 0.55) * Math.cos(-((startAngle + endAngle) / 2) * Math.PI / 180)}
+                        y={cy + (innerRadius + (r - innerRadius) * 0.55) * Math.sin(-((startAngle + endAngle) / 2) * Math.PI / 180)}
+                        textAnchor="middle"
+                        dominantBaseline="central"
+                        fill="#fff"
+                        className="text-base font-bold drop-shadow-md pointer-events-none"
+                    >
+                        {value.toFixed(1)}
+                    </text>
+                )}
             </g>
         );
     };
+
+    // Derive Sectors from Participants
+    const distinctSectors = Array.from(new Set(PARTICIPANTS.map(p => p.sector)));
+
+    // Filter Logic
+    const filteredParticipants = selectedSector
+        ? PARTICIPANTS.filter(p => p.sector === selectedSector)
+        : PARTICIPANTS;
 
     const tabs = [
         { value: 'overview', label: 'Visão Geral' },
@@ -259,8 +274,8 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
                                                 {item.name}
                                             </span>
                                             <span className={`text-xs px-3 py-1 rounded-full font-bold w-16 text-center ${item.value >= 3 ? 'bg-red-50 text-red-600' :
-                                                    item.value >= 2 ? 'bg-orange-50 text-orange-600' :
-                                                        'bg-emerald-50 text-emerald-600'
+                                                item.value >= 2 ? 'bg-orange-50 text-orange-600' :
+                                                    'bg-emerald-50 text-emerald-600'
                                                 }`}>
                                                 {item.value}
                                             </span>
@@ -306,6 +321,9 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
                                                 innerRadius={30}
                                                 outerRadius={150}
                                                 shape={renderCustomPolarSector}
+                                                onMouseEnter={(_, index) => setHoveredIndex(index)}
+                                                onMouseLeave={() => setHoveredIndex(null)}
+                                                isAnimationActive={false}
                                                 label={({ cx, cy, midAngle, innerRadius, outerRadius, value, index }) => {
                                                     const RADIAN = Math.PI / 180;
                                                     // Ensure midAngle is valid
@@ -356,7 +374,6 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
                                                     <Cell key={`cell-${index}`} fill={entry.fill} />
                                                 ))}
                                             </Pie>
-                                            <RechartsTooltip />
                                         </PieChart>
                                     </ResponsiveContainer>
                                 </div>

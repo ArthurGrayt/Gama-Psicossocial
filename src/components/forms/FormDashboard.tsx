@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Building, Search, Filter, Trash2, Users, FileText, ChevronRight, Edit, X, LayoutTemplate, LayoutGrid, List } from 'lucide-react';
+import { Building, Search, Filter, Trash2, Users, FileText, ChevronRight, Edit, X, Save, LayoutGrid, List, LayoutTemplate } from 'lucide-react';
 
 interface FormDashboardProps {
     onCreateForm: (initialData?: any) => void;
@@ -19,7 +19,8 @@ const MOCK_COMPANIES = [
             { id: 101, name: 'Matriz', collaborators: 45, sectors: ['TI', 'RH', 'Financeiro', 'Administrativo'] },
             { id: 102, name: 'Filial SP', collaborators: 15, sectors: [] },
             { id: 103, name: 'Filial RJ', collaborators: 90, sectors: ['Operacional', 'Vendas', 'Logística'] }
-        ]
+        ],
+        roles: ['Desenvolvedor', 'Gerente de Projetos', 'Analista de RH', 'Assistente Administrativo', 'Diretor']
     },
     {
         id: 2,
@@ -28,7 +29,8 @@ const MOCK_COMPANIES = [
         total_collaborators: 50,
         units: [
             { id: 201, name: 'Escritório Central', collaborators: 50, sectors: ['Dev', 'Product', 'Sales'] }
-        ]
+        ],
+        roles: ['Frontend Developer', 'Backend Developer', 'Product Manager', 'Sales Representative']
     },
     {
         id: 3,
@@ -38,9 +40,285 @@ const MOCK_COMPANIES = [
         units: [
             { id: 301, name: 'Planta Industrial A', collaborators: 800, sectors: ['Produção', 'Manutenção', 'PCP', 'Qualidade'] },
             { id: 302, name: 'Logística Regional', collaborators: 400, sectors: ['Armazém', 'Frota', 'Expedição'] }
-        ]
+        ],
+        roles: ['Operador de Máquinas', 'Supervisor de Produção', 'Técnico de Manutenção', 'Motorista', 'Analista de Logística']
     }
 ];
+
+// Mock Collaborator Generator
+const generateMockCollaborators = (company: any) => {
+    const count = Math.min(company.total_collaborators, 50); // Limit usage for demo
+    const collaborators = [];
+    const sectors = Array.from(new Set(company.units.flatMap((u: any) => u.sectors)));
+    const roles = company.roles || ['Funcionário'];
+
+    for (let i = 0; i < count; i++) {
+        collaborators.push({
+            id: i + 1,
+            name: `Colaborador ${i + 1}`,
+            email: `colaborador${i + 1}@${company.name.toLowerCase().replace(/\s/g, '')}.com`,
+            role: roles[Math.floor(Math.random() * roles.length)],
+            sector: sectors.length > 0 ? sectors[Math.floor(Math.random() * sectors.length)] : 'Geral',
+            unit: company.units[0].name // Simplified
+        });
+    }
+    return collaborators;
+};
+
+// --- SUB-COMPONENTS FOR MODAL REFRACTOR ---
+
+interface CompanySummaryProps {
+    company: any;
+    isEditing: boolean;
+    editName: string;
+    editCnpj: string;
+    setEditName: (val: string) => void;
+    setEditCnpj: (val: string) => void;
+    showCollaborators: boolean;
+    onToggleCollaborators: () => void;
+    onStartEdit: () => void;
+    onCancelEdit: () => void;
+    onSave: () => void;
+    onDelete: () => void;
+}
+
+const CompanySummary: React.FC<CompanySummaryProps> = ({
+    company, isEditing, editName, editCnpj,
+    setEditName, setEditCnpj, showCollaborators,
+    onToggleCollaborators, onStartEdit, onCancelEdit, onSave, onDelete
+}) => {
+    // Left Sidebar Content
+    return (
+        <div className={`space-y-4 flex-1 h-full overflow-y-auto custom-scrollbar z-10 w-full`}>
+            {!isEditing ? (
+                <div className="flex flex-col h-full">
+                    <div className="p-4 bg-slate-50 rounded-2xl space-y-3 flex-1">
+                        <div>
+                            <span className="text-xs font-bold text-slate-400 uppercase">Nome da Empresa</span>
+                            <p className="font-bold text-slate-800 text-lg">{company.name}</p>
+                        </div>
+                        <div>
+                            <span className="text-xs font-bold text-slate-400 uppercase">CNPJ</span>
+                            <p className="font-medium text-slate-700">{company.cnpj}</p>
+                        </div>
+                        <div>
+                            <span className="text-xs font-bold text-slate-400 uppercase">Total de Colaboradores</span>
+                            <div className="flex items-center justify-between">
+                                <p className="font-medium text-slate-700">{company.total_collaborators}</p>
+                                <button
+                                    onClick={onToggleCollaborators}
+                                    className={`p-2 rounded-lg transition-colors flex items-center gap-2 text-xs font-bold ${showCollaborators ? 'bg-[#35b6cf] text-white' : 'bg-slate-100 text-[#35b6cf] hover:bg-[#35b6cf]/10'}`}
+                                >
+                                    <Users size={16} />
+                                    {showCollaborators ? 'Ocultar' : 'Gerenciar'}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Setores e Cargos - Read Only */}
+                        <div className="pt-2 border-t border-slate-100 mt-2">
+                            <span className="text-xs font-bold text-slate-400 uppercase block mb-2">Setores ({Array.from(new Set(company.units.flatMap((u: any) => u.sectors))).length})</span>
+                            <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto custom-scrollbar">
+                                {Array.from(new Set(company.units.flatMap((u: any) => u.sectors))).length > 0 ? (
+                                    Array.from(new Set(company.units.flatMap((u: any) => u.sectors))).map((sector: any, idx) => (
+                                        <span key={idx} className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-medium border border-slate-200">
+                                            {sector}
+                                        </span>
+                                    ))
+                                ) : (
+                                    <span className="text-sm text-slate-400 italic">Nenhum setor cadastrado.</span>
+                                )}
+                            </div>
+                        </div>
+
+                        <div>
+                            <span className="text-xs font-bold text-slate-400 uppercase block mb-2">Cargos ({company.roles?.length || 0})</span>
+                            <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto custom-scrollbar">
+                                {company.roles && company.roles.length > 0 ? (
+                                    company.roles.map((role: string, idx: number) => (
+                                        <span key={idx} className="px-2.5 py-1 bg-[#35b6cf]/10 text-[#35b6cf] rounded-lg text-xs font-medium border border-[#35b6cf]/20">
+                                            {role}
+                                        </span>
+                                    ))
+                                ) : (
+                                    <span className="text-sm text-slate-400 italic">Nenhum cargo cadastrado.</span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col gap-3 pt-4 border-t border-slate-50 mt-4">
+                        <button
+                            onClick={onStartEdit}
+                            className="flex-1 bg-[#35b6cf] text-white py-3 rounded-xl font-bold hover:bg-[#2ca1b7] transition-colors flex items-center justify-center gap-2"
+                        >
+                            <Edit size={18} />
+                            Editar Dados
+                        </button>
+                        <button
+                            onClick={onDelete}
+                            className="flex-1 bg-white border border-red-100 text-red-500 py-3 rounded-xl font-bold hover:bg-red-50 transition-colors flex items-center justify-center gap-2"
+                        >
+                            <Trash2 size={18} />
+                            Excluir Empresa
+                        </button>
+                    </div>
+                </div>
+            ) : (
+                <>
+                    <div className="space-y-4">
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-500 uppercase">Nome</label>
+                            <input
+                                type="text"
+                                value={editName}
+                                onChange={(e) => setEditName(e.target.value)}
+                                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-[#35b6cf]"
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-500 uppercase">CNPJ</label>
+                            <input
+                                type="text"
+                                value={editCnpj}
+                                onChange={(e) => setEditCnpj(e.target.value)}
+                                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-[#35b6cf]"
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-500 uppercase">Colaboradores (Visualização)</label>
+                            <div className="w-full px-4 py-2 bg-slate-100 border border-slate-200 rounded-lg text-slate-500 flex justify-between items-center cursor-not-allowed">
+                                <span>{company.total_collaborators}</span>
+                                <Users size={16} />
+                            </div>
+                            <p className="text-[10px] text-slate-400">Para gerenciar colaboradores, saia do modo de edição.</p>
+                        </div>
+                    </div>
+                    <div className="flex gap-3 pt-4">
+                        <button
+                            onClick={onCancelEdit}
+                            className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-bold hover:bg-slate-200 transition-colors"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            onClick={onSave}
+                            className="flex-1 bg-[#35b6cf] text-white py-3 rounded-xl font-bold hover:bg-[#2ca1b7] transition-colors flex items-center justify-center gap-2"
+                        >
+                            <Save size={18} />
+                            Salvar Alterações
+                        </button>
+                    </div>
+                </>
+            )}
+        </div>
+    );
+};
+
+interface EmployeeManagementProps {
+    collaborators: any[];
+    company: any; // for filtering context if needed
+    onDeleteCollaborator: (id: number) => void;
+    onClose: () => void;
+}
+
+const EmployeeManagement: React.FC<EmployeeManagementProps> = ({ collaborators, company, onDeleteCollaborator, onClose }) => {
+    // Internal state for truly independent filtering to the panel
+    const [searchTerm, setSearchTerm] = useState('');
+    const [sectorFilter, setSectorFilter] = useState('');
+
+    const filtered = collaborators.filter(c =>
+        (c.name.toLowerCase().includes(searchTerm.toLowerCase()) || c.role.toLowerCase().includes(searchTerm.toLowerCase())) &&
+        (sectorFilter ? c.sector === sectorFilter : true)
+    );
+
+    const sectors = Array.from(new Set(company.units.flatMap((u: any) => u.sectors)));
+
+    return (
+        <div className="p-8 flex-1 flex flex-col h-full overflow-hidden">
+            <div className="flex items-center justify-between mb-6">
+                <div>
+                    <h3 className="font-bold text-slate-700">Gerenciar Colaboradores</h3>
+                    <p className="text-xs text-slate-400">{filtered.length} colaboradores encontrados</p>
+                </div>
+                <button
+                    onClick={onClose}
+                    className="p-2 hover:bg-slate-200 rounded-lg transition-colors text-slate-400 hover:text-slate-600"
+                >
+                    <X size={20} />
+                </button>
+            </div>
+
+            <div className="flex flex-col gap-3 mb-4">
+                <div className="relative w-full">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                    <input
+                        type="text"
+                        placeholder="Buscar por nome ou cargo..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-[#35b6cf]"
+                    />
+                </div>
+                <select
+                    value={sectorFilter}
+                    onChange={(e) => setSectorFilter(e.target.value)}
+                    className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-[#35b6cf]"
+                >
+                    <option value="">Todos os Setores</option>
+                    {sectors.map((sector: any) => (
+                        <option key={sector} value={sector}>{sector}</option>
+                    ))}
+                </select>
+            </div>
+
+            <div className="bg-white rounded-xl border border-slate-200 flex-1 overflow-hidden flex flex-col">
+                <div className="overflow-x-auto overflow-y-auto custom-scrollbar flex-1">
+                    <table className="w-full text-left text-sm whitespace-nowrap">
+                        <thead className="bg-slate-50 text-slate-500 font-bold text-xs uppercase sticky top-0 z-10">
+                            <tr>
+                                <th className="px-4 py-3 border-b border-slate-100">Nome</th>
+                                <th className="px-4 py-3 border-b border-slate-100">Cargo</th>
+                                <th className="px-4 py-3 border-b border-slate-100 text-right">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50">
+                            {filtered.map(person => (
+                                <tr key={person.id} className="hover:bg-slate-50/50 transition-colors">
+                                    <td className="px-4 py-3">
+                                        <p className="font-medium text-slate-700">{person.name}</p>
+                                        <p className="text-xs text-slate-400">{person.email}</p>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <div className="flex flex-col gap-1">
+                                            <span className="text-slate-600">{person.role}</span>
+                                            <span className="text-[10px] px-1.5 py-0.5 bg-slate-100 rounded-md w-fit text-slate-500">{person.sector}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-3 text-right">
+                                        <button
+                                            onClick={() => onDeleteCollaborator(person.id)}
+                                            className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                            title="Remover"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                    {filtered.length === 0 && (
+                        <div className="flex flex-col items-center justify-center h-40 text-slate-400">
+                            <Users size={24} className="mb-2 opacity-50" />
+                            <p className="text-sm">Nenhum colaborador encontrado.</p>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
 
 export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEditForm, onAnalyzeForm }) => {
     const [searchTerm, setSearchTerm] = useState('');
@@ -50,6 +328,19 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
     const [selectingFor, setSelectingFor] = useState<any>(null);
     const [selectedUnit, setSelectedUnit] = useState<any>(null);
     const [selectionStep, setSelectionStep] = useState<'unit' | 'sector'>('unit');
+
+    // Info Modal State
+    const [infoModalCompany, setInfoModalCompany] = useState<any>(null);
+    const [isEditingInfo, setIsEditingInfo] = useState(false);
+    // Temporary state for editing fields
+    const [editName, setEditName] = useState('');
+    const [editCnpj, setEditCnpj] = useState('');
+    // const [editCollab, setEditCollab] = useState<number>(0); // REMOVED: Collaborators not editable manually
+
+    // Collaborator Management State
+    const [showCollaborators, setShowCollaborators] = useState(false);
+    const [mockCollaborators, setMockCollaborators] = useState<any[]>([]);
+    // Removed duplicate state variables from here since they moved to sub-component
 
     const filteredCompanies = MOCK_COMPANIES.filter(c =>
         c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -99,6 +390,43 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
         });
         setSelectingFor(null);
     };
+
+    const openInfoModal = (e: React.MouseEvent, company: any, initialShowCollaborators = false) => {
+        e.stopPropagation(); // Prevent card navigation
+        setInfoModalCompany(company);
+        setEditName(company.name);
+        setEditCnpj(company.cnpj);
+        // setEditCollab(company.total_collaborators);
+
+        // Init mock collaborators
+        setMockCollaborators(generateMockCollaborators(company));
+        setShowCollaborators(initialShowCollaborators); // Start with requested view
+        setIsEditingInfo(false);
+    };
+
+    // Mock Save
+    const handleSaveInfo = () => {
+        // Here you would call an API/Update prop
+        console.log("Saving info", { id: infoModalCompany.id, editName, editCnpj });
+        // Close modal
+        setInfoModalCompany(null);
+    };
+
+    // Mock Delete
+    const handleDeleteCompany = () => {
+        if (window.confirm("Tem certeza que deseja excluir esta empresa?")) {
+            console.log("Deleting company", infoModalCompany.id);
+            setInfoModalCompany(null);
+        }
+    };
+
+    const handleDeleteCollaborator = (id: number) => {
+        if (window.confirm("Remover este colaborador?")) {
+            setMockCollaborators(prev => prev.filter(c => c.id !== id));
+        }
+    };
+
+    // Filter logic moved to internal component
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
@@ -229,11 +557,101 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                 </div>
             )}
 
+            {/* INFO MODAL */}
+            {infoModalCompany && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+                    <div
+                        className={`bg-white rounded-[32px] p-8 shadow-2xl transform transition-all duration-500 ease-in-out flex flex-col max-h-[90vh] ${showCollaborators ? 'w-full max-w-6xl' : 'w-full max-w-2xl'
+                            }`}
+                    >
+                        <div className="flex justify-between items-center mb-6">
+                            <div className="flex items-center gap-3">
+                                <div className="p-3 bg-[#35b6cf]/10 text-[#35b6cf] rounded-2xl">
+                                    <Building size={28} />
+                                </div>
+                                <div>
+                                    <h2 className="text-2xl font-bold text-slate-800 leading-tight">
+                                        {isEditingInfo ? 'Editar Dados' : infoModalCompany.name}
+                                    </h2>
+                                    <p className="text-sm text-slate-500">
+                                        {isEditingInfo ? 'Atualize as informações corporativas' : 'Informações e gerenciamento'}
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    setInfoModalCompany(null);
+                                    setShowCollaborators(false);
+                                    setIsEditingInfo(false);
+                                }}
+                                className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600"
+                            >
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        <div className="flex gap-8 flex-1 overflow-hidden h-[600px]">
+                            {/* LADO ESQUERDO: Info Empresa (Sempre visível) */}
+                            <div className={`flex flex-col h-full transition-all duration-500 ${showCollaborators ? 'w-[45%]' : 'w-full'}`}>
+                                <CompanySummary
+                                    company={infoModalCompany}
+                                    isEditing={isEditingInfo}
+                                    editName={editName}
+                                    editCnpj={editCnpj}
+                                    setEditName={setEditName}
+                                    setEditCnpj={setEditCnpj}
+                                    showCollaborators={showCollaborators}
+                                    onToggleCollaborators={() => setShowCollaborators(!showCollaborators)}
+                                    onStartEdit={() => setIsEditingInfo(true)}
+                                    onCancelEdit={() => setIsEditingInfo(false)}
+                                    onSave={handleSaveInfo}
+                                    onDelete={handleDeleteCompany}
+                                />
+
+                                {!showCollaborators && !isEditingInfo && (
+                                    <button
+                                        onClick={() => setShowCollaborators(true)}
+                                        className="w-full mt-6 py-4 border-2 border-dashed border-slate-200 rounded-2xl text-slate-500 hover:bg-slate-50 hover:border-[#35b6cf]/40 hover:text-[#35b6cf] transition-all font-bold flex items-center justify-center gap-2 group"
+                                    >
+                                        <Users size={20} className="group-hover:scale-110 transition-transform" />
+                                        Gerenciar Colaboradores
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* LADO DIREITO: Gerenciamento (O Painel que "Expande") */}
+                            <div className={`
+                                bg-slate-50 rounded-[24px] border border-slate-200 flex flex-col overflow-hidden
+                                transition-all duration-500 ease-in-out transform origin-left
+                                ${showCollaborators
+                                    ? 'opacity-100 translate-x-0 w-[55%] visible'
+                                    : 'opacity-0 -translate-x-10 w-0 invisible absolute'
+                                }
+                            `}>
+                                {showCollaborators && (
+                                    <EmployeeManagement
+                                        collaborators={mockCollaborators}
+                                        company={infoModalCompany}
+                                        onDeleteCollaborator={handleDeleteCollaborator}
+                                        onClose={() => setShowCollaborators(false)}
+                                    />
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+
             {/* Grid vs List Content */}
             {viewMode === 'grid' ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                     {filteredCompanies.map((company) => (
-                        <div key={company.id} className="group bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-[#35b6cf]/10 hover:border-[#35b6cf]/30 hover:-translate-y-1 transition-all duration-300 flex flex-col h-full overflow-hidden">
+                        <div
+                            key={company.id}
+                            onClick={() => onAnalyzeForm(company)} // Navigate to details on click
+                            className="group bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-[#35b6cf]/10 hover:border-[#35b6cf]/30 hover:-translate-y-1 transition-all duration-300 flex flex-col h-full overflow-hidden cursor-pointer relative"
+                        >
 
                             {/* Card Body */}
                             <div className="p-6 flex-1 flex flex-col">
@@ -265,7 +683,10 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                             {/* Card Footer Actions */}
                             <div className="px-6 py-4 bg-slate-50/50 border-t border-slate-50 flex items-center justify-between mt-auto">
                                 <button
-                                    onClick={() => handleGerarFormulario(company)}
+                                    onClick={(e) => {
+                                        e.stopPropagation(); // Prevent card navigation
+                                        handleGerarFormulario(company);
+                                    }}
                                     className="text-sm font-bold text-[#35b6cf] hover:text-[#0f978e] transition-colors flex items-center gap-1"
                                 >
                                     Gerar Formulário
@@ -273,21 +694,11 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                 </button>
                                 <div className="flex items-center gap-x-1">
                                     <button
-                                        onClick={() => onEditForm(company)}
+                                        onClick={(e) => openInfoModal(e, company, true)}
                                         className="p-2 text-slate-400 hover:text-[#35b6cf] hover:bg-white rounded-lg transition-all"
-                                        title="Editar Empresa"
+                                        title="Avaliar Colaboradores"
                                     >
-                                        <Edit size={18} />
-                                    </button>
-                                    <button
-                                        onClick={() => onAnalyzeForm(company)}
-                                        className="p-2 text-slate-400 hover:text-[#35b6cf] hover:bg-white rounded-lg transition-all"
-                                        title="Visualizar Levantamentos"
-                                    >
-                                        <FileText size={18} />
-                                    </button>
-                                    <button className="p-2 text-slate-300 hover:text-red-400 hover:bg-white rounded-lg transition-all" title="Excluir Empresa">
-                                        <Trash2 size={18} />
+                                        <Users size={18} />
                                     </button>
                                 </div>
                             </div>

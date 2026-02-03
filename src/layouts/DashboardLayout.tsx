@@ -1,6 +1,7 @@
 import React from 'react';
 import { Settings, LogOut, LayoutTemplate, LayoutDashboard, PlusCircle, Building } from 'lucide-react';
 import { useLocation, Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 interface DashboardLayoutProps {
     children: React.ReactNode;
@@ -16,6 +17,7 @@ const MENU_ITEMS = [
 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     const location = useLocation();
+    const { signOut, user } = useAuth();
 
     // Helper to determine active state
     const isActive = (path: string) => {
@@ -71,14 +73,17 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
                             AR
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-slate-900 truncate">Dr. Arthur</p>
+                            <p className="text-sm font-bold text-slate-900 truncate">{user?.user_metadata?.username || user?.email || 'Usuário'}</p>
                             <p className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Administrador</p>
                         </div>
                     </div>
 
-                    <button className="w-full mt-4 flex items-center justify-center gap-2 text-xs font-medium text-slate-400 hover:text-red-500 transition-colors py-2 border border-slate-100 rounded-lg hover:bg-red-50/50">
+                    <button
+                        onClick={() => signOut()}
+                        className="w-full mt-4 flex items-center justify-center gap-2 text-xs font-medium text-slate-400 hover:text-red-500 transition-colors py-2 border border-slate-100 rounded-lg hover:bg-red-50/50"
+                    >
                         <LogOut size={14} />
-                        Sair do Sistema
+                        Sair
                     </button>
                 </div>
             </aside>
