@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Copy, Clock, Search, FileText, X } from 'lucide-react';
-import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Tooltip } from 'recharts';
+import { ArrowLeft, Copy, Clock, Search, FileText, X, TrendingUp, TrendingDown } from 'lucide-react';
+import { ResponsiveContainer, PieChart, Pie, Cell, Sector, Tooltip as RechartsTooltip } from 'recharts';
 import { SegmentedControl } from '../ui/SegmentedControl';
 import type { Form } from '../../types';
 
@@ -21,14 +21,17 @@ const PARTICIPANTS = [
     { id: 8, name: 'Rafael Souza', sector: 'Operações', role: 'Supervisor', status: 'pending', submitted_at: null },
 ];
 
-const RADAR_DATA = [
-    { subject: 'Demandas', A: 3.2, fullMark: 4 },
-    { subject: 'Controle', A: 2.6, fullMark: 4 },
-    { subject: 'Apoio da Chefia', A: 2.3, fullMark: 4 },
-    { subject: 'Apoio dos Colegas', A: 2.6, fullMark: 4 },
-    { subject: 'Relacionamentos', A: 2.2, fullMark: 4 },
-    { subject: 'Cargo', A: 1.7, fullMark: 4 },
-    { subject: 'Comunicação e Mudanças', A: 1.9, fullMark: 4 },
+// Map colors to dimensions: Rose (Direct), Indigo (Inverse)
+// Direct: Demandas, Relacionamentos
+// Inverse: Others
+const RADIAL_DATA = [
+    { name: 'Demandas', value: 3.2, fill: '#f43f5e' }, // Rose-500
+    { name: 'Relacionamentos', value: 2.2, fill: '#f43f5e' },
+    { name: 'Controle', value: 2.6, fill: '#6366f1' }, // Indigo-500
+    { name: 'Apoio da Chefia', value: 2.3, fill: '#6366f1' },
+    { name: 'Apoio dos Colegas', value: 2.6, fill: '#6366f1' },
+    { name: 'Cargo', value: 1.7, fill: '#6366f1' },
+    { name: 'Comunicação', value: 1.9, fill: '#6366f1' }, // Shortened for legend
 ];
 
 
@@ -52,9 +55,35 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
         ? PARTICIPANTS.filter(p => p.sector === selectedSector)
         : PARTICIPANTS;
 
+    // Custom renderer for Polar Area (Rose) Chart
+    const renderCustomPolarSector = (props: any) => {
+        const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, value } = props;
+        const maxValue = 4;
+        // Calculate radius based on value (0 to 4) relative to the available radius space
+        // We keep a small innerRadius for the 'donut' hole, then expand from there.
+        const r = innerRadius + (outerRadius - innerRadius) * (Math.min(value, maxValue) / maxValue);
+
+        return (
+            <g>
+                <Sector
+                    cx={cx}
+                    cy={cy}
+                    innerRadius={innerRadius}
+                    outerRadius={r}
+                    startAngle={startAngle}
+                    endAngle={endAngle}
+                    fill={fill}
+                    stroke="#fff"
+                    strokeWidth={1}
+                />
+            </g>
+        );
+    };
+
     const tabs = [
         { value: 'overview', label: 'Visão Geral' },
         { value: 'analysis', label: 'Análise Interpretativa' },
+        { value: 'recorte', label: 'Recorte Interpretativo' },
     ];
 
     return (
@@ -204,106 +233,191 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
 
                 {/* --- TAB B: ANÁLISE INTERPRETATIVA --- */}
                 {activeTab === 'analysis' && (
-                    <div className="space-y-8 max-w-6xl mx-auto">
-                        {/* Intro Card */}
-                        <div className="bg-[#35b6cf]/10 border border-[#35b6cf]/20 p-6 rounded-xl flex items-start gap-4">
-                            <div className="p-2 bg-white rounded-lg text-[#35b6cf] shadow-sm">
-                                <Clock size={24} />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-[#35b6cf] text-lg">Análise em Tempo Real</h3>
-                                <p className="text-slate-600 text-sm mt-1 max-w-2xl">
-                                    Os dados abaixo são processados automaticamente com base nas respostas.
-                                    O gráfico de radar destaca as dimensões psicossociais predominantes e o mapa de calor identifica áreas críticas.
+                    <div className="max-w-[1600px] mx-auto">
+                        <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 items-start">
+
+                            {/* LEFT COLUMN: DIRECT RISK CARD */}
+                            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-full">
+                                <div className="flex items-center gap-4 mb-6 border-b border-slate-100 pb-4">
+                                    <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-500">
+                                        <TrendingUp size={20} />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-slate-800 text-sm">Risco Direto</h3>
+                                        <p className="text-xs text-slate-500 mt-0.5">Demandas & Relacionamentos</p>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between text-xs text-slate-400 font-medium uppercase tracking-wider mb-2">
+                                        <span>Dimensão</span>
+                                        <span>Média</span>
+                                    </div>
+                                    {RADIAL_DATA.filter(d => d.fill === '#f43f5e').map((item, idx) => (
+                                        <div key={idx} className="flex items-center justify-between group">
+                                            <span className="font-medium text-slate-600 text-sm group-hover:text-slate-900 transition-colors pl-2 border-l-2 border-slate-100 group-hover:border-rose-400 pl-3">
+                                                {item.name}
+                                            </span>
+                                            <span className={`text-xs px-3 py-1 rounded-full font-bold w-16 text-center ${item.value >= 3 ? 'bg-red-50 text-red-600' :
+                                                    item.value >= 2 ? 'bg-orange-50 text-orange-600' :
+                                                        'bg-emerald-50 text-emerald-600'
+                                                }`}>
+                                                {item.value}
+                                            </span>
+                                        </div>
+                                    ))}
+
+                                    {/* Legend Restored */}
+                                    <div className="pt-4 mt-2 border-t border-slate-100">
+                                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Legenda de Risco</h4>
+                                        <div className="space-y-2">
+                                            {[
+                                                { range: '3.0 - 4.0', label: 'Alto', color: 'bg-red-50 text-red-600 border border-red-100' },
+                                                { range: '2.0 - 2.9', label: 'Moderado', color: 'bg-orange-50 text-orange-600 border border-orange-100' },
+                                                { range: '1.0 - 1.9', label: 'Médio', color: 'bg-blue-50 text-blue-600 border border-blue-100' },
+                                                { range: '0.0 - 0.9', label: 'Baixo', color: 'bg-emerald-50 text-emerald-600 border border-emerald-100' },
+                                            ].map((item, idx) => (
+                                                <div key={idx} className="flex items-center justify-between">
+                                                    <span className="text-xs text-slate-500 font-medium">{item.range}</span>
+                                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold w-20 text-center ${item.color}`}>
+                                                        {item.label}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                                <p className="border-t border-slate-100 mt-6 pt-4 text-xs text-slate-400 italic text-center">
+                                    Quanto <strong>maior</strong> a média, <strong>maior</strong> o risco.
                                 </p>
                             </div>
-                        </div>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            {/* Radar Chart */}
-                            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm min-h-[400px] flex flex-col">
-                                <h3 className="font-bold text-lg text-slate-800 mb-6">Dimensões Psicossociais</h3>
-                                <div className="flex-1 w-full min-h-[300px]">
+                            {/* CENTER COLUMN: POLAR AREA CHART (2 COLS) */}
+                            <div className="xl:col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm min-h-[500px] flex flex-col justify-center relative">
+                                <h3 className="font-bold text-lg text-slate-800 mb-6 text-center">Dimensões Psicossociais</h3>
+                                <div className="w-full h-[400px] flex justify-center items-center relative">
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <RadarChart cx="50%" cy="50%" outerRadius="80%" data={RADAR_DATA}>
-                                            <PolarGrid stroke="#e2e8f0" />
-                                            <PolarAngleAxis dataKey="subject" tick={{ fill: '#64748b', fontSize: 12, fontWeight: 500 }} />
-                                            <PolarRadiusAxis angle={30} domain={[0, 4]} tick={true} tickCount={5} axisLine={false} />
-                                            <Radar
-                                                name="Nível Atual"
-                                                dataKey="A"
-                                                stroke="#35b6cf"
-                                                strokeWidth={3}
-                                                fill="#35b6cf"
-                                                fillOpacity={0.2}
-                                            />
-                                            <Tooltip />
-                                        </RadarChart>
+                                        <PieChart>
+                                            <Pie
+                                                data={RADIAL_DATA}
+                                                dataKey="value"
+                                                cx="50%"
+                                                cy="50%"
+                                                innerRadius={30}
+                                                outerRadius={150}
+                                                shape={renderCustomPolarSector}
+                                                label={({ cx, cy, midAngle, innerRadius, outerRadius, value, index }) => {
+                                                    const RADIAN = Math.PI / 180;
+                                                    // Ensure midAngle is valid
+                                                    const angle = -(midAngle || 0) * RADIAN;
+
+                                                    // Position for the label text (closer to chart)
+                                                    const radius = outerRadius * 1.15;
+                                                    const x = cx + radius * Math.cos(angle);
+                                                    const y = cy + radius * Math.sin(angle);
+
+                                                    // Position for the start of the line (at the edge of the specific bar)
+                                                    const maxValue = 4;
+                                                    // Re-calculate the bar's outer edge for this specific value
+                                                    const barRadius = innerRadius + (outerRadius - innerRadius) * (Math.min(value, maxValue) / maxValue);
+
+                                                    const startRadius = barRadius;
+                                                    const startX = cx + startRadius * Math.cos(angle);
+                                                    const startY = cy + startRadius * Math.sin(angle);
+
+                                                    // Mid-point for polyline (optional knee)
+                                                    const midRadius = outerRadius * 1.08;
+                                                    const midX = cx + midRadius * Math.cos(angle);
+                                                    const midY = cy + midRadius * Math.sin(angle);
+
+                                                    return (
+                                                        <g>
+                                                            <path
+                                                                d={`M${startX},${startY} L${midX},${midY} L${x},${y}`}
+                                                                stroke="#cbd5e1"
+                                                                fill="none"
+                                                            />
+                                                            <text
+                                                                x={x}
+                                                                y={y}
+                                                                fill="#64748b"
+                                                                textAnchor={x > cx ? 'start' : 'end'}
+                                                                dominantBaseline="central"
+                                                                className="text-[11px] font-semibold"
+                                                            >
+                                                                {RADIAL_DATA[index].name}
+                                                            </text>
+                                                        </g>
+                                                    );
+                                                }}
+                                                labelLine={false}
+                                            >
+                                                {RADIAL_DATA.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                                                ))}
+                                            </Pie>
+                                            <RechartsTooltip />
+                                        </PieChart>
                                     </ResponsiveContainer>
                                 </div>
                             </div>
 
-                            {/* Analysis Criteria Card */}
-                            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
-                                <h3 className="font-bold text-lg text-slate-800 mb-4">Critério de análise:</h3>
-
-                                <div className="space-y-3 mb-8 text-sm text-slate-600">
-                                    <p>
-                                        <span className="font-semibold text-slate-800">- Dimensões Demandas e Relacionamentos</span> &rarr; médias mais altas indicam maior risco.
-                                    </p>
-                                    <p>
-                                        <span className="font-semibold text-slate-800">- Demais dimensões (Controle, Apoio, Cargo, Comunicação/Mudanças)</span> &rarr; médias mais baixas indicam maior risco.
-                                    </p>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-sm">
-                                    {/* Higher Mean = Higher Risk */}
-                                    <div>
-                                        <h4 className="font-bold text-slate-800 mb-3">Quanto <em>maior</em> a média <em>maior</em> o risco:</h4>
-                                        <ul className="space-y-2">
-                                            <li className="flex items-center gap-2">
-                                                <span className="w-16 font-medium text-slate-500">0 a 1:</span>
-                                                <span className="font-bold text-emerald-600">baixo</span>
-                                            </li>
-                                            <li className="flex items-center gap-2">
-                                                <span className="w-16 font-medium text-slate-500">&gt;1 a 2:</span>
-                                                <span className="font-bold text-cyan-600">médio</span>
-                                            </li>
-                                            <li className="flex items-center gap-2">
-                                                <span className="w-16 font-medium text-slate-500">&gt;2 a 3:</span>
-                                                <span className="font-bold text-amber-500">moderado</span>
-                                            </li>
-                                            <li className="flex items-center gap-2">
-                                                <span className="w-16 font-medium text-slate-500">&gt;3 a 4:</span>
-                                                <span className="font-bold text-red-600">alto</span>
-                                            </li>
-                                        </ul>
+                            {/* RIGHT COLUMN: INVERSE RISK CARD */}
+                            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-full">
+                                <div className="flex items-center gap-4 mb-6 border-b border-slate-100 pb-4">
+                                    <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-500">
+                                        <TrendingDown size={20} />
                                     </div>
-
-                                    {/* Lower Mean = Higher Risk */}
                                     <div>
-                                        <h4 className="font-bold text-slate-800 mb-3">Quanto <em>menor</em> a média <em>maior</em> o risco:</h4>
-                                        <ul className="space-y-2">
-                                            <li className="flex items-center gap-2">
-                                                <span className="w-16 font-medium text-slate-500">0 a 1:</span>
-                                                <span className="font-bold text-red-600">alto</span>
-                                            </li>
-                                            <li className="flex items-center gap-2">
-                                                <span className="w-16 font-medium text-slate-500">&gt;1 a 2:</span>
-                                                <span className="font-bold text-amber-500">moderado</span>
-                                            </li>
-                                            <li className="flex items-center gap-2">
-                                                <span className="w-16 font-medium text-slate-500">&gt;2 a 3:</span>
-                                                <span className="font-bold text-cyan-600">médio</span>
-                                            </li>
-                                            <li className="flex items-center gap-2">
-                                                <span className="w-16 font-medium text-slate-500">&gt;3 a 4:</span>
-                                                <span className="font-bold text-emerald-600">baixo</span>
-                                            </li>
-                                        </ul>
+                                        <h3 className="font-bold text-slate-800 text-sm">Risco Inverso</h3>
+                                        <p className="text-xs text-slate-500 mt-0.5">Controle, Apoio, Cargo, etc.</p>
                                     </div>
                                 </div>
+
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between text-xs text-slate-400 font-medium uppercase tracking-wider mb-2">
+                                        <span>Dimensão</span>
+                                        <span>Média</span>
+                                    </div>
+                                    {RADIAL_DATA.filter(d => d.fill === '#6366f1').map((item, idx) => (
+                                        <div key={idx} className="flex items-center justify-between group">
+                                            <span className="font-medium text-slate-600 text-sm group-hover:text-slate-900 transition-colors pl-2 border-l-2 border-slate-100 group-hover:border-indigo-400 pl-3">
+                                                {item.name}
+                                            </span>
+                                            <span className={`text-xs px-3 py-1 rounded-full font-bold w-16 text-center ${item.value <= 2 ? 'bg-red-50 text-red-600' :
+                                                item.value <= 3 ? 'bg-orange-50 text-orange-600' :
+                                                    'bg-emerald-50 text-emerald-600'
+                                                }`}>
+                                                {item.value}
+                                            </span>
+                                        </div>
+                                    ))}
+
+                                    {/* Legend Restored */}
+                                    <div className="pt-4 mt-2 border-t border-slate-100">
+                                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Legenda de Risco</h4>
+                                        <div className="space-y-2">
+                                            {[
+                                                { range: '0.0 - 0.9', label: 'Alto', color: 'bg-red-50 text-red-600 border border-red-100' },
+                                                { range: '1.0 - 1.9', label: 'Moderado', color: 'bg-orange-50 text-orange-600 border border-orange-100' },
+                                                { range: '2.0 - 2.9', label: 'Médio', color: 'bg-blue-50 text-blue-600 border border-blue-100' },
+                                                { range: '3.0 - 4.0', label: 'Baixo', color: 'bg-emerald-50 text-emerald-600 border border-emerald-100' },
+                                            ].map((item, idx) => (
+                                                <div key={idx} className="flex items-center justify-between">
+                                                    <span className="text-xs text-slate-500 font-medium">{item.range}</span>
+                                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold w-20 text-center ${item.color}`}>
+                                                        {item.label}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                                <p className="border-t border-slate-100 mt-6 pt-4 text-xs text-slate-400 italic text-center">
+                                    Quanto <strong>menor</strong> a média, <strong>maior</strong> o risco.
+                                </p>
                             </div>
+
                         </div>
                     </div>
                 )}
