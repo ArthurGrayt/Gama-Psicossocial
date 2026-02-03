@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Copy, Users, CheckCircle, Clock } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Tooltip } from 'recharts';
+import { ArrowLeft, Copy, Clock, Search, FileText, X } from 'lucide-react';
+import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Tooltip } from 'recharts';
 import { SegmentedControl } from '../ui/SegmentedControl';
 import type { Form } from '../../types';
 
@@ -11,32 +11,26 @@ interface SurveyDetailsProps {
 
 // --- MOCK DATA ---
 const PARTICIPANTS = [
-    { id: 1, name: 'Ana Silva', sector: 'Financeiro', role: 'Analista Pleno', status: 'completed' },
-    { id: 2, name: 'Carlos Oliveira', sector: 'TI', role: 'Desenvolvedor Senior', status: 'pending' },
-    { id: 3, name: 'Mariana Santos', sector: 'RH', role: 'Coordenadora', status: 'completed' },
-    { id: 4, name: 'João Pereira', sector: 'Operações', role: 'Operador I', status: 'completed' },
-    { id: 5, name: 'Beatriz Costa', sector: 'Financeiro', role: 'Gerente', status: 'pending' },
-    { id: 6, name: 'Lucas Lima', sector: 'TI', role: 'DevOps', status: 'completed' },
-    { id: 7, name: 'Fernanda Rocha', sector: 'Marketing', role: 'Analista Jr', status: 'completed' },
-    { id: 8, name: 'Rafael Souza', sector: 'Operações', role: 'Supervisor', status: 'pending' },
+    { id: 1, name: 'Ana Silva', sector: 'Financeiro', role: 'Analista Pleno', status: 'completed', submitted_at: '02/02/2026, 14:30:00' },
+    { id: 2, name: 'Carlos Oliveira', sector: 'TI', role: 'Desenvolvedor Senior', status: 'pending', submitted_at: null },
+    { id: 3, name: 'Mariana Santos', sector: 'RH', role: 'Coordenadora', status: 'completed', submitted_at: '02/02/2026, 10:15:00' },
+    { id: 4, name: 'João Pereira', sector: 'Operações', role: 'Operador I', status: 'completed', submitted_at: '01/02/2026, 16:45:00' },
+    { id: 5, name: 'Beatriz Costa', sector: 'Financeiro', role: 'Gerente', status: 'pending', submitted_at: null },
+    { id: 6, name: 'Lucas Lima', sector: 'TI', role: 'DevOps', status: 'completed', submitted_at: '02/02/2026, 09:20:00' },
+    { id: 7, name: 'Fernanda Rocha', sector: 'Marketing', role: 'Analista Jr', status: 'completed', submitted_at: '31/01/2026, 11:10:00' },
+    { id: 8, name: 'Rafael Souza', sector: 'Operações', role: 'Supervisor', status: 'pending', submitted_at: null },
 ];
 
 const RADAR_DATA = [
-    { subject: 'Demanda', A: 120, fullMark: 150 },
-    { subject: 'Controle', A: 98, fullMark: 150 },
-    { subject: 'Apoio Social', A: 86, fullMark: 150 },
-    { subject: 'Relacionamento', A: 99, fullMark: 150 },
-    { subject: 'Recompensa', A: 85, fullMark: 150 },
-    { subject: 'Justiça', A: 65, fullMark: 150 },
+    { subject: 'Demandas', A: 3.2, fullMark: 4 },
+    { subject: 'Controle', A: 2.6, fullMark: 4 },
+    { subject: 'Apoio da Chefia', A: 2.3, fullMark: 4 },
+    { subject: 'Apoio dos Colegas', A: 2.6, fullMark: 4 },
+    { subject: 'Relacionamentos', A: 2.2, fullMark: 4 },
+    { subject: 'Cargo', A: 1.7, fullMark: 4 },
+    { subject: 'Comunicação e Mudanças', A: 1.9, fullMark: 4 },
 ];
 
-const HEATMAP_DATA = [
-    { sector: 'Financeiro', risk: 'Baixo', score: 2.5 },
-    { sector: 'TI', risk: 'Médio', score: 5.8 },
-    { sector: 'RH', risk: 'Baixo', score: 1.2 },
-    { sector: 'Operações', risk: 'Alto', score: 8.4 },
-    { sector: 'Marketing', risk: 'Médio', score: 4.5 },
-];
 
 const QUESTIONS_LIST = [
     { id: 1, text: "O meu trabalho exige que eu trabalhe muito rápido.", category: "Demanda" },
@@ -45,20 +39,22 @@ const QUESTIONS_LIST = [
     { id: 4, text: "Recebo apoio dos meus colegas para realizar o trabalho.", category: "Apoio Social" },
 ];
 
-// DONUT CHART DATA
-const ADHESION_DATA = [
-    { name: 'Respondido', value: 65 },
-    { name: 'Pendente', value: 35 },
-];
-const COLORS = ['#35b6cf', '#e2e8f0']; // Primary Cyan, Slate 200
-
 export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) => {
     const [activeTab, setActiveTab] = useState('overview');
+    const [selectedSector, setSelectedSector] = useState<string>('');
+    const [selectedParticipant, setSelectedParticipant] = useState<any>(null);
+
+    // Derive Sectors from Participants
+    const distinctSectors = Array.from(new Set(PARTICIPANTS.map(p => p.sector)));
+
+    // Filter Logic
+    const filteredParticipants = selectedSector
+        ? PARTICIPANTS.filter(p => p.sector === selectedSector)
+        : PARTICIPANTS;
 
     const tabs = [
         { value: 'overview', label: 'Visão Geral' },
         { value: 'analysis', label: 'Análise Interpretativa' },
-        { value: 'editor', label: 'Editor de Perguntas' },
     ];
 
     return (
@@ -76,10 +72,21 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
                         <div className="flex items-center gap-3">
                             <h2 className="font-bold text-xl text-slate-800 tracking-tight">{form.title}</h2>
                             <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 border border-emerald-200">
-                                Ativo
                             </span>
                         </div>
-                        <p className="text-sm text-slate-500 mt-0.5">Criado em {form.created_at ? new Date(form.created_at).toLocaleDateString() : '-'}</p>
+                        {/* Sector Dropdown Replacement */}
+                        <div className="mt-1">
+                            <select
+                                value={selectedSector}
+                                onChange={(e) => setSelectedSector(e.target.value)}
+                                className="bg-slate-50 border-none text-sm text-slate-500 font-medium focus:ring-0 cursor-pointer hover:text-slate-700 py-0 pl-0 pr-8 transition-colors outline-none"
+                            >
+                                <option value="">Todos os Setores</option>
+                                {distinctSectors.map(sector => (
+                                    <option key={sector} value={sector}>{sector}</option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
                 </div>
 
@@ -103,94 +110,94 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
                 {/* --- TAB A: VISÃO GERAL --- */}
                 {activeTab === 'overview' && (
                     <div className="space-y-8 max-w-7xl mx-auto">
-                        {/* Status Cards Row */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                                <p className="text-sm font-medium text-slate-500 mb-1">Total de Convidados</p>
-                                <h3 className="text-3xl font-bold text-slate-900 flex items-center gap-2">
-                                    {PARTICIPANTS.length * 3}
-                                    <Users size={20} className="text-slate-300" />
-                                </h3>
-                            </div>
-                            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                                <p className="text-sm font-medium text-slate-500 mb-1">Respostas Recebidas</p>
-                                <h3 className="text-3xl font-bold text-slate-900 flex items-center gap-2">
-                                    {PARTICIPANTS.filter(p => p.status === 'completed').length * 3}
-                                    <CheckCircle size={20} className="text-[#35b6cf]" />
-                                </h3>
-                            </div>
-                            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between relative overflow-hidden h-32">
-                                <div className="z-10">
-                                    <p className="text-sm font-medium text-slate-500 mb-1">Taxa de Adesão</p>
-                                    <h3 className="text-3xl font-bold text-slate-900">65%</h3>
+                        {/* Status Cards Row (New Design) */}
+                        <div className="bg-white rounded-xl border border-slate-200 shadow-sm grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-100">
+                            {/* Participação */}
+                            <div className="p-6 flex flex-col items-center justify-center text-center">
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Participação</p>
+                                <div className="flex items-baseline gap-1">
+                                    <span className="text-3xl font-bold text-slate-900">
+                                        {filteredParticipants.filter(p => p.status === 'completed').length}
+                                    </span>
+                                    <span className="text-lg text-slate-400 font-medium">
+                                        /{filteredParticipants.length}
+                                    </span>
                                 </div>
-                                <div className="w-24 h-24">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <PieChart>
-                                            <Pie
-                                                data={ADHESION_DATA}
-                                                innerRadius={25}
-                                                outerRadius={40}
-                                                paddingAngle={0}
-                                                dataKey="value"
-                                                startAngle={90}
-                                                endAngle={-270}
-                                                stroke="none"
-                                            >
-                                                {ADHESION_DATA.map((_entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                                ))}
-                                            </Pie>
-                                        </PieChart>
-                                    </ResponsiveContainer>
+                            </div>
+
+                            {/* Total de Perguntas */}
+                            <div className="p-6 flex flex-col items-center justify-center text-center">
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Total de Perguntas</p>
+                                <span className="text-3xl font-bold text-slate-900">
+                                    {QUESTIONS_LIST.length}
+                                </span>
+                            </div>
+
+                            {/* Tempo Médio */}
+                            <div className="p-6 flex flex-col items-center justify-center text-center">
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Tempo Médio</p>
+                                <div className="flex items-baseline gap-1">
+                                    <span className="text-3xl font-bold text-slate-900">--</span>
+                                    <span className="text-lg text-slate-900 font-bold">min</span>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Participants Table */}
+                        {/* Recent Responses Table (New Design) */}
                         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white">
-                                <h3 className="font-bold text-lg text-slate-800">Lista de Participantes</h3>
-                                <button className="text-sm text-[#35b6cf] font-medium hover:underline">Ver apenas pendentes</button>
+                            <div className="px-8 py-6 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4 bg-white">
+                                <h3 className="font-bold text-lg text-slate-800">Respostas Recentes</h3>
+                                <div className="relative w-full md:w-64">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                    <input
+                                        type="text"
+                                        placeholder="Buscar colaborador..."
+                                        className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf] transition-all"
+                                    />
+                                </div>
                             </div>
-                            <table className="w-full text-sm text-left">
-                                <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-100">
-                                    <tr>
-                                        <th className="px-6 py-3">Nome</th>
-                                        <th className="px-6 py-3">Setor</th>
-                                        <th className="px-6 py-3">Cargo</th>
-                                        <th className="px-6 py-3">Status</th>
-                                        <th className="px-6 py-3 text-right">Ação</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {PARTICIPANTS.map((p) => (
-                                        <tr key={p.id} className="hover:bg-slate-50 transition-colors">
-                                            <td className="px-6 py-3 font-medium text-slate-900">{p.name}</td>
-                                            <td className="px-6 py-3 text-slate-500">{p.sector}</td>
-                                            <td className="px-6 py-3 text-slate-500">{p.role}</td>
-                                            <td className="px-6 py-3">
-                                                {p.status === 'completed' ? (
-                                                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-100">
-                                                        Respondido
-                                                    </span>
-                                                ) : (
-                                                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-500 border border-slate-200">
-                                                        Pendente
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-3 text-right">
-                                                {p.status === 'pending' && (
-                                                    <button className="text-xs font-medium text-[#35b6cf] hover:text-[#2ca1b7] hover:underline">
-                                                        Enviar Lembrete
-                                                    </button>
-                                                )}
-                                            </td>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left">
+                                    <thead>
+                                        <tr className="border-b border-slate-100 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                            <th className="px-8 py-4">Participante</th>
+                                            <th className="px-8 py-4">Data Envio</th>
+                                            <th className="px-8 py-4 text-right">Ações</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {filteredParticipants.filter(p => p.status === 'completed').map((p) => (
+                                            <tr key={p.id} className="hover:bg-slate-50 transition-colors">
+                                                <td className="px-8 py-4">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-sm">
+                                                            {p.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-bold text-slate-700">{p.name}</p>
+                                                            <p className="text-xs text-slate-400">Anônimo</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-8 py-4">
+                                                    <span className="text-sm text-slate-500 font-medium">
+                                                        {p.submitted_at}
+                                                    </span>
+                                                </td>
+                                                <td className="px-8 py-4 text-right">
+                                                    <button
+                                                        onClick={() => setSelectedParticipant(p)}
+                                                        className="text-slate-400 hover:text-[#35b6cf] transition-colors p-2 hover:bg-slate-50 rounded-lg"
+                                                        title="Ver Respostas"
+                                                    >
+                                                        <FileText size={18} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 )}
@@ -221,7 +228,7 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
                                         <RadarChart cx="50%" cy="50%" outerRadius="80%" data={RADAR_DATA}>
                                             <PolarGrid stroke="#e2e8f0" />
                                             <PolarAngleAxis dataKey="subject" tick={{ fill: '#64748b', fontSize: 12, fontWeight: 500 }} />
-                                            <PolarRadiusAxis angle={30} domain={[0, 150]} tick={false} axisLine={false} />
+                                            <PolarRadiusAxis angle={30} domain={[0, 4]} tick={true} tickCount={5} axisLine={false} />
                                             <Radar
                                                 name="Nível Atual"
                                                 dataKey="A"
@@ -236,75 +243,147 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
                                 </div>
                             </div>
 
-                            {/* Heatmap List */}
-                            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                                <h3 className="font-bold text-lg text-slate-800 mb-6">Mapa de Risco por Setor</h3>
-                                <div className="space-y-4">
-                                    {HEATMAP_DATA.map((item, idx) => (
-                                        <div key={idx} className="flex items-center gap-4 p-4 rounded-lg border border-slate-100 hover:bg-slate-50 transition-all">
-                                            <div className="flex-1">
-                                                <h4 className="font-bold text-slate-700">{item.sector}</h4>
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                                        <div
-                                                            className={`h-full rounded-full ${item.risk === 'Alto' ? 'bg-red-500' :
-                                                                item.risk === 'Médio' ? 'bg-amber-400' : 'bg-emerald-500'
-                                                                }`}
-                                                            style={{ width: `${(item.score / 10) * 100}%` }}
-                                                        ></div>
-                                                    </div>
-                                                    <span className="text-xs font-medium text-slate-500">{item.score}</span>
-                                                </div>
-                                            </div>
-                                            <div className={`
-                                                px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider
-                                                ${item.risk === 'Alto' ? 'bg-red-50 text-red-600 border border-red-100' :
-                                                    item.risk === 'Médio' ? 'bg-amber-50 text-amber-600 border border-amber-100' :
-                                                        'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                                                }
-                                            `}>
-                                                {item.risk}
-                                            </div>
-                                        </div>
-                                    ))}
+                            {/* Analysis Criteria Card */}
+                            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
+                                <h3 className="font-bold text-lg text-slate-800 mb-4">Critério de análise:</h3>
+
+                                <div className="space-y-3 mb-8 text-sm text-slate-600">
+                                    <p>
+                                        <span className="font-semibold text-slate-800">- Dimensões Demandas e Relacionamentos</span> &rarr; médias mais altas indicam maior risco.
+                                    </p>
+                                    <p>
+                                        <span className="font-semibold text-slate-800">- Demais dimensões (Controle, Apoio, Cargo, Comunicação/Mudanças)</span> &rarr; médias mais baixas indicam maior risco.
+                                    </p>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-sm">
+                                    {/* Higher Mean = Higher Risk */}
+                                    <div>
+                                        <h4 className="font-bold text-slate-800 mb-3">Quanto <em>maior</em> a média <em>maior</em> o risco:</h4>
+                                        <ul className="space-y-2">
+                                            <li className="flex items-center gap-2">
+                                                <span className="w-16 font-medium text-slate-500">0 a 1:</span>
+                                                <span className="font-bold text-emerald-600">baixo</span>
+                                            </li>
+                                            <li className="flex items-center gap-2">
+                                                <span className="w-16 font-medium text-slate-500">&gt;1 a 2:</span>
+                                                <span className="font-bold text-cyan-600">médio</span>
+                                            </li>
+                                            <li className="flex items-center gap-2">
+                                                <span className="w-16 font-medium text-slate-500">&gt;2 a 3:</span>
+                                                <span className="font-bold text-amber-500">moderado</span>
+                                            </li>
+                                            <li className="flex items-center gap-2">
+                                                <span className="w-16 font-medium text-slate-500">&gt;3 a 4:</span>
+                                                <span className="font-bold text-red-600">alto</span>
+                                            </li>
+                                        </ul>
+                                    </div>
+
+                                    {/* Lower Mean = Higher Risk */}
+                                    <div>
+                                        <h4 className="font-bold text-slate-800 mb-3">Quanto <em>menor</em> a média <em>maior</em> o risco:</h4>
+                                        <ul className="space-y-2">
+                                            <li className="flex items-center gap-2">
+                                                <span className="w-16 font-medium text-slate-500">0 a 1:</span>
+                                                <span className="font-bold text-red-600">alto</span>
+                                            </li>
+                                            <li className="flex items-center gap-2">
+                                                <span className="w-16 font-medium text-slate-500">&gt;1 a 2:</span>
+                                                <span className="font-bold text-amber-500">moderado</span>
+                                            </li>
+                                            <li className="flex items-center gap-2">
+                                                <span className="w-16 font-medium text-slate-500">&gt;2 a 3:</span>
+                                                <span className="font-bold text-cyan-600">médio</span>
+                                            </li>
+                                            <li className="flex items-center gap-2">
+                                                <span className="w-16 font-medium text-slate-500">&gt;3 a 4:</span>
+                                                <span className="font-bold text-emerald-600">baixo</span>
+                                            </li>
+                                        </ul>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 )}
 
-                {/* --- TAB C: EDITOR (READ ONLY) --- */}
-                {activeTab === 'editor' && (
-                    <div className="max-w-4xl mx-auto bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                        <div className="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-                            <div>
-                                <h3 className="font-bold text-lg text-slate-800">Perguntas do Formulário</h3>
-                                <p className="text-slate-500 text-sm">Visualização da estrutura atual.</p>
+
+            </div>
+
+            {/* RESPONSE MODAL */}
+            {selectedParticipant && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col m-4 animate-in zoom-in-95 duration-200">
+                        {/* Header */}
+                        <div className="flex items-start justify-between p-6 border-b border-slate-100">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-full bg-[#35b6cf]/10 flex items-center justify-center text-[#35b6cf] font-bold text-lg">
+                                    {selectedParticipant.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-lg text-slate-800">{selectedParticipant.name}</h3>
+                                    <div className="flex items-center gap-2 text-sm text-slate-500">
+                                        <span>{selectedParticipant.sector}</span>
+                                        <span>•</span>
+                                        <span>{selectedParticipant.submitted_at}</span>
+                                    </div>
+                                </div>
                             </div>
-                            <button className="text-sm font-medium text-[#35b6cf] border border-[#35b6cf] px-3 py-1.5 rounded-lg hover:bg-[#35b6cf] hover:text-white transition-colors">
-                                Editar Ordem
+                            <button
+                                onClick={() => setSelectedParticipant(null)}
+                                className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
+                            >
+                                <X size={20} />
                             </button>
                         </div>
-                        <div className="divide-y divide-slate-100">
-                            {QUESTIONS_LIST.map((q, index) => (
-                                <div key={q.id} className="p-5 flex gap-4 hover:bg-slate-50 group">
-                                    <span className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-slate-100 text-slate-500 font-bold rounded-lg text-sm group-hover:bg-[#35b6cf] group-hover:text-white transition-colors">
-                                        {index + 1}
-                                    </span>
-                                    <div className="flex-1">
-                                        <span className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1 block">{q.category}</span>
-                                        <p className="text-slate-800 font-medium">{q.text}</p>
+
+                        {/* Content */}
+                        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                            {QUESTIONS_LIST.map((q, idx) => (
+                                <div key={q.id} className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <span className="text-xs font-bold text-[#35b6cf] uppercase tracking-wider">{q.category}</span>
+                                        <span className="text-xs font-bold text-slate-400">#{idx + 1}</span>
                                     </div>
-                                    <div className="text-slate-400 text-sm flex items-center gap-2">
-                                        <span className="bg-slate-100 px-2 py-1 rounded text-xs">Escala Likert 1-5</span>
+                                    <p className="font-medium text-slate-800 mb-3">{q.text}</p>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm text-slate-500">Resposta:</span>
+                                        <div className="flex gap-1">
+                                            {[1, 2, 3, 4, 5].map((val) => {
+                                                // Mock random answer strictly for UI demo based on question ID + participant ID
+                                                const mockAnswer = ((q.id + selectedParticipant.id) % 5) + 1;
+                                                const isSelected = val === mockAnswer;
+                                                return (
+                                                    <div
+                                                        key={val}
+                                                        className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold border ${isSelected
+                                                            ? 'bg-[#35b6cf] border-[#35b6cf] text-white shadow-sm'
+                                                            : 'bg-white border-slate-200 text-slate-300'
+                                                            }`}
+                                                    >
+                                                        {val}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
                                 </div>
                             ))}
                         </div>
-                    </div>
-                )}
 
-            </div>
+                        {/* Footer */}
+                        <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-2xl flex justify-end">
+                            <button
+                                onClick={() => setSelectedParticipant(null)}
+                                className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-600 font-medium hover:bg-slate-50 transition-colors shadow-sm"
+                            >
+                                Fechar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

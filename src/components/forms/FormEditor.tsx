@@ -276,11 +276,27 @@ export const FormEditor: React.FC<FormEditorProps> = ({ formId, initialData, onB
 
             {/* 1. LEFT SIDEBAR STEPPER */}
             <div className="w-full md:w-64 bg-slate-50 border-r border-slate-200 p-6 flex flex-col">
-                <div className="mb-6 flex items-center gap-2">
-                    <button onClick={onBack} className="p-2 hover:bg-slate-200 rounded-lg text-slate-500 transition-colors">
-                        <ArrowLeft size={18} />
-                    </button>
-                    <h2 className="font-bold text-slate-700">{formId ? 'Editar' : 'Criar'}</h2>
+                <div className="mb-6 flex flex-col gap-3">
+                    <div className="flex items-center gap-2">
+                        <button onClick={onBack} className="p-2 hover:bg-slate-200 rounded-lg text-slate-500 transition-colors">
+                            <ArrowLeft size={18} />
+                        </button>
+                        <h2 className="font-bold text-slate-700">{formId ? 'Editar' : 'Criar'}</h2>
+                    </div>
+
+                    {/* Sector Switcher - Quick Access */}
+                    {selectedUnit && (selectedUnit.sectors.length > 0) && (
+                        <select
+                            value={sectorName}
+                            onChange={(e) => setSectorName(e.target.value)}
+                            className="w-full text-xs p-2 bg-white border border-slate-200 rounded-lg text-slate-600 outline-none focus:border-[#35b6cf] transition-all"
+                        >
+                            <option value="">{selectedUnit.name} (Geral)</option>
+                            {selectedUnit.sectors.map(s => (
+                                <option key={s} value={s}>{s}</option>
+                            ))}
+                        </select>
+                    )}
                 </div>
 
                 <div className="space-y-6 relative">

@@ -4,6 +4,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Formularios } from './pages/Formularios';
 import { ModelosPage } from './pages/ModelosPage';
 import { FormularioPublico } from './pages/FormularioPublico';
+import { CadastroPage } from './pages/CadastroPage';
+
 
 function App() {
   return (
@@ -13,6 +15,8 @@ function App() {
           {/* Admin / Dashboard Route */}
           <Route path="/" element={<Formularios />} />
           <Route path="/modelos" element={<ModelosPage />} />
+          <Route path="/cadastro" element={<CadastroPage />} />
+
 
           {/* Public Form Route */}
           <Route path="/form/:slug" element={<FormularioPublico />} />
