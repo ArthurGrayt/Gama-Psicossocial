@@ -226,13 +226,16 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = ({ collaborators, 
     // Internal state for truly independent filtering to the panel
     const [searchTerm, setSearchTerm] = useState('');
     const [sectorFilter, setSectorFilter] = useState('');
+    const [roleFilter, setRoleFilter] = useState('');
 
     const filtered = collaborators.filter(c =>
         (c.name.toLowerCase().includes(searchTerm.toLowerCase()) || c.role.toLowerCase().includes(searchTerm.toLowerCase())) &&
-        (sectorFilter ? c.sector === sectorFilter : true)
+        (sectorFilter ? c.sector === sectorFilter : true) &&
+        (roleFilter ? c.role === roleFilter : true)
     );
 
     const sectors = Array.from(new Set(company.units.flatMap((u: any) => u.sectors)));
+    const roles = Array.from(new Set(collaborators.map((c: any) => c.role)));
 
     return (
         <div className="p-8 flex-1 flex flex-col h-full overflow-hidden">
@@ -249,27 +252,41 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = ({ collaborators, 
                 </button>
             </div>
 
-            <div className="flex flex-col gap-3 mb-4">
-                <div className="relative w-full">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 mb-4">
+                <div className="relative col-span-12 md:col-span-6">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                     <input
                         type="text"
-                        placeholder="Buscar por nome ou cargo..."
+                        placeholder="Buscar por nome..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-[#35b6cf]"
                     />
                 </div>
-                <select
-                    value={sectorFilter}
-                    onChange={(e) => setSectorFilter(e.target.value)}
-                    className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-[#35b6cf]"
-                >
-                    <option value="">Todos os Setores</option>
-                    {sectors.map((sector: any) => (
-                        <option key={sector} value={sector}>{sector}</option>
-                    ))}
-                </select>
+                <div className="col-span-12 md:col-span-3">
+                    <select
+                        value={sectorFilter}
+                        onChange={(e) => setSectorFilter(e.target.value)}
+                        className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-[#35b6cf]"
+                    >
+                        <option value="">Todos os Setores</option>
+                        {sectors.map((sector: any) => (
+                            <option key={sector} value={sector}>{sector}</option>
+                        ))}
+                    </select>
+                </div>
+                <div className="col-span-12 md:col-span-3">
+                    <select
+                        value={roleFilter}
+                        onChange={(e) => setRoleFilter(e.target.value)}
+                        className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-[#35b6cf]"
+                    >
+                        <option value="">Todos os Cargos</option>
+                        {roles.map((role: any) => (
+                            <option key={role} value={role}>{role}</option>
+                        ))}
+                    </select>
+                </div>
             </div>
 
             <div className="bg-white rounded-xl border border-slate-200 flex-1 overflow-hidden flex flex-col">
@@ -279,6 +296,7 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = ({ collaborators, 
                             <tr>
                                 <th className="px-4 py-3 border-b border-slate-100">Nome</th>
                                 <th className="px-4 py-3 border-b border-slate-100">Cargo</th>
+                                <th className="px-4 py-3 border-b border-slate-100">Setor</th>
                                 <th className="px-4 py-3 border-b border-slate-100 text-right">Ação</th>
                             </tr>
                         </thead>
@@ -290,10 +308,10 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = ({ collaborators, 
                                         <p className="text-xs text-slate-400">{person.email}</p>
                                     </td>
                                     <td className="px-4 py-3">
-                                        <div className="flex flex-col gap-1">
-                                            <span className="text-slate-600">{person.role}</span>
-                                            <span className="text-[10px] px-1.5 py-0.5 bg-slate-100 rounded-md w-fit text-slate-500">{person.sector}</span>
-                                        </div>
+                                        <span className="text-slate-600">{person.role}</span>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <span className="text-[10px] px-2 py-1 bg-slate-100 rounded-md w-fit text-slate-500 font-medium border border-slate-200">{person.sector}</span>
                                     </td>
                                     <td className="px-4 py-3 text-right">
                                         <button
@@ -331,6 +349,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
 
     // Info Modal State
     const [infoModalCompany, setInfoModalCompany] = useState<any>(null);
+    const [selectedModalUnit, setSelectedModalUnit] = useState<any>(null);
     const [isEditingInfo, setIsEditingInfo] = useState(false);
     // Temporary state for editing fields
     const [editName, setEditName] = useState('');
@@ -394,6 +413,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
     const openInfoModal = (e: React.MouseEvent, company: any, initialShowCollaborators = false) => {
         e.stopPropagation(); // Prevent card navigation
         setInfoModalCompany(company);
+        setSelectedModalUnit(company.units.length > 0 ? company.units[0] : null);
         setEditName(company.name);
         setEditCnpj(company.cnpj);
         // setEditCollab(company.total_collaborators);
@@ -561,7 +581,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
             {infoModalCompany && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-300">
                     <div
-                        className={`bg-white rounded-[32px] p-8 shadow-2xl transform transition-all duration-500 ease-in-out flex flex-col max-h-[90vh] ${showCollaborators ? 'w-full max-w-6xl' : 'w-full max-w-2xl'
+                        className={`bg-white rounded-[32px] p-8 shadow-2xl transform transition-all duration-500 ease-in-out flex flex-col max-h-[90vh] ${showCollaborators ? 'w-full max-w-[1400px]' : 'w-full max-w-2xl'
                             }`}
                     >
                         <div className="flex justify-between items-center mb-6">
@@ -570,9 +590,28 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                     <Building size={28} />
                                 </div>
                                 <div>
-                                    <h2 className="text-2xl font-bold text-slate-800 leading-tight">
-                                        {isEditingInfo ? 'Editar Dados' : infoModalCompany.name}
-                                    </h2>
+                                    <div className="flex items-center gap-3">
+                                        <h2 className="text-2xl font-bold text-slate-800 leading-tight">
+                                            {isEditingInfo ? 'Editar Dados' : infoModalCompany.name}
+                                        </h2>
+                                        {!isEditingInfo && infoModalCompany.units && infoModalCompany.units.length > 0 && (
+                                            <div className="relative">
+                                                <select
+                                                    value={selectedModalUnit?.id || ''}
+                                                    onChange={(e) => {
+                                                        const unit = infoModalCompany.units.find((u: any) => u.id === Number(e.target.value));
+                                                        setSelectedModalUnit(unit);
+                                                    }}
+                                                    className="appearance-none pl-3 pr-8 py-1 bg-slate-100 border border-slate-200 rounded-lg text-sm font-bold text-slate-600 outline-none focus:border-[#35b6cf] cursor-pointer"
+                                                >
+                                                    {infoModalCompany.units.map((unit: any) => (
+                                                        <option key={unit.id} value={unit.id}>{unit.name}</option>
+                                                    ))}
+                                                </select>
+                                                <ChevronRight className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 rotate-90 pointer-events-none" size={14} />
+                                            </div>
+                                        )}
+                                    </div>
                                     <p className="text-sm text-slate-500">
                                         {isEditingInfo ? 'Atualize as informações corporativas' : 'Informações e gerenciamento'}
                                     </p>
@@ -592,7 +631,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
 
                         <div className="flex gap-8 flex-1 overflow-hidden h-[600px]">
                             {/* LADO ESQUERDO: Info Empresa (Sempre visível) */}
-                            <div className={`flex flex-col h-full transition-all duration-500 ${showCollaborators ? 'w-[45%]' : 'w-full'}`}>
+                            <div className={`flex flex-col h-full transition-all duration-500 ${showCollaborators ? 'w-[30%]' : 'w-full'}`}>
                                 <CompanySummary
                                     company={infoModalCompany}
                                     isEditing={isEditingInfo}
@@ -608,15 +647,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                     onDelete={handleDeleteCompany}
                                 />
 
-                                {!showCollaborators && !isEditingInfo && (
-                                    <button
-                                        onClick={() => setShowCollaborators(true)}
-                                        className="w-full mt-6 py-4 border-2 border-dashed border-slate-200 rounded-2xl text-slate-500 hover:bg-slate-50 hover:border-[#35b6cf]/40 hover:text-[#35b6cf] transition-all font-bold flex items-center justify-center gap-2 group"
-                                    >
-                                        <Users size={20} className="group-hover:scale-110 transition-transform" />
-                                        Gerenciar Colaboradores
-                                    </button>
-                                )}
+
                             </div>
 
                             {/* LADO DIREITO: Gerenciamento (O Painel que "Expande") */}
@@ -624,7 +655,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                 bg-slate-50 rounded-[24px] border border-slate-200 flex flex-col overflow-hidden
                                 transition-all duration-500 ease-in-out transform origin-left
                                 ${showCollaborators
-                                    ? 'opacity-100 translate-x-0 w-[55%] visible'
+                                    ? 'opacity-100 translate-x-0 w-[70%] visible'
                                     : 'opacity-0 -translate-x-10 w-0 invisible absolute'
                                 }
                             `}>
@@ -694,7 +725,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                 </button>
                                 <div className="flex items-center gap-x-1">
                                     <button
-                                        onClick={(e) => openInfoModal(e, company, true)}
+                                        onClick={(e) => openInfoModal(e, company, false)}
                                         className="p-2 text-slate-400 hover:text-[#35b6cf] hover:bg-white rounded-lg transition-all"
                                         title="Avaliar Colaboradores"
                                     >
