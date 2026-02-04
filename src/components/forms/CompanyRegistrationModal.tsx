@@ -431,7 +431,7 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                         </div>
 
                         {/* Unit Selector Dropdown */}
-                        {formData.units.length > 0 && (
+                        {formData.units.length > 0 && ['setores', 'cargos', 'colaboradores'].includes(activeSection) && (
                             <div className="mt-4 px-2">
                                 <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block pl-2">Unidade Selecionada</label>
                                 <div className="relative">

@@ -86,11 +86,13 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                 const { count: colabCount } = await supabase
                     .from('colaboradores')
                     .select('*', { count: 'exact', head: true })
-                    .in('unidade', (unitsData || []).map(u => u.id));
+                    .in('unidade_id', (unitsData || []).map(u => u.id));
 
                 // Map to existing UI structure
                 return {
                     id: client.id,
+                    cliente_uuid: client.cliente_uuid,
+                    setores: client.setores || [],
                     name: client.nome_fantasia || client.razao_social,
                     cnpj: client.cnpj,
                     total_collaborators: colabCount || 0,

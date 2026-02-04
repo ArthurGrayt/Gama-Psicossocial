@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Copy, Clock, Search, FileText, X, TrendingUp, TrendingDown } from 'lucide-react';
-import { ResponsiveContainer, PieChart, Pie, Cell, Sector, Tooltip as RechartsTooltip } from 'recharts';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../../services/supabase';
+import { ArrowLeft, Copy, Search, FileText, X, TrendingUp, TrendingDown } from 'lucide-react';
+import { ResponsiveContainer, PieChart, Pie, Cell, Sector } from 'recharts';
 import { SegmentedControl } from '../ui/SegmentedControl';
 import type { Form } from '../../types';
 
@@ -9,21 +10,8 @@ interface SurveyDetailsProps {
     onBack: () => void;
 }
 
-// --- MOCK DATA ---
-const PARTICIPANTS = [
-    { id: 1, name: 'Ana Silva', sector: 'Financeiro', role: 'Analista Pleno', status: 'completed', submitted_at: '02/02/2026, 14:30:00' },
-    { id: 2, name: 'Carlos Oliveira', sector: 'TI', role: 'Desenvolvedor Senior', status: 'pending', submitted_at: null },
-    { id: 3, name: 'Mariana Santos', sector: 'RH', role: 'Coordenadora', status: 'completed', submitted_at: '02/02/2026, 10:15:00' },
-    { id: 4, name: 'João Pereira', sector: 'Operações', role: 'Operador I', status: 'completed', submitted_at: '01/02/2026, 16:45:00' },
-    { id: 5, name: 'Beatriz Costa', sector: 'Financeiro', role: 'Gerente', status: 'pending', submitted_at: null },
-    { id: 6, name: 'Lucas Lima', sector: 'TI', role: 'DevOps', status: 'completed', submitted_at: '02/02/2026, 09:20:00' },
-    { id: 7, name: 'Fernanda Rocha', sector: 'Marketing', role: 'Analista Jr', status: 'completed', submitted_at: '31/01/2026, 11:10:00' },
-    { id: 8, name: 'Rafael Souza', sector: 'Operações', role: 'Supervisor', status: 'pending', submitted_at: null },
-];
-
-// Map colors to dimensions: Rose (Direct), Indigo (Inverse)
-// Direct: Demandas, Relacionamentos
-// Inverse: Others
+// RADIAL_DATA and QUESTIONS_LIST would ideally be fetched based on the form type (HSE vs others)
+// For now keeping them as UI demonstration while focusing on Collaborator/Sector data as requested.
 const RADIAL_DATA = [
     { name: 'Demandas', value: 3.2, fill: '#f43f5e' }, // Rose-500
     { name: 'Relacionamentos', value: 2.2, fill: '#f43f5e' },
@@ -31,9 +19,8 @@ const RADIAL_DATA = [
     { name: 'Apoio da Chefia', value: 2.3, fill: '#6366f1' },
     { name: 'Apoio dos Colegas', value: 2.6, fill: '#6366f1' },
     { name: 'Cargo', value: 1.7, fill: '#6366f1' },
-    { name: 'Comunicação', value: 1.9, fill: '#6366f1' }, // Shortened for legend
+    { name: 'Comunicação', value: 1.9, fill: '#6366f1' },
 ];
-
 
 const QUESTIONS_LIST = [
     { id: 1, text: "O meu trabalho exige que eu trabalhe muito rápido.", category: "Demanda" },
@@ -43,10 +30,187 @@ const QUESTIONS_LIST = [
 ];
 
 export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) => {
+    const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('overview');
     const [selectedSector, setSelectedSector] = useState<string>('');
     const [selectedParticipant, setSelectedParticipant] = useState<any | null>(null);
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+
+    // REAL DATA STATE
+    const [sectors, setSectors] = useState<{ id: number, nome: string }[]>([]);
+    const [questions, setQuestions] = useState<any[]>([]);
+    const [totalColabs, setTotalColabs] = useState(0);
+    const [totalResponses, setTotalResponses] = useState(0);
+    const [recentResponses, setRecentResponses] = useState<any[]>([]);
+
+    useEffect(() => {
+        fetchInitialData();
+    }, [form.id]);
+
+    useEffect(() => {
+        fetchFilteredStats();
+    }, [selectedSector, sectors]);
+
+    const fetchInitialData = async () => {
+        setLoading(true);
+        try {
+            // 1. Fetch Sector Names
+            // If it's a company (form.setores exists) or if we need to fetch from unit
+            let sectorIds: number[] = (form as any).setores || [];
+
+            if (sectorIds.length === 0 && form.unidade_id) {
+                const { data: unitData } = await supabase
+                    .from('unidades')
+                    .select('setores')
+                    .eq('id', form.unidade_id)
+                    .single();
+                sectorIds = unitData?.setores || [];
+            }
+
+            if (sectorIds.length > 0) {
+                const { data: sectorsData } = await supabase
+                    .from('setores')
+                    .select('id, nome')
+                    .in('id', sectorIds);
+                setSectors(sectorsData || []);
+            }
+
+            // 2. Resolve Form IDs (if form.id is actually a company ID)
+            let formIds: number[] = [];
+            // Check if form object looks like a company (has cliente_uuid or name but is used in company context)
+            const isCompanyLevel = !(form as any).slug; // Forms usually have a slug
+
+            if (isCompanyLevel) {
+                const { data: companyForms } = await supabase
+                    .from('forms')
+                    .select('id')
+                    .eq('empresa', form.id);
+                formIds = (companyForms || []).map(f => f.id);
+            } else {
+                formIds = [form.id];
+            }
+
+            // 3. Fetch Questions (from first form if company level, or the form itself)
+            if (formIds.length > 0) {
+                const { data: qs } = await supabase
+                    .from('form_questions')
+                    .select('*')
+                    .eq('form_id', formIds[0])
+                    .order('question_order');
+                setQuestions(qs || []);
+            }
+
+            // 4. Fetch Recent Responses across all formIds
+            if (formIds.length > 0) {
+                const { data: recentData } = await supabase
+                    .from('form_answers')
+                    .select(`
+                        id, 
+                        created_at, 
+                        respondedor,
+                        colaboradores (nome, id)
+                    `)
+                    .in('form_id', formIds)
+                    .order('created_at', { ascending: false });
+
+                const mappedRecent = [];
+                const seenResponders = new Set();
+                for (const r of (recentData || [])) {
+                    if (!seenResponders.has(r.respondedor)) {
+                        mappedRecent.push({
+                            id: r.id,
+                            name: (r as any).colaboradores?.nome || 'Anônimo',
+                            submitted_at: new Date(r.created_at).toLocaleString(),
+                            status: 'completed'
+                        });
+                        seenResponders.add(r.respondedor);
+                    }
+                }
+                setRecentResponses(mappedRecent);
+            }
+
+        } catch (error) {
+            console.error('Error fetching initial data:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchFilteredStats = async () => {
+        try {
+            // 1. Determine Scope
+            const isCompanyLevel = !(form as any).slug;
+            const sectorId = selectedSector ? sectors.find(s => s.nome === selectedSector)?.id : null;
+
+            // 2. Resolve Form IDs
+            let formIds: number[] = [];
+            if (isCompanyLevel) {
+                const { data: companyForms } = await supabase
+                    .from('forms')
+                    .select('id')
+                    .eq('empresa', form.id);
+                formIds = (companyForms || []).map(f => f.id);
+            } else {
+                formIds = [form.id];
+            }
+
+            // 3. Total Colabs (Denominator)
+            let colabQuery = supabase
+                .from('colaboradores')
+                .select('*', { count: 'exact', head: true });
+
+            if (isCompanyLevel) {
+                // If company level, we need all collaborators of all units of this company
+                // Since FormDashboard already calculated total_collaborators, we can use it as base
+                // but for sector filtering we need a real query.
+                const { data: units } = await supabase
+                    .from('unidades')
+                    .select('id')
+                    .eq('empresa_mae', (form as any).cliente_uuid);
+                const unitIds = (units || []).map(u => u.id);
+                colabQuery = colabQuery.in('unidade_id', unitIds);
+            } else {
+                colabQuery = colabQuery.eq('unidade_id', form.unidade_id);
+            }
+
+            if (sectorId) {
+                colabQuery = colabQuery.eq('setorid', sectorId);
+            }
+
+            const { count: colabCount } = await colabQuery;
+            setTotalColabs(colabCount || 0);
+
+            // 4. Responses Count (Numerator)
+            if (formIds.length > 0) {
+                let responseQuery = supabase
+                    .from('form_answers')
+                    .select('respondedor, cargo')
+                    .in('form_id', formIds);
+
+                const { data: respData } = await responseQuery;
+
+                let filteredResps = respData || [];
+
+                if (sectorId) {
+                    // Filter responses by sector
+                    const { data: rolesInSector } = await supabase
+                        .from('cargos')
+                        .select('id')
+                        .eq('setor_id', sectorId);
+                    const roleIdsInSector = new Set((rolesInSector || []).map(r => r.id));
+                    filteredResps = filteredResps.filter(r => roleIdsInSector.has(r.cargo));
+                }
+
+                const uniqueResponders = new Set(filteredResps.map(r => r.respondedor));
+                setTotalResponses(uniqueResponders.size);
+            } else {
+                setTotalResponses(0);
+            }
+
+        } catch (error) {
+            console.error('Error fetching stats:', error);
+        }
+    };
 
     // Custom shape function defined inside to access hoveredIndex
     const renderCustomPolarSector = (props: any) => {
@@ -87,13 +251,17 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
         );
     };
 
-    // Derive Sectors from Participants
-    const distinctSectors = Array.from(new Set(PARTICIPANTS.map(p => p.sector)));
+    if (loading) return (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 min-h-[calc(100vh-140px)] flex items-center justify-center">
+            <div className="text-center space-y-4">
+                <div className="w-12 h-12 border-4 border-[#35b6cf] border-t-transparent rounded-full animate-spin mx-auto"></div>
+                <p className="font-bold text-slate-400">Carregando detalhes do levantamento...</p>
+            </div>
+        </div>
+    );
 
-    // Filter Logic
-    const filteredParticipants = selectedSector
-        ? PARTICIPANTS.filter(p => p.sector === selectedSector)
-        : PARTICIPANTS;
+    // Derive Sectors from State
+    const distinctSectors = sectors.map(s => s.nome);
 
     const tabs = [
         { value: 'overview', label: 'Visão Geral' },
@@ -114,8 +282,11 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
                     </button>
                     <div>
                         <div className="flex items-center gap-3">
-                            <h2 className="font-bold text-xl text-slate-800 tracking-tight">{form.title}</h2>
+                            <h2 className="font-bold text-xl text-slate-800 tracking-tight">
+                                {form.title || (form as any).name || 'Detalhes do Levantamento'}
+                            </h2>
                             <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 border border-emerald-200">
+                                {!(form as any).slug ? 'Visão Empresa' : 'Levantamento'}
                             </span>
                         </div>
                         {/* Sector Dropdown Replacement */}
@@ -141,10 +312,12 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
                         onChange={setActiveTab}
                         className="flex-1 md:flex-none"
                     />
-                    <button className="flex items-center gap-2 bg-[#35b6cf] hover:bg-[#2ca1b7] text-white px-4 py-2 rounded-lg transition-colors font-medium shadow-sm active:scale-95">
-                        <Copy size={16} />
-                        <span className="hidden sm:inline">Copiar Link</span>
-                    </button>
+                    {(form as any).slug && (
+                        <button className="flex items-center gap-2 bg-[#35b6cf] hover:bg-[#2ca1b7] text-white px-4 py-2 rounded-lg transition-colors font-medium shadow-sm active:scale-95">
+                            <Copy size={16} />
+                            <span className="hidden sm:inline">Copiar Link</span>
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -161,10 +334,10 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
                                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Participação</p>
                                 <div className="flex items-baseline gap-1">
                                     <span className="text-3xl font-bold text-slate-900">
-                                        {filteredParticipants.filter(p => p.status === 'completed').length}
+                                        {totalResponses}
                                     </span>
                                     <span className="text-lg text-slate-400 font-medium">
-                                        /{filteredParticipants.length}
+                                        /{totalColabs}
                                     </span>
                                 </div>
                             </div>
@@ -173,7 +346,7 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
                             <div className="p-6 flex flex-col items-center justify-center text-center">
                                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Total de Perguntas</p>
                                 <span className="text-3xl font-bold text-slate-900">
-                                    {QUESTIONS_LIST.length}
+                                    {form.questions?.length || questions.length || 0}
                                 </span>
                             </div>
 
@@ -210,16 +383,16 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
-                                        {filteredParticipants.filter(p => p.status === 'completed').map((p) => (
+                                        {recentResponses.map((p) => (
                                             <tr key={p.id} className="hover:bg-slate-50 transition-colors">
                                                 <td className="px-8 py-4">
                                                     <div className="flex items-center gap-4">
                                                         <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-sm">
-                                                            {p.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                                                            {p.name ? p.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : '??'}
                                                         </div>
                                                         <div>
-                                                            <p className="font-bold text-slate-700">{p.name}</p>
-                                                            <p className="text-xs text-slate-400">Anônimo</p>
+                                                            <p className="font-bold text-slate-700">{p.name || 'Anônimo'}</p>
+                                                            <p className="text-xs text-slate-400">Identificado</p>
                                                         </div>
                                                     </div>
                                                 </td>
