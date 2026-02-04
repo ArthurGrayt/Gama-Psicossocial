@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Building, Search, Filter, Trash2, Users, FileText, ChevronRight, Edit, X, Save, LayoutGrid, List, LayoutTemplate } from 'lucide-react';
+import { CompanyRegistrationModal } from './CompanyRegistrationModal';
 
 interface FormDashboardProps {
     onCreateForm: (initialData?: any) => void;
@@ -46,351 +47,11 @@ const MOCK_COMPANIES = [
 ];
 
 // Mock Collaborator Generator
-const generateMockCollaborators = (company: any) => {
-    const count = Math.min(company.total_collaborators, 50); // Limit usage for demo
-    const collaborators = [];
-    const sectors = Array.from(new Set(company.units.flatMap((u: any) => u.sectors)));
-    const roles = company.roles || ['Funcionário'];
 
-    for (let i = 0; i < count; i++) {
-        collaborators.push({
-            id: i + 1,
-            name: `Colaborador ${i + 1}`,
-            email: `colaborador${i + 1}@${company.name.toLowerCase().replace(/\s/g, '')}.com`,
-            role: roles[Math.floor(Math.random() * roles.length)],
-            sector: sectors.length > 0 ? sectors[Math.floor(Math.random() * sectors.length)] : 'Geral',
-            unit: company.units[0].name // Simplified
-        });
-    }
-    return collaborators;
-};
 
 // --- SUB-COMPONENTS FOR MODAL REFRACTOR ---
 
-interface CompanySummaryProps {
-    company: any;
-    isEditing: boolean;
-    editName: string;
-    editCnpj: string;
-    setEditName: (val: string) => void;
-    setEditCnpj: (val: string) => void;
-    showCollaborators: boolean;
-    onToggleCollaborators: () => void;
-    onStartEdit: () => void;
-    onCancelEdit: () => void;
-    onSave: () => void;
-    onDelete: () => void;
-    selectedUnit: any;
-    setSelectedUnit: (unit: any) => void;
-}
-
-const CompanySummary: React.FC<CompanySummaryProps> = ({
-    company, isEditing, editName, editCnpj,
-    setEditName, setEditCnpj, showCollaborators,
-    onToggleCollaborators, onStartEdit, onCancelEdit, onSave, onDelete,
-    selectedUnit, setSelectedUnit
-}) => {
-    const [showAllSectors, setShowAllSectors] = useState(false);
-    const [showAllRoles, setShowAllRoles] = useState(false);
-
-    // Reset state when company changes
-    React.useEffect(() => {
-        setShowAllSectors(false);
-        setShowAllRoles(false);
-    }, [company]);
-
-    const allSectors = Array.from(new Set(company.units.flatMap((u: any) => u.sectors)));
-    const allRoles = company.roles || [];
-
-    const displayedSectors = showAllSectors ? allSectors : allSectors.slice(0, 5);
-    const displayedRoles = showAllRoles ? allRoles : allRoles.slice(0, 3);
-
-    // Left Sidebar Content
-    return (
-        <div className={`space-y-4 flex-1 h-full overflow-y-auto custom-scrollbar z-10 w-full`}>
-            {!isEditing ? (
-                <div className="flex flex-col h-full">
-                    <div className="p-4 bg-slate-50 rounded-2xl space-y-4 flex-1">
-                        {/* Header Row: CNPJ and Unit Dropdown */}
-                        <div className="flex justify-between items-center">
-                            <div>
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">CNPJ</span>
-                                <p className="text-sm font-medium text-slate-700">{company.cnpj}</p>
-                            </div>
-                            {!isEditing && company.units && company.units.length > 0 && (
-                                <div className="relative">
-                                    <select
-                                        value={selectedUnit?.id || ''}
-                                        onChange={(e) => {
-                                            const unit = company.units.find((u: any) => u.id === Number(e.target.value));
-                                            setSelectedUnit(unit);
-                                        }}
-                                        className="appearance-none pl-2 pr-8 py-1 bg-transparent rounded-lg text-sm font-bold text-slate-700 outline-none cursor-pointer hover:bg-slate-200/50 transition-colors text-right"
-                                    >
-                                        {company.units.map((unit: any) => (
-                                            <option key={unit.id} value={unit.id}>{unit.name}</option>
-                                        ))}
-                                    </select>
-                                    <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 rotate-90 pointer-events-none" size={14} />
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Collaborators Row */}
-                        <div className="flex items-center justify-between py-2 border-y border-slate-100">
-                            <div>
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Colaboradores</span>
-                                <p className="font-bold text-slate-700 text-base">{company.total_collaborators}</p>
-                            </div>
-                            <button
-                                onClick={onToggleCollaborators}
-                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all text-sm font-medium ${showCollaborators
-                                    ? 'bg-[#35b6cf] text-white shadow-sm'
-                                    : 'text-[#35b6cf] hover:bg-[#35b6cf]/10 bg-transparent'
-                                    }`}
-                            >
-                                {showCollaborators ? 'Ocultar' : 'Gerenciar'}
-                                <ChevronRight
-                                    size={14}
-                                    className={`transition-transform duration-300 ${showCollaborators ? 'rotate-180' : ''}`}
-                                />
-                            </button>
-                        </div>
-
-                        <div className="pt-2 mt-2">
-                            <span className="text-xs font-bold text-slate-400 uppercase block mb-2">Setores ({allSectors.length})</span>
-                            <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto custom-scrollbar">
-                                {allSectors.length > 0 ? (
-                                    <>
-                                        {displayedSectors.map((sector: any, idx) => (
-                                            <span key={idx} className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-medium border border-slate-200">
-                                                {sector}
-                                            </span>
-                                        ))}
-                                        {!showAllSectors && allSectors.length > 5 && (
-                                            <button
-                                                onClick={() => setShowAllSectors(true)}
-                                                className="px-2.5 py-1 bg-[#35b6cf]/10 text-[#35b6cf] rounded-lg text-xs font-bold border border-[#35b6cf]/20 hover:bg-[#35b6cf]/20 transition-colors"
-                                            >
-                                                Ver mais
-                                            </button>
-                                        )}
-                                    </>
-                                ) : (
-                                    <span className="text-sm text-slate-400 italic">Nenhum setor cadastrado.</span>
-                                )}
-                            </div>
-                        </div>
-
-                        <div>
-                            <span className="text-xs font-bold text-slate-400 uppercase block mb-2">Cargos ({allRoles.length})</span>
-                            <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto custom-scrollbar">
-                                {allRoles.length > 0 ? (
-                                    <>
-                                        {displayedRoles.map((role: string, idx: number) => (
-                                            <span key={idx} className="px-2.5 py-1 bg-[#35b6cf]/10 text-[#35b6cf] rounded-lg text-xs font-medium border border-[#35b6cf]/20">
-                                                {role}
-                                            </span>
-                                        ))}
-                                        {!showAllRoles && allRoles.length > 3 && (
-                                            <button
-                                                onClick={() => setShowAllRoles(true)}
-                                                className="px-2.5 py-1 bg-[#35b6cf]/10 text-[#35b6cf] rounded-lg text-xs font-bold border border-[#35b6cf]/20 hover:bg-[#35b6cf]/20 transition-colors"
-                                            >
-                                                Ver mais
-                                            </button>
-                                        )}
-                                    </>
-                                ) : (
-                                    <span className="text-sm text-slate-400 italic">Nenhum cargo cadastrado.</span>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex gap-3 py-4 border-t border-slate-50 mt-4">
-                        <button
-                            onClick={onStartEdit}
-                            className="flex-1 bg-[#35b6cf] text-white h-[42px] rounded-xl font-bold hover:bg-[#2ca1b7] transition-colors flex items-center justify-center gap-2 text-sm shadow-sm"
-                        >
-                            <Edit size={16} />
-                            Editar Dados
-                        </button>
-                        <button
-                            onClick={onDelete}
-                            className="flex-1 bg-transparent text-red-500 h-[42px] rounded-xl font-bold hover:bg-red-50 transition-colors flex items-center justify-center gap-2 text-sm"
-                        >
-                            <Trash2 size={16} />
-                            Excluir Empresa
-                        </button>
-                    </div>
-                </div>
-            ) : (
-                <>
-                    <div className="space-y-4">
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-slate-500 uppercase">Nome</label>
-                            <input
-                                type="text"
-                                value={editName}
-                                onChange={(e) => setEditName(e.target.value)}
-                                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-[#35b6cf]"
-                            />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-slate-500 uppercase">CNPJ</label>
-                            <input
-                                type="text"
-                                value={editCnpj}
-                                onChange={(e) => setEditCnpj(e.target.value)}
-                                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-[#35b6cf]"
-                            />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-slate-500 uppercase">Colaboradores (Visualização)</label>
-                            <div className="w-full px-4 py-2 bg-slate-100 border border-slate-200 rounded-lg text-slate-500 flex justify-between items-center cursor-not-allowed">
-                                <span>{company.total_collaborators}</span>
-                                <Users size={16} />
-                            </div>
-                            <p className="text-[10px] text-slate-400">Para gerenciar colaboradores, saia do modo de edição.</p>
-                        </div>
-                    </div>
-                    <div className="flex gap-3 pt-4">
-                        <button
-                            onClick={onCancelEdit}
-                            className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-bold hover:bg-slate-200 transition-colors"
-                        >
-                            Cancelar
-                        </button>
-                        <button
-                            onClick={onSave}
-                            className="flex-1 bg-[#35b6cf] text-white py-3 rounded-xl font-bold hover:bg-[#2ca1b7] transition-colors flex items-center justify-center gap-2"
-                        >
-                            <Save size={18} />
-                            Salvar Alterações
-                        </button>
-                    </div>
-                </>
-            )}
-        </div>
-    );
-};
-
-interface EmployeeManagementProps {
-    collaborators: any[];
-    company: any; // for filtering context if needed
-    onDeleteCollaborator: (id: number) => void;
-}
-
-const EmployeeManagement: React.FC<EmployeeManagementProps> = ({ collaborators, company, onDeleteCollaborator }) => {
-    // Internal state for truly independent filtering to the panel
-    const [searchTerm, setSearchTerm] = useState('');
-    const [sectorFilter, setSectorFilter] = useState('');
-    const [roleFilter, setRoleFilter] = useState('');
-
-    const filtered = collaborators.filter(c =>
-        (c.name.toLowerCase().includes(searchTerm.toLowerCase()) || c.role.toLowerCase().includes(searchTerm.toLowerCase())) &&
-        (sectorFilter ? c.sector === sectorFilter : true) &&
-        (roleFilter ? c.role === roleFilter : true)
-    );
-
-    const sectors = Array.from(new Set(company.units.flatMap((u: any) => u.sectors)));
-    const roles = Array.from(new Set(collaborators.map((c: any) => c.role)));
-
-    return (
-        <div className="p-8 flex-1 flex flex-col h-full overflow-hidden">
-            <div className="flex items-center justify-between mb-6">
-                <div>
-                    <h3 className="font-bold text-slate-700">Gerenciar Colaboradores</h3>
-                    <p className="text-xs text-slate-400">{filtered.length} colaboradores encontrados</p>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 mb-4">
-                <div className="relative col-span-12 md:col-span-6">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                    <input
-                        type="text"
-                        placeholder="Buscar por nome..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-[#35b6cf]"
-                    />
-                </div>
-                <div className="col-span-12 md:col-span-3">
-                    <select
-                        value={sectorFilter}
-                        onChange={(e) => setSectorFilter(e.target.value)}
-                        className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-[#35b6cf]"
-                    >
-                        <option value="">Todos os Setores</option>
-                        {sectors.map((sector: any) => (
-                            <option key={sector} value={sector}>{sector}</option>
-                        ))}
-                    </select>
-                </div>
-                <div className="col-span-12 md:col-span-3">
-                    <select
-                        value={roleFilter}
-                        onChange={(e) => setRoleFilter(e.target.value)}
-                        className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-[#35b6cf]"
-                    >
-                        <option value="">Todos os Cargos</option>
-                        {roles.map((role: any) => (
-                            <option key={role} value={role}>{role}</option>
-                        ))}
-                    </select>
-                </div>
-            </div>
-
-            <div className="bg-white rounded-xl border border-slate-200 flex-1 overflow-hidden flex flex-col">
-                <div className="overflow-x-auto overflow-y-auto custom-scrollbar flex-1">
-                    <table className="w-full text-left text-sm whitespace-nowrap">
-                        <thead className="bg-slate-50 text-slate-500 font-bold text-xs uppercase sticky top-0 z-10">
-                            <tr>
-                                <th className="px-4 py-3 border-b border-slate-100">Nome</th>
-                                <th className="px-4 py-3 border-b border-slate-100">Cargo</th>
-                                <th className="px-4 py-3 border-b border-slate-100">Setor</th>
-                                <th className="px-4 py-3 border-b border-slate-100 text-right">Ação</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50">
-                            {filtered.map(person => (
-                                <tr key={person.id} className="hover:bg-slate-50/50 transition-colors">
-                                    <td className="px-4 py-3">
-                                        <p className="font-medium text-slate-700">{person.name}</p>
-                                        <p className="text-xs text-slate-400">{person.email}</p>
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <span className="text-slate-600">{person.role}</span>
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <span className="text-[10px] px-2 py-1 bg-slate-100 rounded-md w-fit text-slate-500 font-medium border border-slate-200">{person.sector}</span>
-                                    </td>
-                                    <td className="px-4 py-3 text-right">
-                                        <button
-                                            onClick={() => onDeleteCollaborator(person.id)}
-                                            className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                            title="Remover"
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                    {filtered.length === 0 && (
-                        <div className="flex flex-col items-center justify-center h-40 text-slate-400">
-                            <Users size={24} className="mb-2 opacity-50" />
-                            <p className="text-sm">Nenhum colaborador encontrado.</p>
-                        </div>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-};
+// --- REFACTORED: CompanySummary and EmployeeManagement removed as they are replaced by CompanyRegistrationModal ---
 
 export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEditForm, onAnalyzeForm }) => {
     const [searchTerm, setSearchTerm] = useState('');
@@ -403,15 +64,6 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
 
     // Info Modal State
     const [infoModalCompany, setInfoModalCompany] = useState<any>(null);
-    const [selectedModalUnit, setSelectedModalUnit] = useState<any>(null);
-    const [isEditingInfo, setIsEditingInfo] = useState(false);
-    // Temporary state for editing fields
-    const [editName, setEditName] = useState('');
-    const [editCnpj, setEditCnpj] = useState('');
-
-    // Collaborator Management State
-    const [showCollaborators, setShowCollaborators] = useState(false);
-    const [mockCollaborators, setMockCollaborators] = useState<any[]>([]);
 
     const filteredCompanies = MOCK_COMPANIES.filter(c =>
         c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -462,40 +114,12 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
         setSelectingFor(null);
     };
 
-    const openInfoModal = (e: React.MouseEvent, company: any, initialShowCollaborators = false) => {
+    const openInfoModal = (e: React.MouseEvent, company: any) => {
         e.stopPropagation(); // Prevent card navigation
         setInfoModalCompany(company);
-        setSelectedModalUnit(company.units.length > 0 ? company.units[0] : null);
-        setEditName(company.name);
-        setEditCnpj(company.cnpj);
-
-        // Init mock collaborators
-        setMockCollaborators(generateMockCollaborators(company));
-        setShowCollaborators(initialShowCollaborators); // Start with requested view
-        setIsEditingInfo(false);
     };
 
-    // Mock Save
-    const handleSaveInfo = () => {
-        // Here you would call an API/Update prop
-        console.log("Saving info", { id: infoModalCompany.id, editName, editCnpj });
-        // Close modal
-        setInfoModalCompany(null);
-    };
 
-    // Mock Delete
-    const handleDeleteCompany = () => {
-        if (window.confirm("Tem certeza que deseja excluir esta empresa?")) {
-            console.log("Deleting company", infoModalCompany.id);
-            setInfoModalCompany(null);
-        }
-    };
-
-    const handleDeleteCollaborator = (id: number) => {
-        if (window.confirm("Remover este colaborador?")) {
-            setMockCollaborators(prev => prev.filter(c => c.id !== id));
-        }
-    };
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
@@ -545,7 +169,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                     {filteredCompanies.map((company) => (
                         <div
                             key={company.id}
-                            onClick={() => onAnalyzeForm(company)} // Navigate to details on click
+                            onClick={() => onAnalyzeForm(company)}
                             className="group bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-[#35b6cf]/10 hover:border-[#35b6cf]/30 hover:-translate-y-1 transition-all duration-300 flex flex-col h-full overflow-hidden cursor-pointer relative"
                         >
 
@@ -591,7 +215,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                 </button>
                                 <div className="flex items-center gap-x-1">
                                     <button
-                                        onClick={(e) => openInfoModal(e, company, false)}
+                                        onClick={(e) => openInfoModal(e, company)}
                                         className="p-2 text-slate-400 hover:text-[#35b6cf] hover:bg-white rounded-lg transition-all"
                                         title="Avaliar Colaboradores"
                                     >
@@ -777,69 +401,16 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
             )}
 
             {/* INFO MODAL */}
-            {infoModalCompany && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-                    <div
-                        className={`bg-white rounded-[32px] p-8 shadow-2xl transform transition-all duration-500 ease-in-out flex flex-col max-h-[90vh] ${showCollaborators ? 'w-full max-w-[1400px]' : 'w-full max-w-2xl'
-                            }`}
-                    >
-                        <div className="flex justify-between items-start mb-6">
-                            <div className="flex items-center gap-3">
-                                <div className="p-3 bg-[#35b6cf]/10 text-[#35b6cf] rounded-2xl">
-                                    <Building size={28} />
-                                </div>
-                                <div>
-                                    <h2 className="text-2xl font-bold text-slate-800 leading-tight">
-                                        {isEditingInfo ? 'Editar Dados' : infoModalCompany.name}
-                                    </h2>
-                                    <p className="text-sm text-slate-500 font-medium">
-                                        {infoModalCompany.units.length} {infoModalCompany.units.length === 1 ? 'Unidade cadastrada' : 'Unidades cadastradas'}
-                                    </p>
-                                </div>
-                            </div>
-                            <button
-                                onClick={() => setInfoModalCompany(null)}
-                                className="p-2 hover:bg-slate-100 rounded-full transition-colors"
-                            >
-                                <X size={24} className="text-slate-400" />
-                            </button>
-                        </div>
-
-                        {/* Modal Body with smooth transitions */}
-                        <div className="flex-1 overflow-hidden flex flex-col md:flex-row gap-6">
-                            {/* Left Panel: Details */}
-                            <CompanySummary
-                                company={infoModalCompany}
-                                isEditing={isEditingInfo}
-                                editName={editName}
-                                editCnpj={editCnpj}
-                                setEditName={setEditName}
-                                setEditCnpj={setEditCnpj}
-                                showCollaborators={showCollaborators}
-                                onToggleCollaborators={() => setShowCollaborators(!showCollaborators)}
-                                onStartEdit={() => setIsEditingInfo(true)}
-                                onCancelEdit={() => setIsEditingInfo(false)}
-                                onSave={handleSaveInfo}
-                                onDelete={handleDeleteCompany}
-                                selectedUnit={selectedModalUnit}
-                                setSelectedUnit={setSelectedModalUnit}
-                            />
-
-                            {/* Right Panel: Employee Management */}
-                            <div
-                                className={`transition-all duration-500 ease-in-out overflow-hidden ${showCollaborators ? 'flex-[1.5] w-full border-l border-slate-100 opacity-100 scale-100' : 'w-0 opacity-0 scale-95 border-none'
-                                    }`}
-                            >
-                                <EmployeeManagement
-                                    collaborators={mockCollaborators}
-                                    company={infoModalCompany}
-                                    onDeleteCollaborator={handleDeleteCollaborator}
-                                />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* EDITED MODAL REPLACEMENT */}
+            <CompanyRegistrationModal
+                isOpen={!!infoModalCompany}
+                onClose={() => setInfoModalCompany(null)}
+                onSave={(data) => {
+                    console.log('Saved data:', data);
+                    setInfoModalCompany(null);
+                }}
+                initialData={infoModalCompany}
+            />
         </div>
     );
 };
