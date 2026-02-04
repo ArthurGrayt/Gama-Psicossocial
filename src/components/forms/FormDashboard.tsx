@@ -80,51 +80,102 @@ interface CompanySummaryProps {
     onCancelEdit: () => void;
     onSave: () => void;
     onDelete: () => void;
+    selectedUnit: any;
+    setSelectedUnit: (unit: any) => void;
 }
 
 const CompanySummary: React.FC<CompanySummaryProps> = ({
     company, isEditing, editName, editCnpj,
     setEditName, setEditCnpj, showCollaborators,
-    onToggleCollaborators, onStartEdit, onCancelEdit, onSave, onDelete
+    onToggleCollaborators, onStartEdit, onCancelEdit, onSave, onDelete,
+    selectedUnit, setSelectedUnit
 }) => {
+    const [showAllSectors, setShowAllSectors] = useState(false);
+    const [showAllRoles, setShowAllRoles] = useState(false);
+
+    // Reset state when company changes
+    React.useEffect(() => {
+        setShowAllSectors(false);
+        setShowAllRoles(false);
+    }, [company]);
+
+    const allSectors = Array.from(new Set(company.units.flatMap((u: any) => u.sectors)));
+    const allRoles = company.roles || [];
+
+    const displayedSectors = showAllSectors ? allSectors : allSectors.slice(0, 5);
+    const displayedRoles = showAllRoles ? allRoles : allRoles.slice(0, 3);
+
     // Left Sidebar Content
     return (
         <div className={`space-y-4 flex-1 h-full overflow-y-auto custom-scrollbar z-10 w-full`}>
             {!isEditing ? (
                 <div className="flex flex-col h-full">
-                    <div className="p-4 bg-slate-50 rounded-2xl space-y-3 flex-1">
-                        <div>
-                            <span className="text-xs font-bold text-slate-400 uppercase">Nome da Empresa</span>
-                            <p className="font-bold text-slate-800 text-lg">{company.name}</p>
-                        </div>
-                        <div>
-                            <span className="text-xs font-bold text-slate-400 uppercase">CNPJ</span>
-                            <p className="font-medium text-slate-700">{company.cnpj}</p>
-                        </div>
-                        <div>
-                            <span className="text-xs font-bold text-slate-400 uppercase">Total de Colaboradores</span>
-                            <div className="flex items-center justify-between">
-                                <p className="font-medium text-slate-700">{company.total_collaborators}</p>
-                                <button
-                                    onClick={onToggleCollaborators}
-                                    className={`p-2 rounded-lg transition-colors flex items-center gap-2 text-xs font-bold ${showCollaborators ? 'bg-[#35b6cf] text-white' : 'bg-slate-100 text-[#35b6cf] hover:bg-[#35b6cf]/10'}`}
-                                >
-                                    <Users size={16} />
-                                    {showCollaborators ? 'Ocultar' : 'Gerenciar'}
-                                </button>
+                    <div className="p-4 bg-slate-50 rounded-2xl space-y-4 flex-1">
+                        {/* Header Row: CNPJ and Unit Dropdown */}
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">CNPJ</span>
+                                <p className="text-sm font-medium text-slate-700">{company.cnpj}</p>
                             </div>
+                            {!isEditing && company.units && company.units.length > 0 && (
+                                <div className="relative">
+                                    <select
+                                        value={selectedUnit?.id || ''}
+                                        onChange={(e) => {
+                                            const unit = company.units.find((u: any) => u.id === Number(e.target.value));
+                                            setSelectedUnit(unit);
+                                        }}
+                                        className="appearance-none pl-2 pr-8 py-1 bg-transparent rounded-lg text-sm font-bold text-slate-700 outline-none cursor-pointer hover:bg-slate-200/50 transition-colors text-right"
+                                    >
+                                        {company.units.map((unit: any) => (
+                                            <option key={unit.id} value={unit.id}>{unit.name}</option>
+                                        ))}
+                                    </select>
+                                    <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 rotate-90 pointer-events-none" size={14} />
+                                </div>
+                            )}
                         </div>
 
-                        {/* Setores e Cargos - Read Only */}
-                        <div className="pt-2 border-t border-slate-100 mt-2">
-                            <span className="text-xs font-bold text-slate-400 uppercase block mb-2">Setores ({Array.from(new Set(company.units.flatMap((u: any) => u.sectors))).length})</span>
-                            <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto custom-scrollbar">
-                                {Array.from(new Set(company.units.flatMap((u: any) => u.sectors))).length > 0 ? (
-                                    Array.from(new Set(company.units.flatMap((u: any) => u.sectors))).map((sector: any, idx) => (
-                                        <span key={idx} className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-medium border border-slate-200">
-                                            {sector}
-                                        </span>
-                                    ))
+                        {/* Collaborators Row */}
+                        <div className="flex items-center justify-between py-2 border-y border-slate-100">
+                            <div>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Colaboradores</span>
+                                <p className="font-bold text-slate-700 text-base">{company.total_collaborators}</p>
+                            </div>
+                            <button
+                                onClick={onToggleCollaborators}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all text-sm font-medium ${showCollaborators
+                                    ? 'bg-[#35b6cf] text-white shadow-sm'
+                                    : 'text-[#35b6cf] hover:bg-[#35b6cf]/10 bg-transparent'
+                                    }`}
+                            >
+                                {showCollaborators ? 'Ocultar' : 'Gerenciar'}
+                                <ChevronRight
+                                    size={14}
+                                    className={`transition-transform duration-300 ${showCollaborators ? 'rotate-180' : ''}`}
+                                />
+                            </button>
+                        </div>
+
+                        <div className="pt-2 mt-2">
+                            <span className="text-xs font-bold text-slate-400 uppercase block mb-2">Setores ({allSectors.length})</span>
+                            <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto custom-scrollbar">
+                                {allSectors.length > 0 ? (
+                                    <>
+                                        {displayedSectors.map((sector: any, idx) => (
+                                            <span key={idx} className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-medium border border-slate-200">
+                                                {sector}
+                                            </span>
+                                        ))}
+                                        {!showAllSectors && allSectors.length > 5 && (
+                                            <button
+                                                onClick={() => setShowAllSectors(true)}
+                                                className="px-2.5 py-1 bg-[#35b6cf]/10 text-[#35b6cf] rounded-lg text-xs font-bold border border-[#35b6cf]/20 hover:bg-[#35b6cf]/20 transition-colors"
+                                            >
+                                                Ver mais
+                                            </button>
+                                        )}
+                                    </>
                                 ) : (
                                     <span className="text-sm text-slate-400 italic">Nenhum setor cadastrado.</span>
                                 )}
@@ -132,14 +183,24 @@ const CompanySummary: React.FC<CompanySummaryProps> = ({
                         </div>
 
                         <div>
-                            <span className="text-xs font-bold text-slate-400 uppercase block mb-2">Cargos ({company.roles?.length || 0})</span>
-                            <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto custom-scrollbar">
-                                {company.roles && company.roles.length > 0 ? (
-                                    company.roles.map((role: string, idx: number) => (
-                                        <span key={idx} className="px-2.5 py-1 bg-[#35b6cf]/10 text-[#35b6cf] rounded-lg text-xs font-medium border border-[#35b6cf]/20">
-                                            {role}
-                                        </span>
-                                    ))
+                            <span className="text-xs font-bold text-slate-400 uppercase block mb-2">Cargos ({allRoles.length})</span>
+                            <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto custom-scrollbar">
+                                {allRoles.length > 0 ? (
+                                    <>
+                                        {displayedRoles.map((role: string, idx: number) => (
+                                            <span key={idx} className="px-2.5 py-1 bg-[#35b6cf]/10 text-[#35b6cf] rounded-lg text-xs font-medium border border-[#35b6cf]/20">
+                                                {role}
+                                            </span>
+                                        ))}
+                                        {!showAllRoles && allRoles.length > 3 && (
+                                            <button
+                                                onClick={() => setShowAllRoles(true)}
+                                                className="px-2.5 py-1 bg-[#35b6cf]/10 text-[#35b6cf] rounded-lg text-xs font-bold border border-[#35b6cf]/20 hover:bg-[#35b6cf]/20 transition-colors"
+                                            >
+                                                Ver mais
+                                            </button>
+                                        )}
+                                    </>
                                 ) : (
                                     <span className="text-sm text-slate-400 italic">Nenhum cargo cadastrado.</span>
                                 )}
@@ -147,19 +208,19 @@ const CompanySummary: React.FC<CompanySummaryProps> = ({
                         </div>
                     </div>
 
-                    <div className="flex flex-col gap-3 pt-4 border-t border-slate-50 mt-4">
+                    <div className="flex gap-3 py-4 border-t border-slate-50 mt-4">
                         <button
                             onClick={onStartEdit}
-                            className="flex-1 bg-[#35b6cf] text-white py-3 rounded-xl font-bold hover:bg-[#2ca1b7] transition-colors flex items-center justify-center gap-2"
+                            className="flex-1 bg-[#35b6cf] text-white h-[42px] rounded-xl font-bold hover:bg-[#2ca1b7] transition-colors flex items-center justify-center gap-2 text-sm shadow-sm"
                         >
-                            <Edit size={18} />
+                            <Edit size={16} />
                             Editar Dados
                         </button>
                         <button
                             onClick={onDelete}
-                            className="flex-1 bg-white border border-red-100 text-red-500 py-3 rounded-xl font-bold hover:bg-red-50 transition-colors flex items-center justify-center gap-2"
+                            className="flex-1 bg-transparent text-red-500 h-[42px] rounded-xl font-bold hover:bg-red-50 transition-colors flex items-center justify-center gap-2 text-sm"
                         >
-                            <Trash2 size={18} />
+                            <Trash2 size={16} />
                             Excluir Empresa
                         </button>
                     </div>
@@ -219,10 +280,9 @@ interface EmployeeManagementProps {
     collaborators: any[];
     company: any; // for filtering context if needed
     onDeleteCollaborator: (id: number) => void;
-    onClose: () => void;
 }
 
-const EmployeeManagement: React.FC<EmployeeManagementProps> = ({ collaborators, company, onDeleteCollaborator, onClose }) => {
+const EmployeeManagement: React.FC<EmployeeManagementProps> = ({ collaborators, company, onDeleteCollaborator }) => {
     // Internal state for truly independent filtering to the panel
     const [searchTerm, setSearchTerm] = useState('');
     const [sectorFilter, setSectorFilter] = useState('');
@@ -244,12 +304,6 @@ const EmployeeManagement: React.FC<EmployeeManagementProps> = ({ collaborators, 
                     <h3 className="font-bold text-slate-700">Gerenciar Colaboradores</h3>
                     <p className="text-xs text-slate-400">{filtered.length} colaboradores encontrados</p>
                 </div>
-                <button
-                    onClick={onClose}
-                    className="p-2 hover:bg-slate-200 rounded-lg transition-colors text-slate-400 hover:text-slate-600"
-                >
-                    <X size={20} />
-                </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-12 gap-3 mb-4">
@@ -354,12 +408,10 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
     // Temporary state for editing fields
     const [editName, setEditName] = useState('');
     const [editCnpj, setEditCnpj] = useState('');
-    // const [editCollab, setEditCollab] = useState<number>(0); // REMOVED: Collaborators not editable manually
 
     // Collaborator Management State
     const [showCollaborators, setShowCollaborators] = useState(false);
     const [mockCollaborators, setMockCollaborators] = useState<any[]>([]);
-    // Removed duplicate state variables from here since they moved to sub-component
 
     const filteredCompanies = MOCK_COMPANIES.filter(c =>
         c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -416,7 +468,6 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
         setSelectedModalUnit(company.units.length > 0 ? company.units[0] : null);
         setEditName(company.name);
         setEditCnpj(company.cnpj);
-        // setEditCollab(company.total_collaborators);
 
         // Init mock collaborators
         setMockCollaborators(generateMockCollaborators(company));
@@ -446,45 +497,193 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
         }
     };
 
-    // Filter logic moved to internal component
-
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
             {/* Header / Actions */}
-            <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4 mb-8">
-                <div className="relative w-full md:w-96">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                    <input
-                        type="text"
-                        placeholder="Buscar empresas por nome ou CNPJ..."
-                        className="w-full pl-12 pr-4 py-3 bg-slate-50 border-none rounded-xl text-slate-600 placeholder:text-slate-400 focus:ring-0 outline-none transition-all"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-2">
+                <div>
+                    <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Empresas Monitoradas</h2>
+                    <p className="text-slate-500 mt-1">Gerencie formulários e levantamentos</p>
                 </div>
 
-                <div className="flex items-center gap-3 w-full md:w-auto">
-                    <div className="flex items-center bg-slate-100 p-1 rounded-xl">
+                <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-slate-200 shadow-sm w-full md:w-auto">
+                    <div className="relative flex-1 md:w-64">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                        <input
+                            type="text"
+                            placeholder="Buscar empresa ou CNPJ..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2 bg-transparent text-sm outline-none placeholder:text-slate-400"
+                        />
+                    </div>
+                    <div className="w-px h-6 bg-slate-200 mx-1 hidden md:block"></div>
+                    <div className="flex items-center gap-1">
+                        <button className="p-2 text-slate-400 hover:text-[#35b6cf] hover:bg-slate-50 rounded-lg transition-all" title="Filtros">
+                            <Filter size={18} />
+                        </button>
+                        <div className="w-px h-6 bg-slate-200 mx-1 hidden md:block"></div>
                         <button
                             onClick={() => setViewMode('grid')}
-                            className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-white text-[#35b6cf] shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                            className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-slate-100 text-[#35b6cf]' : 'text-slate-400 hover:text-[#35b6cf]'}`}
                         >
-                            <LayoutGrid size={20} />
+                            <LayoutGrid size={18} />
                         </button>
                         <button
                             onClick={() => setViewMode('list')}
-                            className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white text-[#35b6cf] shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                            className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-slate-100 text-[#35b6cf]' : 'text-slate-400 hover:text-[#35b6cf]'}`}
                         >
-                            <List size={20} />
+                            <List size={18} />
                         </button>
                     </div>
-
-                    <button className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl font-medium hover:bg-slate-50 transition-colors">
-                        <Filter className="w-5 h-5 text-slate-400" />
-                        Filtrar
-                    </button>
                 </div>
             </div>
+
+            {/* Grid vs List Content */}
+            {viewMode === 'grid' ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {filteredCompanies.map((company) => (
+                        <div
+                            key={company.id}
+                            onClick={() => onAnalyzeForm(company)} // Navigate to details on click
+                            className="group bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-[#35b6cf]/10 hover:border-[#35b6cf]/30 hover:-translate-y-1 transition-all duration-300 flex flex-col h-full overflow-hidden cursor-pointer relative"
+                        >
+
+                            {/* Card Body */}
+                            <div className="p-6 flex-1 flex flex-col">
+                                <div className="flex justify-between items-start mb-4">
+                                    <div className="p-3 bg-[#35b6cf]/10 text-[#35b6cf] rounded-xl group-hover:bg-[#35b6cf] group-hover:text-white transition-colors duration-300 shadow-sm">
+                                        <Building size={24} />
+                                    </div>
+                                    <div className="px-2.5 py-1 bg-slate-50 text-slate-500 rounded-lg text-xs font-bold border border-slate-100">
+                                        {company.units.length} {company.units.length === 1 ? 'Unidade' : 'Unidades'}
+                                    </div>
+                                </div>
+
+                                <h3 className="text-lg font-bold text-slate-800 group-hover:text-[#35b6cf] transition-colors mb-2">
+                                    {company.name}
+                                </h3>
+
+                                <div className="space-y-3 mt-4">
+                                    <div className="flex items-center gap-2 text-sm text-slate-500">
+                                        <FileText size={16} className="text-slate-300" />
+                                        <span>CNPJ: <span className="font-medium text-slate-700">{company.cnpj}</span></span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-sm text-slate-500">
+                                        <Users size={16} className="text-slate-300" />
+                                        <span>Colaboradores: <span className="font-medium text-slate-700">{company.total_collaborators}</span></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Card Footer Actions */}
+                            <div className="px-6 py-4 bg-slate-50/50 border-t border-slate-50 flex items-center justify-between mt-auto">
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation(); // Prevent card navigation
+                                        handleGerarFormulario(company);
+                                    }}
+                                    className="text-sm font-bold text-[#35b6cf] hover:text-[#0f978e] transition-colors flex items-center gap-1"
+                                >
+                                    <FileText size={14} />
+                                    Gerar Formulário
+                                    <ChevronRight size={14} />
+                                </button>
+                                <div className="flex items-center gap-x-1">
+                                    <button
+                                        onClick={(e) => openInfoModal(e, company, false)}
+                                        className="p-2 text-slate-400 hover:text-[#35b6cf] hover:bg-white rounded-lg transition-all"
+                                        title="Avaliar Colaboradores"
+                                    >
+                                        <Users size={18} />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left">
+                            <thead>
+                                <tr className="bg-slate-50/50 border-b border-slate-100">
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Empresa</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">CNPJ</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Unidades</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Colaboradores</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-50">
+                                {filteredCompanies.map((company) => (
+                                    <tr key={company.id} className="hover:bg-slate-50/80 transition-colors group">
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 bg-[#35b6cf]/10 text-[#35b6cf] rounded-lg">
+                                                    <Building size={16} />
+                                                </div>
+                                                <span className="font-bold text-slate-800 group-hover:text-[#35b6cf] transition-colors">{company.name}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-slate-500 font-medium">
+                                            {company.cnpj}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-center">
+                                            <span className="px-2.5 py-1 bg-slate-50 text-slate-600 rounded-lg text-xs font-bold border border-slate-100">
+                                                {company.units.length}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-center text-slate-600 font-medium">
+                                            {company.total_collaborators}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center justify-end gap-2">
+                                                <button
+                                                    onClick={() => handleGerarFormulario(company)}
+                                                    className="px-3 py-1.5 bg-[#35b6cf]/10 text-[#35b6cf] hover:bg-[#35b6cf] hover:text-white rounded-lg text-xs font-bold transition-all"
+                                                >
+                                                    Gerar Formulário
+                                                </button>
+                                                <button
+                                                    onClick={() => onEditForm(company)}
+                                                    className="p-1.5 text-slate-400 hover:text-[#35b6cf] transition-colors"
+                                                    title="Editar"
+                                                >
+                                                    <Edit size={16} />
+                                                </button>
+                                                <button
+                                                    onClick={() => onAnalyzeForm(company)}
+                                                    className="p-1.5 text-slate-400 hover:text-[#35b6cf] transition-colors"
+                                                    title="Levantamentos"
+                                                >
+                                                    <FileText size={16} />
+                                                </button>
+                                                <button
+                                                    className="p-1.5 text-slate-300 hover:text-red-400 transition-colors"
+                                                    title="Excluir"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {filteredCompanies.length === 0 && (
+                <div className="col-span-full flex flex-col items-center justify-center py-20 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                    <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-4">
+                        <Building size={32} className="text-slate-300" />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-900">Nenhuma empresa encontrada</h3>
+                    <p className="text-slate-500 text-sm mt-1 max-w-xs text-center">Tente ajustar sua busca ou verifique se há filtros ativos.</p>
+                </div>
+            )}
 
             {/* Selection Modal Overlay */}
             {selectingFor && (
@@ -584,238 +783,61 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                         className={`bg-white rounded-[32px] p-8 shadow-2xl transform transition-all duration-500 ease-in-out flex flex-col max-h-[90vh] ${showCollaborators ? 'w-full max-w-[1400px]' : 'w-full max-w-2xl'
                             }`}
                     >
-                        <div className="flex justify-between items-center mb-6">
+                        <div className="flex justify-between items-start mb-6">
                             <div className="flex items-center gap-3">
                                 <div className="p-3 bg-[#35b6cf]/10 text-[#35b6cf] rounded-2xl">
                                     <Building size={28} />
                                 </div>
                                 <div>
-                                    <div className="flex items-center gap-3">
-                                        <h2 className="text-2xl font-bold text-slate-800 leading-tight">
-                                            {isEditingInfo ? 'Editar Dados' : infoModalCompany.name}
-                                        </h2>
-                                        {!isEditingInfo && infoModalCompany.units && infoModalCompany.units.length > 0 && (
-                                            <div className="relative">
-                                                <select
-                                                    value={selectedModalUnit?.id || ''}
-                                                    onChange={(e) => {
-                                                        const unit = infoModalCompany.units.find((u: any) => u.id === Number(e.target.value));
-                                                        setSelectedModalUnit(unit);
-                                                    }}
-                                                    className="appearance-none pl-3 pr-8 py-1 bg-slate-100 border border-slate-200 rounded-lg text-sm font-bold text-slate-600 outline-none focus:border-[#35b6cf] cursor-pointer"
-                                                >
-                                                    {infoModalCompany.units.map((unit: any) => (
-                                                        <option key={unit.id} value={unit.id}>{unit.name}</option>
-                                                    ))}
-                                                </select>
-                                                <ChevronRight className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 rotate-90 pointer-events-none" size={14} />
-                                            </div>
-                                        )}
-                                    </div>
-                                    <p className="text-sm text-slate-500">
-                                        {isEditingInfo ? 'Atualize as informações corporativas' : 'Informações e gerenciamento'}
+                                    <h2 className="text-2xl font-bold text-slate-800 leading-tight">
+                                        {isEditingInfo ? 'Editar Dados' : infoModalCompany.name}
+                                    </h2>
+                                    <p className="text-sm text-slate-500 font-medium">
+                                        {infoModalCompany.units.length} {infoModalCompany.units.length === 1 ? 'Unidade cadastrada' : 'Unidades cadastradas'}
                                     </p>
                                 </div>
                             </div>
                             <button
-                                onClick={() => {
-                                    setInfoModalCompany(null);
-                                    setShowCollaborators(false);
-                                    setIsEditingInfo(false);
-                                }}
-                                className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600"
+                                onClick={() => setInfoModalCompany(null)}
+                                className="p-2 hover:bg-slate-100 rounded-full transition-colors"
                             >
-                                <X size={24} />
+                                <X size={24} className="text-slate-400" />
                             </button>
                         </div>
 
-                        <div className="flex gap-8 flex-1 overflow-hidden h-[600px]">
-                            {/* LADO ESQUERDO: Info Empresa (Sempre visível) */}
-                            <div className={`flex flex-col h-full transition-all duration-500 ${showCollaborators ? 'w-[30%]' : 'w-full'}`}>
-                                <CompanySummary
+                        {/* Modal Body with smooth transitions */}
+                        <div className="flex-1 overflow-hidden flex flex-col md:flex-row gap-6">
+                            {/* Left Panel: Details */}
+                            <CompanySummary
+                                company={infoModalCompany}
+                                isEditing={isEditingInfo}
+                                editName={editName}
+                                editCnpj={editCnpj}
+                                setEditName={setEditName}
+                                setEditCnpj={setEditCnpj}
+                                showCollaborators={showCollaborators}
+                                onToggleCollaborators={() => setShowCollaborators(!showCollaborators)}
+                                onStartEdit={() => setIsEditingInfo(true)}
+                                onCancelEdit={() => setIsEditingInfo(false)}
+                                onSave={handleSaveInfo}
+                                onDelete={handleDeleteCompany}
+                                selectedUnit={selectedModalUnit}
+                                setSelectedUnit={setSelectedModalUnit}
+                            />
+
+                            {/* Right Panel: Employee Management */}
+                            <div
+                                className={`transition-all duration-500 ease-in-out overflow-hidden ${showCollaborators ? 'flex-[1.5] w-full border-l border-slate-100 opacity-100 scale-100' : 'w-0 opacity-0 scale-95 border-none'
+                                    }`}
+                            >
+                                <EmployeeManagement
+                                    collaborators={mockCollaborators}
                                     company={infoModalCompany}
-                                    isEditing={isEditingInfo}
-                                    editName={editName}
-                                    editCnpj={editCnpj}
-                                    setEditName={setEditName}
-                                    setEditCnpj={setEditCnpj}
-                                    showCollaborators={showCollaborators}
-                                    onToggleCollaborators={() => setShowCollaborators(!showCollaborators)}
-                                    onStartEdit={() => setIsEditingInfo(true)}
-                                    onCancelEdit={() => setIsEditingInfo(false)}
-                                    onSave={handleSaveInfo}
-                                    onDelete={handleDeleteCompany}
+                                    onDeleteCollaborator={handleDeleteCollaborator}
                                 />
-
-
-                            </div>
-
-                            {/* LADO DIREITO: Gerenciamento (O Painel que "Expande") */}
-                            <div className={`
-                                bg-slate-50 rounded-[24px] border border-slate-200 flex flex-col overflow-hidden
-                                transition-all duration-500 ease-in-out transform origin-left
-                                ${showCollaborators
-                                    ? 'opacity-100 translate-x-0 w-[70%] visible'
-                                    : 'opacity-0 -translate-x-10 w-0 invisible absolute'
-                                }
-                            `}>
-                                {showCollaborators && (
-                                    <EmployeeManagement
-                                        collaborators={mockCollaborators}
-                                        company={infoModalCompany}
-                                        onDeleteCollaborator={handleDeleteCollaborator}
-                                        onClose={() => setShowCollaborators(false)}
-                                    />
-                                )}
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
-
-
-            {/* Grid vs List Content */}
-            {viewMode === 'grid' ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {filteredCompanies.map((company) => (
-                        <div
-                            key={company.id}
-                            onClick={() => onAnalyzeForm(company)} // Navigate to details on click
-                            className="group bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-[#35b6cf]/10 hover:border-[#35b6cf]/30 hover:-translate-y-1 transition-all duration-300 flex flex-col h-full overflow-hidden cursor-pointer relative"
-                        >
-
-                            {/* Card Body */}
-                            <div className="p-6 flex-1 flex flex-col">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="p-3 bg-[#35b6cf]/10 text-[#35b6cf] rounded-xl group-hover:bg-[#35b6cf] group-hover:text-white transition-colors duration-300 shadow-sm">
-                                        <Building size={24} />
-                                    </div>
-                                    <div className="px-2.5 py-1 bg-slate-50 text-slate-500 rounded-lg text-xs font-bold border border-slate-100">
-                                        {company.units.length} {company.units.length === 1 ? 'Unidade' : 'Unidades'}
-                                    </div>
-                                </div>
-
-                                <h3 className="text-lg font-bold text-slate-800 group-hover:text-[#35b6cf] transition-colors mb-2">
-                                    {company.name}
-                                </h3>
-
-                                <div className="space-y-3 mt-4">
-                                    <div className="flex items-center gap-2 text-sm text-slate-500">
-                                        <FileText size={16} className="text-slate-300" />
-                                        <span>CNPJ: <span className="font-medium text-slate-700">{company.cnpj}</span></span>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-sm text-slate-500">
-                                        <Users size={16} className="text-slate-300" />
-                                        <span>Colaboradores: <span className="font-medium text-slate-700">{company.total_collaborators}</span></span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Card Footer Actions */}
-                            <div className="px-6 py-4 bg-slate-50/50 border-t border-slate-50 flex items-center justify-between mt-auto">
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation(); // Prevent card navigation
-                                        handleGerarFormulario(company);
-                                    }}
-                                    className="text-sm font-bold text-[#35b6cf] hover:text-[#0f978e] transition-colors flex items-center gap-1"
-                                >
-                                    Gerar Formulário
-                                    <ChevronRight size={14} />
-                                </button>
-                                <div className="flex items-center gap-x-1">
-                                    <button
-                                        onClick={(e) => openInfoModal(e, company, false)}
-                                        className="p-2 text-slate-400 hover:text-[#35b6cf] hover:bg-white rounded-lg transition-all"
-                                        title="Avaliar Colaboradores"
-                                    >
-                                        <Users size={18} />
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            ) : (
-                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead>
-                                <tr className="bg-slate-50/50 border-b border-slate-100">
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Empresa</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">CNPJ</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Unidades</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Colaboradores</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-50">
-                                {filteredCompanies.map((company) => (
-                                    <tr key={company.id} className="hover:bg-slate-50/80 transition-colors group">
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-[#35b6cf]/10 text-[#35b6cf] rounded-lg">
-                                                    <Building size={16} />
-                                                </div>
-                                                <span className="font-bold text-slate-800 group-hover:text-[#35b6cf] transition-colors">{company.name}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-slate-500 font-medium">
-                                            {company.cnpj}
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-center">
-                                            <span className="px-2.5 py-1 bg-slate-50 text-slate-600 rounded-lg text-xs font-bold border border-slate-100">
-                                                {company.units.length}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-center text-slate-600 font-medium">
-                                            {company.total_collaborators}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center justify-end gap-2">
-                                                <button
-                                                    onClick={() => handleGerarFormulario(company)}
-                                                    className="px-3 py-1.5 bg-[#35b6cf]/10 text-[#35b6cf] hover:bg-[#35b6cf] hover:text-white rounded-lg text-xs font-bold transition-all"
-                                                >
-                                                    Gerar Formulário
-                                                </button>
-                                                <button
-                                                    onClick={() => onEditForm(company)}
-                                                    className="p-1.5 text-slate-400 hover:text-[#35b6cf] transition-colors"
-                                                    title="Editar"
-                                                >
-                                                    <Edit size={16} />
-                                                </button>
-                                                <button
-                                                    onClick={() => onAnalyzeForm(company)}
-                                                    className="p-1.5 text-slate-400 hover:text-[#35b6cf] transition-colors"
-                                                    title="Levantamentos"
-                                                >
-                                                    <FileText size={16} />
-                                                </button>
-                                                <button
-                                                    className="p-1.5 text-slate-300 hover:text-red-400 transition-colors"
-                                                    title="Excluir"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            )}
-
-            {filteredCompanies.length === 0 && (
-                <div className="col-span-full flex flex-col items-center justify-center py-20 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
-                    <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-4">
-                        <Building size={32} className="text-slate-300" />
-                    </div>
-                    <h3 className="text-lg font-bold text-slate-900">Nenhuma empresa encontrada</h3>
-                    <p className="text-slate-500 text-sm mt-1 max-w-xs text-center">Tente ajustar sua busca ou verifique se há filtros ativos.</p>
                 </div>
             )}
         </div>
