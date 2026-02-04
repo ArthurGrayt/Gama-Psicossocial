@@ -87,10 +87,10 @@ export const CadastroPage: React.FC = () => {
             // 2. Insert Sectors and Link to Company
             const sectorIds: number[] = [];
             const roleIds: number[] = [];
+            const sectorNameMap: Record<string, number> = {};
+            const roleNameMap: Record<string, number> = {};
 
             if (data.setores && data.setores.length > 0) {
-                const sectorNameMap: Record<string, number> = {};
-
                 for (const sectorName of data.setores) {
                     const { data: sectorRes, error: sectorError } = await supabase
                         .from('setor')
@@ -139,6 +139,8 @@ export const CadastroPage: React.FC = () => {
                         }
                         if (roleRes) {
                             roleIds.push(roleRes.id);
+                            // Store mapping: sectorName + roleName
+                            roleNameMap[`${role.setor}_${role.nome}`] = roleRes.id;
                         }
                     }
 
@@ -164,6 +166,34 @@ export const CadastroPage: React.FC = () => {
                 );
                 await Promise.all(unitUpdatePromises);
                 console.log('Unidades atualizadas com setores e cargos.');
+            }
+
+            // 5. Insert Collaborators
+            if (data.colaboradores && data.colaboradores.length > 0 && unitsRes && unitsRes.length > 0) {
+                const mainUnitId = unitsRes[0].id; // Associate with 'Matriz' by default
+
+                const collaboratorsToInsert = data.colaboradores.map((colab: any) => {
+                    const rId = roleNameMap[`${colab.setor}_${colab.cargo}`];
+
+                    return {
+                        nome: colab.nome,
+                        email: colab.email,
+                        unidade_id: mainUnitId,
+                        cargo_id: rId
+                    };
+                }).filter((c: any) => c.cargo_id);
+
+                if (collaboratorsToInsert.length > 0) {
+                    const { error: colabError } = await supabase
+                        .from('colaboradores')
+                        .insert(collaboratorsToInsert);
+
+                    if (colabError) {
+                        console.error('Erro ao inserir colaboradores:', colabError);
+                    } else {
+                        console.log(`${collaboratorsToInsert.length} colaboradores inseridos.`);
+                    }
+                }
             }
 
             alert('Empresa cadastrada com sucesso!');
