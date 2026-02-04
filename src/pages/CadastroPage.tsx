@@ -85,8 +85,10 @@ export const CadastroPage: React.FC = () => {
             console.log('Unidades criadas:', unitsRes);
 
             // 2. Insert Sectors and Link to Company
+            const sectorIds: number[] = [];
+            const roleIds: number[] = [];
+
             if (data.setores && data.setores.length > 0) {
-                const sectorIds: number[] = [];
                 const sectorNameMap: Record<string, number> = {};
 
                 for (const sectorName of data.setores) {
@@ -115,8 +117,6 @@ export const CadastroPage: React.FC = () => {
 
                 // 3. Insert Roles and Link to Company
                 if (data.cargos && data.cargos.length > 0) {
-                    const roleIds: number[] = [];
-
                     for (const role of data.cargos) {
                         const sectorId = sectorNameMap[role.setor];
                         if (!sectorId) {
@@ -149,6 +149,21 @@ export const CadastroPage: React.FC = () => {
                             .eq('id', companyId);
                     }
                 }
+            }
+
+            // 4. Update Units with Sector and Role IDs
+            if (unitsRes && unitsRes.length > 0 && (sectorIds.length > 0 || roleIds.length > 0)) {
+                const unitUpdatePromises = unitsRes.map((unit: any) =>
+                    supabase
+                        .from('unidades')
+                        .update({
+                            setores: sectorIds,
+                            cargos: roleIds
+                        })
+                        .eq('id', unit.id)
+                );
+                await Promise.all(unitUpdatePromises);
+                console.log('Unidades atualizadas com setores e cargos.');
             }
 
             alert('Empresa cadastrada com sucesso!');
