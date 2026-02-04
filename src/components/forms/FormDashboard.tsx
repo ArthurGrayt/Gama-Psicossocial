@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Building, Search, Filter, Trash2, Users, FileText, ChevronRight, Edit, X, LayoutGrid, List, LayoutTemplate, Settings, FilePlus, BarChart, Copy, ExternalLink, Check, HelpCircle } from 'lucide-react';
 import { CompanyRegistrationModal } from './CompanyRegistrationModal';
+import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../services/supabase';
 
 interface FormDashboardProps {
     onCreateForm: (initialData?: any) => void;
@@ -9,44 +11,7 @@ interface FormDashboardProps {
     onAnalyzeForm: (company: any) => void;
 }
 
-// RICH MOCK DATA FOR COMPANIES (Synced with FormEditor logic)
-const MOCK_COMPANIES = [
-    {
-        id: 1,
-        name: 'Gama Center',
-        cnpj: '12.345.678/0001-90',
-        total_collaborators: 150,
-        units: [
-            { id: 101, name: 'Matriz', collaborators: 45, sectors: ['TI', 'RH', 'Financeiro', 'Administrativo'] },
-            { id: 102, name: 'Filial SP', collaborators: 15, sectors: [] },
-            { id: 103, name: 'Filial RJ', collaborators: 90, sectors: ['Operacional', 'Vendas', 'Logística'] }
-        ],
-        roles: ['Desenvolvedor', 'Gerente de Projetos', 'Analista de RH', 'Assistente Administrativo', 'Diretor']
-    },
-    {
-        id: 2,
-        name: 'Tech Solutions',
-        cnpj: '98.765.432/0001-10',
-        total_collaborators: 50,
-        units: [
-            { id: 201, name: 'Escritório Central', collaborators: 50, sectors: ['Dev', 'Product', 'Sales'] }
-        ],
-        roles: ['Frontend Developer', 'Backend Developer', 'Product Manager', 'Sales Representative']
-    },
-    {
-        id: 3,
-        name: 'Indústria Metalflex',
-        cnpj: '45.123.789/0001-44',
-        total_collaborators: 1200,
-        units: [
-            { id: 301, name: 'Planta Industrial A', collaborators: 800, sectors: ['Produção', 'Manutenção', 'PCP', 'Qualidade'] },
-            { id: 302, name: 'Logística Regional', collaborators: 400, sectors: ['Armazém', 'Frota', 'Expedição'] }
-        ],
-        roles: ['Operador de Máquinas', 'Supervisor de Produção', 'Técnico de Manutenção', 'Motorista', 'Analista de Logística']
-    }
-];
-
-// Mock Questions Data
+// Mock Questions Data (Keeping for now as requested by previous implementation step)
 const MOCK_QUESTIONS = [
     { id: 1, text: 'Como você avalia o clima organizacional?', dimension: 'Clima Organizacional' },
     { id: 2, text: 'Você se sente valorizado pelo seu gestor?', dimension: 'Liderança' },
@@ -66,8 +31,11 @@ const MOCK_QUESTIONS = [
 // --- REFACTORED: CompanySummary and EmployeeManagement removed as they are replaced by CompanyRegistrationModal ---
 
 export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEditForm, onAnalyzeForm }) => {
+    const { user } = useAuth();
     const [searchTerm, setSearchTerm] = useState('');
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    const [companies, setCompanies] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
     // Selection Modal State
     const [selectingFor, setSelectingFor] = useState<any>(null);
@@ -86,8 +54,65 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
     const [collaboratorSearch, setCollaboratorSearch] = useState('');
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [successModalOpen, setSuccessModalOpen] = useState(false);
+    const [selectedCollaborators, setSelectedCollaborators] = useState<Set<number>>(new Set());
 
-    const filteredCompanies = MOCK_COMPANIES.filter(c =>
+    useEffect(() => {
+        if (user) {
+            fetchCompanies();
+        }
+    }, [user]);
+
+    const fetchCompanies = async () => {
+        setIsLoading(true);
+        try {
+            // 1. Fetch Clients (Companies)
+            const { data: clientsData, error: clientsError } = await supabase
+                .from('clientes')
+                .select('*')
+                .eq('empresa_responsavel', user?.id)
+                .order('nome_fantasia');
+
+            if (clientsError) throw clientsError;
+
+            // 2. Fetch Units and Collaborator Counts
+            const companiesWithDetails = await Promise.all((clientsData || []).map(async (client: any) => {
+                // Fetch Units
+                const { data: unitsData } = await supabase
+                    .from('unidades')
+                    .select('*')
+                    .eq('empresa_mae', client.cliente_uuid);
+
+                // Fetch Collaborator Count for this client
+                const { count: colabCount } = await supabase
+                    .from('colaboradores')
+                    .select('*', { count: 'exact', head: true })
+                    .in('unidade', (unitsData || []).map(u => u.id));
+
+                // Map to existing UI structure
+                return {
+                    id: client.id,
+                    name: client.nome_fantasia || client.razao_social,
+                    cnpj: client.cnpj,
+                    total_collaborators: colabCount || 0,
+                    units: (unitsData || []).map(u => ({
+                        id: u.id,
+                        name: u.nome_unidade || u.nome,
+                        sectors: [] // We could fetch these if needed for specific logic
+                    })),
+                    // For now using mock/empty for roles as it's not in the main card view
+                    roles: []
+                };
+            }));
+
+            setCompanies(companiesWithDetails);
+        } catch (error) {
+            console.error('Error fetching companies:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const filteredCompanies = companies.filter(c =>
         c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         c.cnpj.includes(searchTerm)
     );
@@ -140,6 +165,12 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
         setSelectingFor(null);
         setSummaryModalOpen(true);
         setExpandedView('none'); // Reset expansion
+        setIsEditingTitle(false);
+
+        // Default all collaborators to selected
+        const allIndices = new Set<number>();
+        company.roles.forEach((_: any, idx: number) => allIndices.add(idx));
+        setSelectedCollaborators(allIndices);
     };
 
     // Filtered Questions Logic
@@ -157,10 +188,31 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
             company_name: summaryData.company.name,
             unit_id: summaryData.unit.id,
             unit_name: summaryData.unit.name,
-            sector: summaryData.sector
+            sector: summaryData.sector,
+            selected_collaborators_count: selectedCollaborators.size
         });
         setSummaryModalOpen(false);
         setSuccessModalOpen(true);
+    };
+
+    const toggleCollaborator = (idx: number) => {
+        const newSelected = new Set(selectedCollaborators);
+        if (newSelected.has(idx)) {
+            newSelected.delete(idx);
+        } else {
+            newSelected.add(idx);
+        }
+        setSelectedCollaborators(newSelected);
+    };
+
+    const toggleAllCollaborators = (force?: boolean) => {
+        if (force === false || (force === undefined && selectedCollaborators.size === summaryData.company.roles.length)) {
+            setSelectedCollaborators(new Set());
+        } else {
+            const allIndices = new Set<number>();
+            summaryData.company.roles.forEach((_: any, idx: number) => allIndices.add(idx));
+            setSelectedCollaborators(allIndices);
+        }
     };
 
     const openInfoModal = (e: React.MouseEvent, company: any) => {
@@ -213,7 +265,39 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
             </div>
 
             {/* Grid vs List Content */}
-            {viewMode === 'grid' ? (
+            {isLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {[1, 2, 3].map(i => (
+                        <div key={i} className="bg-white rounded-2xl border border-slate-100 p-6 h-64 animate-pulse">
+                            <div className="flex justify-between mb-4">
+                                <div className="w-12 h-12 bg-slate-100 rounded-xl"></div>
+                                <div className="w-20 h-6 bg-slate-100 rounded-lg"></div>
+                            </div>
+                            <div className="w-3/4 h-6 bg-slate-100 rounded-lg mb-4"></div>
+                            <div className="space-y-3 mt-8">
+                                <div className="w-full h-4 bg-slate-100 rounded"></div>
+                                <div className="w-2/3 h-4 bg-slate-100 rounded"></div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : filteredCompanies.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center shadow-sm">
+                    <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-300">
+                        <Building size={40} />
+                    </div>
+                    <h3 className="text-xl font-bold text-slate-800 mb-2">Nenhuma empresa encontrada</h3>
+                    <p className="text-slate-500 mb-8 max-w-sm mx-auto">
+                        Você ainda não possui empresas monitoradas ou a busca não retornou resultados.
+                    </p>
+                    <button
+                        onClick={() => fetchCompanies()}
+                        className="px-6 py-2.5 bg-[#35b6cf] text-white rounded-xl font-bold hover:bg-[#2ca3bc] transition-all shadow-lg shadow-[#35b6cf]/20"
+                    >
+                        Tentar novamente
+                    </button>
+                </div>
+            ) : viewMode === 'grid' ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                     {filteredCompanies.map((company) => (
                         <div
@@ -515,10 +599,10 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                         <div className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Colaboradores</div>
                                         <div className="flex items-center gap-2">
                                             <Users size={20} className="text-[#35b6cf]" />
-                                            <span className="text-2xl font-bold text-slate-700">{summaryData.kpiCollaborators}</span>
+                                            <span className="text-2xl font-bold text-slate-700">{selectedCollaborators.size}</span>
                                         </div>
                                         <div className="text-[10px] text-slate-400 mt-2 flex items-center gap-1">
-                                            Ver lista <ChevronRight size={10} />
+                                            {selectedCollaborators.size < summaryData.company.roles.length ? 'Ajustar seleção' : 'Ver lista'} <ChevronRight size={10} />
                                         </div>
                                     </div>
                                     <div
@@ -612,15 +696,36 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                                 {summaryData.company.units.flatMap((u: any) => u.collaborators).length || 0} Total
                                             </span>
                                         </div>
-                                        <div className="relative">
-                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                                            <input
-                                                type="text"
-                                                placeholder="Buscar colaborador por nome, cargo ou setor..."
-                                                value={collaboratorSearch}
-                                                onChange={(e) => setCollaboratorSearch(e.target.value)}
-                                                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf]"
-                                            />
+                                        <div className="flex flex-col md:flex-row gap-4">
+                                            <div className="relative flex-1">
+                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Buscar colaborador por nome, cargo ou setor..."
+                                                    value={collaboratorSearch}
+                                                    onChange={(e) => setCollaboratorSearch(e.target.value)}
+                                                    className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf]"
+                                                />
+                                            </div>
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                <button
+                                                    onClick={() => toggleAllCollaborators(true)}
+                                                    className="px-3 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 transition-colors"
+                                                >
+                                                    Marcar Todos
+                                                </button>
+                                                <button
+                                                    onClick={() => toggleAllCollaborators(false)}
+                                                    className="px-3 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 transition-colors"
+                                                >
+                                                    Desmarcar Todos
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="mt-4 flex items-center justify-between">
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                                Colaboradores Selecionados: <span className="text-[#35b6cf]">{selectedCollaborators.size}</span> de {summaryData.company.roles.length}
+                                            </p>
                                         </div>
                                     </div>
                                     <div className="p-6 overflow-auto bg-slate-50/50 h-full">
@@ -628,7 +733,16 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                             <table className="w-full text-left text-sm">
                                                 <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 font-semibold">
                                                     <tr>
+                                                        <th className="px-4 py-3 w-10">
+                                                            <input
+                                                                type="checkbox"
+                                                                className="rounded border-slate-300 text-[#35b6cf] focus:ring-[#35b6cf]"
+                                                                checked={selectedCollaborators.size === summaryData.company.roles.length}
+                                                                onChange={() => toggleAllCollaborators()}
+                                                            />
+                                                        </th>
                                                         <th className="px-4 py-3">Nome</th>
+                                                        <th className="px-4 py-3">Sexo</th>
                                                         <th className="px-4 py-3">Email</th>
                                                         <th className="px-4 py-3">Cargo</th>
                                                         <th className="px-4 py-3">Setor</th>
@@ -640,6 +754,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                                         const name = `Colaborador ${idx + 1}`;
                                                         const sector = summaryData.company.units[0]?.sectors[idx % summaryData.company.units[0]?.sectors.length] || 'Geral';
                                                         const email = `colaborador${idx + 1}@${summaryData.company.name.toLowerCase().replace(/\s/g, '')}.com.br`;
+                                                        const sexo = idx % 2 === 0 ? 'M' : 'F';
 
                                                         // Filter Logic
                                                         if (collaboratorSearch &&
@@ -650,9 +765,24 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                                             return null;
                                                         }
 
+                                                        const isSelected = selectedCollaborators.has(idx);
+
                                                         return (
-                                                            <tr key={idx} className="hover:bg-slate-50">
+                                                            <tr key={idx} className={`hover:bg-slate-50 transition-colors ${!isSelected ? 'opacity-60 bg-slate-50/30' : ''}`}>
+                                                                <td className="px-4 py-3">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        className="rounded border-slate-300 text-[#35b6cf] focus:ring-[#35b6cf]"
+                                                                        checked={isSelected}
+                                                                        onChange={() => toggleCollaborator(idx)}
+                                                                    />
+                                                                </td>
                                                                 <td className="px-4 py-3 text-slate-800 font-medium">{name}</td>
+                                                                <td className="px-4 py-3">
+                                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${sexo === 'M' ? 'bg-blue-50 text-blue-600' : 'bg-pink-50 text-pink-600'}`}>
+                                                                        {sexo}
+                                                                    </span>
+                                                                </td>
                                                                 <td className="px-4 py-3 text-slate-500 text-xs">{email}</td>
                                                                 <td className="px-4 py-3 text-slate-500">{role}</td>
                                                                 <td className="px-4 py-3 text-slate-500">

@@ -59,7 +59,30 @@ export const CadastroPage: React.FC = () => {
             if (!companyData) throw new Error('Erro ao criar empresa: Dados não retornados.');
 
             const companyId = companyData.id;
-            console.log('Empresa criada com ID:', companyId);
+            const companyUuid = companyData.cliente_uuid;
+            console.log('Empresa criada com ID:', companyId, 'UUID:', companyUuid);
+
+            // 1.5. Insert Units (Always at least one)
+            const unitsToInsert = (data.units && data.units.length > 0)
+                ? data.units.map((u: any) => ({
+                    nome: u.name,
+                    empresa_mae: companyUuid
+                }))
+                : [{
+                    nome: 'Matriz',
+                    empresa_mae: companyUuid
+                }];
+
+            const { data: unitsRes, error: unitsError } = await supabase
+                .from('unidades')
+                .insert(unitsToInsert)
+                .select();
+
+            if (unitsError) {
+                console.error('Erro ao criar unidades:', unitsError);
+                throw unitsError;
+            }
+            console.log('Unidades criadas:', unitsRes);
 
             // 2. Insert Sectors and Link to Company
             if (data.setores && data.setores.length > 0) {
@@ -210,6 +233,7 @@ export const CadastroPage: React.FC = () => {
                     isOpen={isModalOpen}
                     onClose={() => setIsModalOpen(false)}
                     onSave={handleRegisterCompany}
+                    isLoading={isLoading}
                 />
 
                 {view === 'import' && (

@@ -7,11 +7,12 @@ interface CompanyRegistrationModalProps {
     onClose: () => void;
     onSave: (data: any) => void;
     initialData?: any;
+    isLoading?: boolean;
 }
 
-type Section = 'dados' | 'setores' | 'cargos' | 'colaboradores';
+type Section = 'dados' | 'unidades' | 'setores' | 'cargos' | 'colaboradores';
 
-export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> = ({ isOpen, onClose, onSave, initialData }) => {
+export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> = ({ isOpen, onClose, onSave, initialData, isLoading }) => {
     if (!isOpen) return null;
 
     const initialEmptyState = {
@@ -36,7 +37,7 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
         colaboradores: [] as { nome: string; email: string; telefone: string; cargo: string; setor: string; dataNascimento: string; sexo: string }[],
 
         // Units
-        units: [] as { id: number; name: string; sectors: string[] }[],
+        units: [{ id: Date.now(), name: 'Matriz', sectors: [] }] as { id: number; name: string; sectors: string[] }[],
         selectedUnitId: null as number | null
     };
 
@@ -82,8 +83,8 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                     setores: flatSectors,
                     cargos: finalRoles,
                     colaboradores: initialData.collaborators || [],
-                    units: initialData.units || [],
-                    selectedUnitId: (initialData.units && initialData.units.length > 0) ? initialData.units[0].id : null
+                    units: (initialData.units && initialData.units.length > 0) ? initialData.units : [{ id: Date.now(), name: 'Matriz', sectors: [] }],
+                    selectedUnitId: (initialData.units && initialData.units.length > 0) ? initialData.units[0].id : Date.now()
                 });
             } else {
                 setFormData(initialEmptyState);
@@ -95,6 +96,57 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
     const [newSector, setNewSector] = useState('');
     const [newRole, setNewRole] = useState('');
     const [selectedSectorForRole, setSelectedSectorForRole] = useState('');
+    const [newUnitName, setNewUnitName] = useState('');
+
+    // --- Unit Logic ---
+    const addUnit = () => {
+        if (!newUnitName.trim()) return;
+        const newUnit = {
+            id: Date.now(),
+            name: newUnitName.trim(),
+            sectors: []
+        };
+        setFormData(prev => ({
+            ...prev,
+            units: [...prev.units, newUnit]
+        }));
+        setNewUnitName('');
+    };
+
+    const removeUnit = (id: number) => {
+        if (formData.units.length <= 1) {
+            alert('A empresa deve ter no mínimo uma unidade.');
+            return;
+        }
+        setFormData(prev => ({
+            ...prev,
+            units: prev.units.filter(u => u.id !== id),
+            selectedUnitId: prev.selectedUnitId === id ? (prev.units.find(u => u.id !== id)?.id || null) : prev.selectedUnitId
+        }));
+    };
+
+    const updateUnitName = (id: number, newName: string) => {
+        setFormData(prev => ({
+            ...prev,
+            units: prev.units.map(u => u.id === id ? { ...u, name: newName } : u)
+        }));
+    };
+
+    // Editing States for Units
+    const [editingUnitId, setEditingUnitId] = useState<number | null>(null);
+    const [tempUnitName, setTempUnitName] = useState('');
+
+    const startEditUnit = (unit: any) => {
+        setEditingUnitId(unit.id);
+        setTempUnitName(unit.name);
+    };
+
+    const saveEditUnit = () => {
+        if (editingUnitId === null || !tempUnitName.trim()) return;
+        updateUnitName(editingUnitId, tempUnitName.trim());
+        setEditingUnitId(null);
+        setTempUnitName('');
+    };
 
     // Editing State
     const [editingSectorIndex, setEditingSectorIndex] = useState<number | null>(null);
@@ -416,6 +468,19 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                         </button>
 
                         <button
+                            onClick={() => setActiveSection('unidades')}
+                            className={`w-full flex items-center justify-between p-4 rounded-xl transition-all ${activeSection === 'unidades' ? 'bg-white shadow-md text-[#35b6cf] border border-slate-100' : 'text-slate-600 hover:bg-slate-100'}`}
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className={`p-2 rounded-lg ${activeSection === 'unidades' ? 'bg-[#35b6cf]/10' : 'bg-slate-100'}`}>
+                                    <Building size={20} />
+                                </div>
+                                <span className="font-semibold">Unidades</span>
+                            </div>
+                            <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2 py-1 rounded-full min-w-[1.5rem]">{formData.units.length}</span>
+                        </button>
+
+                        <button
                             onClick={() => setActiveSection('setores')}
                             className={`w-full flex items-center justify-between p-4 rounded-xl transition-all ${activeSection === 'setores' ? 'bg-white shadow-md text-[#35b6cf] border border-slate-100' : 'text-slate-600 hover:bg-slate-100'}`}
                         >
@@ -465,12 +530,14 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                         <div>
                             <h2 className="text-2xl font-bold text-slate-800">
                                 {activeSection === 'dados' && 'Dados da Empresa'}
+                                {activeSection === 'unidades' && 'Gerenciar Unidades'}
                                 {activeSection === 'setores' && 'Gerenciar Setores'}
                                 {activeSection === 'cargos' && 'Gerenciar Cargos'}
                                 {activeSection === 'colaboradores' && 'Gerenciar Colaboradores'}
                             </h2>
                             <p className="text-slate-500 text-sm">
                                 {activeSection === 'dados' && 'Visualize e edite as informações principais.'}
+                                {activeSection === 'unidades' && 'Toda empresa deve ter ao menos uma unidade (Ex: Matriz).'}
                                 {activeSection === 'setores' && 'Adicione, renomeie ou remova setores.'}
                                 {activeSection === 'cargos' && 'Defina cargos e suas vinculações.'}
                                 {activeSection === 'colaboradores' && 'Gerencie o acesso e perfil dos membros.'}
@@ -568,6 +635,57 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                                     <div>
                                         <h4 className="font-bold text-slate-800 text-sm">Empresa com Multi-unidades</h4>
                                         <p className="text-xs text-slate-500 mt-0.5">Marque se esta empresa gerencia múltiplas filiais.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeSection === 'unidades' && (
+                            <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 max-w-3xl border border-slate-200 rounded-2xl bg-white p-6 shadow-sm">
+                                <div className="space-y-4">
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            value={newUnitName}
+                                            onChange={(e) => setNewUnitName(e.target.value)}
+                                            onKeyDown={(e) => e.key === 'Enter' && addUnit()}
+                                            className="flex-1 px-4 py-3 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none transition-all placeholder:text-slate-400"
+                                            placeholder="Nome da unidade (ex: Matriz, Filial SP)..."
+                                        />
+                                        <button onClick={addUnit} className="bg-[#35b6cf] text-white p-3 rounded-xl hover:bg-[#2ca3bc]"><Plus size={24} /></button>
+                                    </div>
+
+                                    <div className="border-t border-slate-100 pt-4 space-y-3">
+                                        {formData.units.map((unit, idx) => (
+                                            <div key={unit.id} className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl hover:shadow-md transition-all group">
+                                                {editingUnitId === unit.id ? (
+                                                    <div className="flex-1 flex gap-2 items-center">
+                                                        <input
+                                                            value={tempUnitName}
+                                                            onChange={(e) => setTempUnitName(e.target.value)}
+                                                            className="flex-1 p-2 rounded border border-[#35b6cf] outline-none"
+                                                            autoFocus
+                                                        />
+                                                        <button onClick={saveEditUnit} className="text-emerald-500 p-2"><Check size={18} /></button>
+                                                        <button onClick={() => setEditingUnitId(null)} className="text-slate-400 p-2"><X size={18} /></button>
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="p-2 bg-white rounded-lg border border-slate-200 text-[#35b6cf]"><Building size={20} /></div>
+                                                            <div>
+                                                                <span className="font-bold text-slate-700 block">{unit.name}</span>
+                                                                {idx === 0 && <span className="text-[10px] uppercase font-black text-[#35b6cf] tracking-widest">Unidade Principal</span>}
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <button onClick={() => startEditUnit(unit)} className="p-2 text-slate-400 hover:text-[#35b6cf] transition-colors"><Pencil size={18} /></button>
+                                                            <button onClick={() => removeUnit(unit.id)} className="p-2 text-slate-400 hover:text-rose-500 transition-colors"><Trash2 size={18} /></button>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                             </div>
@@ -983,10 +1101,20 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                         <Button
                             onClick={handleSubmit}
                             variant="primary"
-                            className="bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-200"
+                            className="bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-200 flex items-center gap-2"
+                            disabled={isLoading}
                         >
-                            <Check size={18} className="mr-2" />
-                            Salvar Alterações
+                            {isLoading ? (
+                                <>
+                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    <span>Salvando...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Check size={18} />
+                                    <span>Salvar Alterações</span>
+                                </>
+                            )}
                         </Button>
                     </div>
                 </div>
