@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Building, Search, Filter, Trash2, Users, FileText, ChevronRight, Edit, X, LayoutGrid, List, LayoutTemplate, Settings, FilePlus, BarChart, Copy, ExternalLink, Check, HelpCircle, ArrowLeft } from 'lucide-react';
+import { Building, Search, Filter, Trash2, Users, FileText, ChevronRight, Edit, X, LayoutGrid, List, LayoutTemplate, Settings, FilePlus, BarChart, Copy, ExternalLink, Check, HelpCircle } from 'lucide-react';
 import { CompanyRegistrationModal } from './CompanyRegistrationModal';
 
 interface FormDashboardProps {
@@ -80,10 +80,12 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
     // Summary Modal State
     const [summaryModalOpen, setSummaryModalOpen] = useState(false);
     const [summaryData, setSummaryData] = useState<any>(null);
-    const [expandedView, setExpandedView] = useState<'none' | 'collaborators' | 'questions'>('none');
+    const [expandedView, setExpandedView] = useState<'none' | 'collaborators' | 'questions' | 'description'>('none');
     const [questionSearch, setQuestionSearch] = useState('');
     const [questionFilter, setQuestionFilter] = useState('');
     const [collaboratorSearch, setCollaboratorSearch] = useState('');
+    const [isEditingTitle, setIsEditingTitle] = useState(false);
+    const [successModalOpen, setSuccessModalOpen] = useState(false);
 
     const filteredCompanies = MOCK_COMPANIES.filter(c =>
         c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -158,7 +160,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
             sector: summaryData.sector
         });
         setSummaryModalOpen(false);
-        setSummaryData(null);
+        setSuccessModalOpen(true);
     };
 
     const openInfoModal = (e: React.MouseEvent, company: any) => {
@@ -483,7 +485,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                 </button>
                             </div>
 
-                            <div className="p-6 space-y-6">
+                            <div className="flex-1 overflow-auto p-6 space-y-6">
                                 {/* Header Info */}
                                 <div className="flex items-center gap-4">
                                     <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center font-bold text-lg">
@@ -537,41 +539,49 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                 {/* Form Details */}
                                 <div className="space-y-3">
                                     <div>
-                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Título do Formulário</label>
-                                        <p className="font-bold text-slate-800 mt-1">{summaryData.formTitle}</p>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Título do Formulário</label>
+                                            <button
+                                                onClick={() => setIsEditingTitle(!isEditingTitle)}
+                                                className="p-1 text-[#35b6cf] hover:bg-[#35b6cf]/10 rounded-md transition-colors"
+                                                title={isEditingTitle ? "Salvar Título" : "Editar Título"}
+                                            >
+                                                {isEditingTitle ? <Check size={14} /> : <Edit size={14} />}
+                                            </button>
+                                        </div>
+                                        {isEditingTitle ? (
+                                            <input
+                                                type="text"
+                                                value={summaryData.formTitle}
+                                                onChange={(e) => setSummaryData({ ...summaryData, formTitle: e.target.value })}
+                                                className="w-full px-3 py-2 bg-white border border-[#35b6cf] rounded-lg text-sm font-bold text-slate-800 outline-none shadow-sm shadow-[#35b6cf]/10"
+                                                autoFocus
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') setIsEditingTitle(false);
+                                                }}
+                                            />
+                                        ) : (
+                                            <p className="font-bold text-slate-800 mt-1">{summaryData.formTitle}</p>
+                                        )}
                                     </div>
                                     <div>
-                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Descrição</label>
-                                        <p className="text-sm text-slate-500 mt-1 leading-relaxed">
+                                        <div className="flex items-center justify-between">
+                                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Descrição</label>
+                                            <button
+                                                onClick={() => setExpandedView(prev => prev === 'description' ? 'none' : 'description')}
+                                                className="text-[10px] font-bold text-[#35b6cf] hover:underline flex items-center gap-0.5"
+                                            >
+                                                {expandedView === 'description' ? 'Ocultar' : 'Ver mais'} <ChevronRight size={10} className={expandedView === 'description' ? 'rotate-180' : ''} />
+                                            </button>
+                                        </div>
+                                        <p className="text-sm text-slate-500 mt-1 leading-relaxed line-clamp-2">
                                             {summaryData.formDesc}
                                         </p>
                                     </div>
                                 </div>
-
-                                {/* Link */}
-                                <div className="p-4 bg-indigo-50/50 rounded-xl border border-indigo-100">
-                                    <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1 mb-2">
-                                        <ExternalLink size={12} /> Link Público
-                                    </label>
-                                    <div className="flex items-center gap-2 bg-white rounded-lg border border-indigo-100 p-2">
-                                        <input
-                                            type="text"
-                                            readOnly
-                                            value={summaryData.publicLink}
-                                            className="flex-1 bg-transparent text-xs text-slate-600 outline-none truncate font-mono"
-                                        />
-                                        <button
-                                            onClick={() => navigator.clipboard.writeText(summaryData.publicLink)}
-                                            className="p-1.5 text-indigo-500 hover:bg-indigo-50 rounded-md transition-colors"
-                                            title="Copiar Link"
-                                        >
-                                            <Copy size={16} />
-                                        </button>
-                                    </div>
-                                </div>
                             </div>
 
-                            <div className="p-6 border-t border-slate-50 bg-slate-50/30 flex justify-end gap-3">
+                            <div className="px-6 pt-6 pb-16 border-t border-slate-50 bg-slate-50/30 flex justify-end gap-3">
                                 <button
                                     onClick={() => setSummaryModalOpen(false)}
                                     className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition-colors text-sm"
@@ -733,6 +743,115 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                     </div>
                                 </div>
                             )}
+
+                            {expandedView === 'description' && (
+                                <div className="h-full flex flex-col min-w-[30rem]">
+                                    <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-white text-[#35b6cf]">
+                                        <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                            <FileText size={18} />
+                                            Descrição Completa
+                                        </h3>
+                                        <button
+                                            onClick={() => setExpandedView('none')}
+                                            className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-400"
+                                        >
+                                            <X size={18} />
+                                        </button>
+                                    </div>
+                                    <div className="p-8 overflow-auto bg-white h-full">
+                                        <div className="max-w-2xl mx-auto">
+                                            <div className="flex items-center gap-3 mb-6 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                                <div className="w-10 h-10 rounded-xl bg-[#35b6cf]/10 text-[#35b6cf] flex items-center justify-center">
+                                                    <LayoutTemplate size={20} />
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-bold text-slate-800">{summaryData.formTitle}</h4>
+                                                    <p className="text-xs text-slate-400">Publicado em {new Date().toLocaleDateString()}</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="prose prose-slate max-w-none">
+                                                <div className="text-slate-600 leading-relaxed whitespace-pre-wrap text-base">
+                                                    {summaryData.formDesc}
+                                                </div>
+                                            </div>
+
+
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Success Modal */}
+            {successModalOpen && summaryData && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-300">
+                        <div className="relative p-12 text-center">
+                            {/* Decorative elements */}
+                            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-[#35b6cf] to-indigo-500"></div>
+
+                            {/* Icon Success */}
+                            <div className="mb-8 relative inline-block">
+                                <div className="w-24 h-24 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500 animate-bounce group">
+                                    <Check size={48} strokeWidth={3} />
+                                </div>
+                                <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-[#35b6cf] text-white flex items-center justify-center shadow-lg">
+                                    <FilePlus size={16} />
+                                </div>
+                            </div>
+
+                            <h3 className="text-3xl font-black text-slate-800 mb-2">Formulário Gerado!</h3>
+                            <p className="text-slate-500 mb-10 px-4">
+                                O levantamento para <span className="font-bold text-slate-700">{summaryData.unit.name}</span> foi criado com sucesso e já está pronto para receber respostas.
+                            </p>
+
+                            <div className="space-y-4">
+                                <div className="p-1 px-1.5 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-3">
+                                    <div className="flex-1 min-w-0 px-3 overflow-hidden">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-left mb-0.5 ml-1">Link de Acesso</p>
+                                        <p className="text-sm font-mono text-slate-600 truncate text-left ml-1">
+                                            {summaryData.publicLink}
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(summaryData.publicLink);
+                                            // Optional: add a temporary tooltip or change icon to Check
+                                        }}
+                                        className="p-4 bg-white border border-slate-200 text-slate-500 hover:text-[#35b6cf] hover:border-[#35b6cf] rounded-xl transition-all shadow-sm hover:shadow-md"
+                                        title="Copiar Link"
+                                    >
+                                        <Copy size={20} />
+                                    </button>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3 mt-4">
+                                    <button
+                                        onClick={() => window.open(summaryData.publicLink, '_blank')}
+                                        className="flex items-center justify-center gap-3 py-4 bg-slate-800 text-white rounded-2xl font-bold hover:bg-slate-700 transition-all shadow-xl shadow-slate-200"
+                                    >
+                                        <ExternalLink size={18} />
+                                        Abrir Link
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setSuccessModalOpen(false);
+                                            setSummaryData(null);
+                                        }}
+                                        className="py-4 bg-white border-2 border-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-50 transition-all"
+                                    >
+                                        Concluir
+                                    </button>
+                                </div>
+                            </div>
+
+                            <p className="mt-8 text-xs text-slate-400 font-medium italic">
+                                Você pode acessar este link a qualquer momento na aba de Relatórios.
+                            </p>
                         </div>
                     </div>
                 </div>
