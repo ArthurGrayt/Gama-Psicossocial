@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Building, Search, Filter, Trash2, Users, FileText, ChevronRight, Edit, X, Save, LayoutGrid, List, LayoutTemplate } from 'lucide-react';
+import { Building, Search, Filter, Trash2, Users, FileText, ChevronRight, Edit, X, LayoutGrid, List, LayoutTemplate, Settings, FilePlus, BarChart, Copy, ExternalLink, Check, HelpCircle, ArrowLeft } from 'lucide-react';
 import { CompanyRegistrationModal } from './CompanyRegistrationModal';
 
 interface FormDashboardProps {
@@ -46,7 +46,19 @@ const MOCK_COMPANIES = [
     }
 ];
 
-// Mock Collaborator Generator
+// Mock Questions Data
+const MOCK_QUESTIONS = [
+    { id: 1, text: 'Como você avalia o clima organizacional?', dimension: 'Clima Organizacional' },
+    { id: 2, text: 'Você se sente valorizado pelo seu gestor?', dimension: 'Liderança' },
+    { id: 3, text: 'As ferramentas de trabalho são adequadas?', dimension: 'Infraestrutura' },
+    { id: 4, text: 'Existe equilíbrio entre vida pessoal e profissional?', dimension: 'Bem-estar' },
+    { id: 5, text: 'A comunicação interna é eficiente?', dimension: 'Comunicação' },
+    { id: 6, text: 'Você recomendaria a empresa para um amigo?', dimension: 'Engajamento' },
+    { id: 7, text: 'Os objetivos da empresa são claros para você?', dimension: 'Alinhamento' },
+    { id: 8, text: 'Você recebe feedbacks frequentes?', dimension: 'Desenvolvimento' },
+    { id: 9, text: 'O ambiente é seguro psicologicamente?', dimension: 'Saúde Mental' },
+    { id: 10, text: 'Houve treinamentos recentes na sua área?', dimension: 'Desenvolvimento' },
+];
 
 
 // --- SUB-COMPONENTS FOR MODAL REFRACTOR ---
@@ -64,6 +76,14 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
 
     // Info Modal State
     const [infoModalCompany, setInfoModalCompany] = useState<any>(null);
+
+    // Summary Modal State
+    const [summaryModalOpen, setSummaryModalOpen] = useState(false);
+    const [summaryData, setSummaryData] = useState<any>(null);
+    const [expandedView, setExpandedView] = useState<'none' | 'collaborators' | 'questions'>('none');
+    const [questionSearch, setQuestionSearch] = useState('');
+    const [questionFilter, setQuestionFilter] = useState('');
+    const [collaboratorSearch, setCollaboratorSearch] = useState('');
 
     const filteredCompanies = MOCK_COMPANIES.filter(c =>
         c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -104,14 +124,41 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
     };
 
     const handleFinishSelection = (company: any, unit: any, sector: string) => {
-        onCreateForm({
-            company_id: company.id,
-            company_name: company.name,
-            unit_id: unit.id,
-            unit_name: unit.name,
-            sector: sector
+        // Instead of directly creating, show the summary modal
+        setSummaryData({
+            company: company,
+            unit: unit,
+            sector: sector,
+            kpiCollaborators: unit.collaborators, // Logic: Use unit collaborators count
+            kpiQuestions: 15, // Mock
+            formTitle: 'Pesquisa de Clima Organizacional 2024',
+            formDesc: 'Avaliação completa de engajamento e satisfação dos colaboradores.',
+            publicLink: `app.gama.com/f/${company.id}-${unit.id}-${Date.now().toString().slice(-4)}`
         });
         setSelectingFor(null);
+        setSummaryModalOpen(true);
+        setExpandedView('none'); // Reset expansion
+    };
+
+    // Filtered Questions Logic
+    const filteredQuestions = MOCK_QUESTIONS.filter(q =>
+        q.text.toLowerCase().includes(questionSearch.toLowerCase()) &&
+        (questionFilter ? q.dimension === questionFilter : true)
+    );
+
+    const questionsDimensions = Array.from(new Set(MOCK_QUESTIONS.map(q => q.dimension)));
+
+    const confirmCreateForm = () => {
+        if (!summaryData) return;
+        onCreateForm({
+            company_id: summaryData.company.id,
+            company_name: summaryData.company.name,
+            unit_id: summaryData.unit.id,
+            unit_name: summaryData.unit.name,
+            sector: summaryData.sector
+        });
+        setSummaryModalOpen(false);
+        setSummaryData(null);
     };
 
     const openInfoModal = (e: React.MouseEvent, company: any) => {
@@ -201,27 +248,34 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                             </div>
 
                             {/* Card Footer Actions */}
-                            <div className="px-6 py-4 bg-slate-50/50 border-t border-slate-50 flex items-center justify-between mt-auto">
+                            <div className="px-6 py-4 bg-slate-50/50 border-t border-slate-50 flex items-center justify-end gap-x-1 mt-auto">
+                                <button
+                                    onClick={(e) => openInfoModal(e, company)}
+                                    className="p-2 text-slate-400 hover:text-[#35b6cf] hover:bg-white rounded-lg transition-all"
+                                    title="Estrutura da empresa"
+                                >
+                                    <Settings size={18} />
+                                </button>
                                 <button
                                     onClick={(e) => {
-                                        e.stopPropagation(); // Prevent card navigation
+                                        e.stopPropagation();
                                         handleGerarFormulario(company);
                                     }}
-                                    className="text-sm font-bold text-[#35b6cf] hover:text-[#0f978e] transition-colors flex items-center gap-1"
+                                    className="p-2 text-slate-400 hover:text-[#35b6cf] hover:bg-white rounded-lg transition-all"
+                                    title="Gerar Formulário"
                                 >
-                                    <FileText size={14} />
-                                    Gerar Formulário
-                                    <ChevronRight size={14} />
+                                    <FilePlus size={18} />
                                 </button>
-                                <div className="flex items-center gap-x-1">
-                                    <button
-                                        onClick={(e) => openInfoModal(e, company)}
-                                        className="p-2 text-slate-400 hover:text-[#35b6cf] hover:bg-white rounded-lg transition-all"
-                                        title="Avaliar Colaboradores"
-                                    >
-                                        <Users size={18} />
-                                    </button>
-                                </div>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onAnalyzeForm(company);
+                                    }}
+                                    className="p-2 text-slate-400 hover:text-[#35b6cf] hover:bg-white rounded-lg transition-all"
+                                    title="Levantamentos"
+                                >
+                                    <BarChart size={18} />
+                                </button>
                             </div>
                         </div>
                     ))}
@@ -411,6 +465,278 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                 }}
                 initialData={infoModalCompany}
             />
+
+            {/* FORM SUMMARY MODAL */}
+            {summaryModalOpen && summaryData && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className={`bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden animate-in zoom-in-95 duration-300 flex transition-all duration-500 ease-in-out h-[40rem] ${expandedView !== 'none' ? 'w-[75rem] max-w-full' : 'w-full max-w-lg'}`}>
+
+                        {/* LEFT PANEL - SUMMARY */}
+                        <div className={`flex flex-col border-r border-slate-100 transition-all duration-500 ${expandedView !== 'none' ? 'w-[28rem] shrink-0' : 'w-full'}`}>
+                            <div className="px-6 py-4 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
+                                <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                    <FileText size={20} className="text-[#35b6cf]" />
+                                    Resumo do Formulário
+                                </h3>
+                                <button onClick={() => setSummaryModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100">
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div className="p-6 space-y-6">
+                                {/* Header Info */}
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center font-bold text-lg">
+                                        {summaryData.company.name.charAt(0)}
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-slate-800 text-lg leading-tight">{summaryData.company.name}</h4>
+                                        <div className="flex items-center gap-2 text-sm text-slate-500 mt-1">
+                                            <Building size={14} />
+                                            <span>{summaryData.unit.name}</span>
+                                            {summaryData.sector && (
+                                                <>
+                                                    <span className="w-1 h-1 rounded-full bg-slate-300" />
+                                                    <span>{summaryData.sector}</span>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* KPIs - Clickable */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div
+                                        onClick={() => setExpandedView(prev => prev === 'collaborators' ? 'none' : 'collaborators')}
+                                        className={`p-4 rounded-xl border transition-all cursor-pointer ${expandedView === 'collaborators' ? 'bg-[#35b6cf]/10 border-[#35b6cf] ring-2 ring-[#35b6cf]/20' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}
+                                    >
+                                        <div className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Colaboradores</div>
+                                        <div className="flex items-center gap-2">
+                                            <Users size={20} className="text-[#35b6cf]" />
+                                            <span className="text-2xl font-bold text-slate-700">{summaryData.kpiCollaborators}</span>
+                                        </div>
+                                        <div className="text-[10px] text-slate-400 mt-2 flex items-center gap-1">
+                                            Ver lista <ChevronRight size={10} />
+                                        </div>
+                                    </div>
+                                    <div
+                                        onClick={() => setExpandedView(prev => prev === 'questions' ? 'none' : 'questions')}
+                                        className={`p-4 rounded-xl border transition-all cursor-pointer ${expandedView === 'questions' ? 'bg-[#35b6cf]/10 border-[#35b6cf] ring-2 ring-[#35b6cf]/20' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}
+                                    >
+                                        <div className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Perguntas</div>
+                                        <div className="flex items-center gap-2">
+                                            <List size={20} className="text-[#35b6cf]" />
+                                            <span className="text-2xl font-bold text-slate-700">{summaryData.kpiQuestions}</span>
+                                        </div>
+                                        <div className="text-[10px] text-slate-400 mt-2 flex items-center gap-1">
+                                            Ver perguntas <ChevronRight size={10} />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Form Details */}
+                                <div className="space-y-3">
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Título do Formulário</label>
+                                        <p className="font-bold text-slate-800 mt-1">{summaryData.formTitle}</p>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Descrição</label>
+                                        <p className="text-sm text-slate-500 mt-1 leading-relaxed">
+                                            {summaryData.formDesc}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Link */}
+                                <div className="p-4 bg-indigo-50/50 rounded-xl border border-indigo-100">
+                                    <label className="text-xs font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1 mb-2">
+                                        <ExternalLink size={12} /> Link Público
+                                    </label>
+                                    <div className="flex items-center gap-2 bg-white rounded-lg border border-indigo-100 p-2">
+                                        <input
+                                            type="text"
+                                            readOnly
+                                            value={summaryData.publicLink}
+                                            className="flex-1 bg-transparent text-xs text-slate-600 outline-none truncate font-mono"
+                                        />
+                                        <button
+                                            onClick={() => navigator.clipboard.writeText(summaryData.publicLink)}
+                                            className="p-1.5 text-indigo-500 hover:bg-indigo-50 rounded-md transition-colors"
+                                            title="Copiar Link"
+                                        >
+                                            <Copy size={16} />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="p-6 border-t border-slate-50 bg-slate-50/30 flex justify-end gap-3">
+                                <button
+                                    onClick={() => setSummaryModalOpen(false)}
+                                    className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition-colors text-sm"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={confirmCreateForm}
+                                    className="px-6 py-2.5 rounded-xl bg-[#35b6cf] text-white font-semibold hover:bg-[#2ca3bc] shadow-lg shadow-[#35b6cf]/20 transition-all text-sm flex items-center gap-2"
+                                >
+                                    <Check size={18} />
+                                    Confirmar e Gerar
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* RIGHT PANEL - EXPANDED CONTENT */}
+                        <div className={`flex flex-col bg-slate-50/50 transition-all duration-500 overflow-hidden ${expandedView !== 'none' ? 'flex-1 opacity-100' : 'w-0 opacity-0'}`}>
+                            {expandedView === 'collaborators' && (
+                                <div className="h-full flex flex-col min-w-[30rem]">
+                                    <div className="px-6 py-4 border-b border-slate-100 bg-white">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                                <Users size={18} className="text-[#35b6cf]" />
+                                                Colaboradores Selecionados
+                                            </h3>
+                                            <span className="text-xs font-semibold bg-slate-100 px-2 py-1 rounded-md text-slate-500">
+                                                {summaryData.company.units.flatMap((u: any) => u.collaborators).length || 0} Total
+                                            </span>
+                                        </div>
+                                        <div className="relative">
+                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                                            <input
+                                                type="text"
+                                                placeholder="Buscar colaborador por nome, cargo ou setor..."
+                                                value={collaboratorSearch}
+                                                onChange={(e) => setCollaboratorSearch(e.target.value)}
+                                                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf]"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="p-6 overflow-auto bg-slate-50/50 h-full">
+                                        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                                            <table className="w-full text-left text-sm">
+                                                <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 font-semibold">
+                                                    <tr>
+                                                        <th className="px-4 py-3">Nome</th>
+                                                        <th className="px-4 py-3">Email</th>
+                                                        <th className="px-4 py-3">Cargo</th>
+                                                        <th className="px-4 py-3">Setor</th>
+                                                        <th className="px-4 py-3">Admissão</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-100">
+                                                    {summaryData.company.roles.map((role: string, idx: number) => {
+                                                        const name = `Colaborador ${idx + 1}`;
+                                                        const sector = summaryData.company.units[0]?.sectors[idx % summaryData.company.units[0]?.sectors.length] || 'Geral';
+                                                        const email = `colaborador${idx + 1}@${summaryData.company.name.toLowerCase().replace(/\s/g, '')}.com.br`;
+
+                                                        // Filter Logic
+                                                        if (collaboratorSearch &&
+                                                            !name.toLowerCase().includes(collaboratorSearch.toLowerCase()) &&
+                                                            !role.toLowerCase().includes(collaboratorSearch.toLowerCase()) &&
+                                                            !sector.toLowerCase().includes(collaboratorSearch.toLowerCase())
+                                                        ) {
+                                                            return null;
+                                                        }
+
+                                                        return (
+                                                            <tr key={idx} className="hover:bg-slate-50">
+                                                                <td className="px-4 py-3 text-slate-800 font-medium">{name}</td>
+                                                                <td className="px-4 py-3 text-slate-500 text-xs">{email}</td>
+                                                                <td className="px-4 py-3 text-slate-500">{role}</td>
+                                                                <td className="px-4 py-3 text-slate-500">
+                                                                    <span className="inline-block px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-600">
+                                                                        {sector}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-4 py-3 text-slate-500 text-xs">01/0{idx % 9 + 1}/2023</td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                            {/* Empty State for Search */}
+                                            {summaryData.company.roles.filter((role: string, idx: number) => {
+                                                const name = `Colaborador ${idx + 1}`;
+                                                const sector = summaryData.company.units[0]?.sectors[idx % summaryData.company.units[0]?.sectors.length] || 'Geral';
+                                                return !collaboratorSearch ||
+                                                    name.toLowerCase().includes(collaboratorSearch.toLowerCase()) ||
+                                                    role.toLowerCase().includes(collaboratorSearch.toLowerCase()) ||
+                                                    sector.toLowerCase().includes(collaboratorSearch.toLowerCase());
+                                            }).length === 0 && (
+                                                    <div className="p-8 text-center text-slate-400 text-sm">
+                                                        Nenhum colaborador encontrado.
+                                                    </div>
+                                                )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {expandedView === 'questions' && (
+                                <div className="h-full flex flex-col min-w-[30rem]">
+                                    <div className="px-6 py-4 border-b border-slate-100 bg-white">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                                <HelpCircle size={18} className="text-[#35b6cf]" />
+                                                Perguntas do Formulário
+                                            </h3>
+                                            <span className="text-xs font-semibold bg-slate-100 px-2 py-1 rounded-md text-slate-500">
+                                                {filteredQuestions.length}
+                                            </span>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <div className="relative flex-1">
+                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Buscar pergunta..."
+                                                    value={questionSearch}
+                                                    onChange={(e) => setQuestionSearch(e.target.value)}
+                                                    className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf]"
+                                                />
+                                            </div>
+                                            <select
+                                                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf] text-slate-600"
+                                                value={questionFilter}
+                                                onChange={(e) => setQuestionFilter(e.target.value)}
+                                            >
+                                                <option value="">Todas Dimensões</option>
+                                                {questionsDimensions.map(d => (
+                                                    <option key={d} value={d}>{d}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div className="p-6 overflow-auto bg-slate-50/50 h-full">
+                                        <div className="space-y-3">
+                                            {filteredQuestions.map((q) => (
+                                                <div key={q.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-start gap-3 hover:border-[#35b6cf]/50 transition-colors">
+                                                    <div className="mt-1 w-6 h-6 rounded-full bg-[#35b6cf]/10 text-[#35b6cf] flex items-center justify-center text-xs font-bold shrink-0">
+                                                        {q.id}
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-slate-800 font-medium text-sm">{q.text}</p>
+                                                        <div className="mt-2 flex items-center gap-2">
+                                                            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider bg-slate-50 px-2 py-1 rounded">
+                                                                {q.dimension}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {filteredQuestions.length === 0 && (
+                                                <p className="text-center text-slate-400 py-8 text-sm">Nenhuma pergunta encontrada.</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

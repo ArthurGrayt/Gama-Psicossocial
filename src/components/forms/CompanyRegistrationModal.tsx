@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Upload, Building, User, MapPin, Mail, Phone, Camera, ChevronRight, Check, Plus, Trash2, ArrowLeft, Pencil, Users, LayoutGrid, Briefcase, ChevronRight as ChevronRightIcon } from 'lucide-react';
+import { X, Building, Camera, ChevronRight, Check, Plus, Trash2, Pencil, Users, LayoutGrid, Briefcase, Search, Filter, MoreVertical, AlertTriangle } from 'lucide-react';
 import { Button } from '../ui/Button';
 
 interface CompanyRegistrationModalProps {
@@ -33,7 +33,11 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
         setores: [] as string[],
         cargos: [] as { nome: string; setor: string }[],
         // Collaborators
-        colaboradores: [] as { nome: string; email: string; telefone: string; cargo: string; setor: string }[]
+        colaboradores: [] as { nome: string; email: string; telefone: string; cargo: string; setor: string; dataNascimento: string; sexo: string }[],
+
+        // Units
+        units: [] as { id: number; name: string; sectors: string[] }[],
+        selectedUnitId: null as number | null
     };
 
     const [activeSection, setActiveSection] = useState<Section>('dados');
@@ -52,9 +56,15 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                     ? Array.from(new Set(initialData.units.flatMap((u: any) => u.sectors || []))) as string[]
                     : (initialData.setores || []);
 
-                const roles = initialData.roles
-                    ? initialData.roles.map((r: string) => ({ nome: r, setor: flatSectors[0] || 'Geral' })) // Mock mapping if roles are just strings
-                    : (initialData.cargos || []);
+                const roles = (Array.isArray(initialData.roles) ? initialData.roles : [])
+                    .flatMap((r: string) =>
+                        flatSectors.length > 0
+                            ? flatSectors.map((s: string) => ({ nome: r, setor: s }))
+                            : [{ nome: r, setor: 'Geral' }]
+                    );
+
+                // Fallback if roles is empty, try cargos
+                const finalRoles = roles.length > 0 ? roles : (initialData.cargos || []);
 
                 setFormData({
                     nomeFantasia: initialData.nomeFantasia || initialData.name || '', // Handle both naming conventions
@@ -70,8 +80,10 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                     uf: initialData.uf || '',
                     isMultiUnit: initialData.units && initialData.units.length > 1,
                     setores: flatSectors,
-                    cargos: roles,
-                    colaboradores: initialData.collaborators || []
+                    cargos: finalRoles,
+                    colaboradores: initialData.collaborators || [],
+                    units: initialData.units || [],
+                    selectedUnitId: (initialData.units && initialData.units.length > 0) ? initialData.units[0].id : null
                 });
             } else {
                 setFormData(initialEmptyState);
@@ -92,23 +104,115 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
     const [tempRoleName, setTempRoleName] = useState('');
 
     // Collaborator State
+    const [isAddingCollaborator, setIsAddingCollaborator] = useState(false);
+    // Collaborator Table State
+    const [collabSearch, setCollabSearch] = useState('');
+    const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
+    const [selectedFilters, setSelectedFilters] = useState<{ [key: string]: string[] }>({});
+
+    const handleFilterSelect = (column: string, value: string) => {
+        setSelectedFilters(prev => {
+            const current = prev[column] || [];
+            if (current.includes(value)) {
+                return { ...prev, [column]: current.filter(v => v !== value) };
+            } else {
+                return { ...prev, [column]: [...current, value] };
+            }
+        });
+    };
+
+    // Filtered Collaborators Logic
+    const filteredCollaborators = formData.colaboradores.filter(colab => {
+        // Global Search
+        const searchLower = collabSearch.toLowerCase();
+        const matchesSearch =
+            (colab.nome || '').toLowerCase().includes(searchLower) ||
+            (colab.setor || '').toLowerCase().includes(searchLower) ||
+            (colab.cargo || '').toLowerCase().includes(searchLower);
+
+        if (!matchesSearch) return false;
+
+        // Column Filters
+        if (selectedFilters['sexo']?.length && !selectedFilters['sexo'].includes(colab.sexo)) return false;
+        if (selectedFilters['cargo']?.length && !selectedFilters['cargo'].includes(colab.cargo)) return false;
+        if (selectedFilters['setor']?.length && !selectedFilters['setor'].includes(colab.setor)) return false;
+
+        return true;
+    });
+
+    const getUniqueValues = (column: 'sexo' | 'cargo' | 'setor') => {
+        return Array.from(new Set(formData.colaboradores.map(c => c[column]).filter(Boolean)));
+    };
+
+    // --- Actions State ---
+    const [actionMenuOpenIndex, setActionMenuOpenIndex] = useState<number | null>(null);
+    const [deleteConfirmationIndex, setDeleteConfirmationIndex] = useState<number | null>(null);
+
+    // Edit Modal State
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [editingCollaboratorIndex, setEditingCollaboratorIndex] = useState<number | null>(null);
+    const [editCollaboratorForm, setEditCollaboratorForm] = useState({
+        nome: '',
+        email: '',
+        telefone: '',
+        setor: '',
+        cargo: '',
+        dataNascimento: '',
+        sexo: ''
+    });
+
     const [collaboratorForm, setCollaboratorForm] = useState({
         nome: '',
         email: '',
         telefone: '',
         setor: '',
-        cargo: ''
+        cargo: '',
+        dataNascimento: '',
+        sexo: ''
     });
 
     const handleCollaboratorChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setCollaboratorForm(prev => {
-            // If sector changes, reset cargo
             if (name === 'setor') {
                 return { ...prev, [name]: value, cargo: '' };
             }
             return { ...prev, [name]: value };
         });
+    };
+
+    const handleEditCollaboratorChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        setEditCollaboratorForm(prev => {
+            if (name === 'setor') {
+                return { ...prev, [name]: value, cargo: '' };
+            }
+            return { ...prev, [name]: value };
+        });
+    };
+
+    const openEditModal = (colab: any, index: number) => {
+        setEditingCollaboratorIndex(index);
+        setEditCollaboratorForm({ ...colab });
+        setIsEditModalOpen(true);
+        setActionMenuOpenIndex(null);
+    };
+
+    const saveEditCollaborator = () => {
+        if (editingCollaboratorIndex === null) return;
+        setFormData(prev => {
+            const updated = [...prev.colaboradores];
+            updated[editingCollaboratorIndex] = { ...editCollaboratorForm };
+            return { ...prev, colaboradores: updated };
+        });
+        setIsEditModalOpen(false);
+        setEditingCollaboratorIndex(null);
+    };
+
+    const confirmDeleteCollaborator = () => {
+        if (deleteConfirmationIndex === null) return;
+        removeCollaborator(deleteConfirmationIndex);
+        setDeleteConfirmationIndex(null);
     };
 
     const addCollaborator = () => {
@@ -122,7 +226,9 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
             email: '',
             telefone: '',
             setor: '',
-            cargo: ''
+            cargo: '',
+            dataNascimento: '',
+            sexo: ''
         });
     };
 
@@ -246,7 +352,7 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                 onClick={onClose}
             />
 
-            <div className="relative w-full max-w-6xl bg-white rounded-[2rem] shadow-2xl overflow-hidden flex h-[85vh] animate-in fade-in zoom-in-95 duration-300">
+            <div className="relative w-full max-w-[90rem] bg-white rounded-[2rem] shadow-2xl overflow-hidden flex h-[85vh] animate-in fade-in zoom-in-95 duration-300">
 
                 {/* --- Left Sidebar --- */}
                 <div className="w-1/3 bg-slate-50 border-r border-slate-200 flex flex-col">
@@ -271,6 +377,25 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                                 </span>
                             </div>
                         </div>
+
+                        {/* Unit Selector Dropdown */}
+                        {formData.units.length > 0 && (
+                            <div className="mt-4 px-2">
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block pl-2">Unidade Selecionada</label>
+                                <div className="relative">
+                                    <select
+                                        value={formData.selectedUnitId || ''}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, selectedUnitId: Number(e.target.value) }))}
+                                        className="w-full appearance-none bg-white border border-slate-200 text-slate-700 font-semibold py-3 pl-4 pr-10 rounded-xl outline-none focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 transition-all cursor-pointer shadow-sm hover:border-[#35b6cf]/50"
+                                    >
+                                        {formData.units.map((unit: any) => (
+                                            <option key={unit.id} value={unit.id}>{unit.name}</option>
+                                        ))}
+                                    </select>
+                                    <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 rotate-90 pointer-events-none" size={16} />
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Navigation */}
@@ -287,7 +412,7 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                                 </div>
                                 <span className="font-semibold">Dados Gerais</span>
                             </div>
-                            {activeSection === 'dados' && <ChevronRightIcon size={18} />}
+                            {activeSection === 'dados' && <ChevronRight size={18} />}
                         </button>
 
                         <button
@@ -351,16 +476,9 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                                 {activeSection === 'colaboradores' && 'Gerencie o acesso e perfil dos membros.'}
                             </p>
                         </div>
-                        <div className="flex gap-2">
-                            <Button
-                                onClick={handleSubmit}
-                                variant="primary"
-                                className="bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-200"
-                            >
-                                <Check size={18} className="mr-2" />
-                                Salvar Alterações
-                            </Button>
-                        </div>
+                        <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-2 rounded-full hover:bg-slate-100 transition-colors">
+                            <X size={24} />
+                        </button>
                     </div>
 
                     {/* Scrollable Body */}
@@ -557,116 +675,466 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
 
                         {activeSection === 'colaboradores' && (
                             <div className="space-y-8 animate-in slide-in-from-right-4 duration-300">
-                                <div className=" bg-slate-50 p-6 rounded-2xl border border-slate-200">
-                                    <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                        <Plus size={20} className="text-[#35b6cf]" />
-                                        Novo Colaborador
-                                    </h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <input
-                                            type="text"
-                                            name="nome"
-                                            value={collaboratorForm.nome}
-                                            onChange={handleCollaboratorChange}
-                                            placeholder="Nome completo"
-                                            className="px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none"
+                                <div className=" bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden">
+                                    <button
+                                        onClick={() => setIsAddingCollaborator(!isAddingCollaborator)}
+                                        className="w-full flex items-center justify-between p-6 hover:bg-slate-100 transition-colors text-left"
+                                    >
+                                        <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                            <div className="p-1 rounded bg-[#35b6cf]/10 text-[#35b6cf]">
+                                                <Plus size={18} />
+                                            </div>
+                                            Novo Colaborador
+                                        </h3>
+                                        <ChevronRight
+                                            size={20}
+                                            className={`text-slate-400 transition-transform duration-300 ${isAddingCollaborator ? 'rotate-90' : ''}`}
                                         />
-                                        <input
-                                            type="email"
-                                            name="email"
-                                            value={collaboratorForm.email}
-                                            onChange={handleCollaboratorChange}
-                                            placeholder="Email corporativo"
-                                            className="px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none"
-                                        />
-                                        <input
-                                            type="tel"
-                                            name="telefone"
-                                            value={collaboratorForm.telefone}
-                                            onChange={handleCollaboratorChange}
-                                            placeholder="Telefone / WhatsApp"
-                                            className="px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none"
-                                        />
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <select
-                                                name="setor"
-                                                value={collaboratorForm.setor}
-                                                onChange={handleCollaboratorChange}
-                                                className="px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none bg-white text-slate-600"
-                                            >
-                                                <option value="" disabled>Setor</option>
-                                                {formData.setores.map((s, i) => <option key={i} value={s}>{s}</option>)}
-                                            </select>
-                                            <select
-                                                name="cargo"
-                                                value={collaboratorForm.cargo}
-                                                onChange={handleCollaboratorChange}
-                                                disabled={!collaboratorForm.setor}
-                                                className="px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none bg-white text-slate-600 disabled:bg-slate-100 disabled:opacity-70"
-                                            >
-                                                <option value="" disabled>Cargo</option>
-                                                {formData.cargos
-                                                    .filter(c => c.setor === collaboratorForm.setor)
-                                                    .map((c, i) => <option key={i} value={c.nome}>{c.nome}</option>)}
-                                            </select>
+                                    </button>
+
+                                    {isAddingCollaborator && (
+                                        <div className="px-6 pb-6 animate-in slide-in-from-top-2 duration-200">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <input
+                                                    type="text"
+                                                    name="nome"
+                                                    value={collaboratorForm.nome}
+                                                    onChange={handleCollaboratorChange}
+                                                    placeholder="Nome completo"
+                                                    className="px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none"
+                                                />
+                                                <input
+                                                    type="email"
+                                                    name="email"
+                                                    value={collaboratorForm.email}
+                                                    onChange={handleCollaboratorChange}
+                                                    placeholder="Email corporativo"
+                                                    className="px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none"
+                                                />
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <input
+                                                        type="date"
+                                                        name="dataNascimento"
+                                                        value={collaboratorForm.dataNascimento}
+                                                        onChange={handleCollaboratorChange}
+                                                        className="px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none text-slate-600"
+                                                    />
+                                                    <select
+                                                        name="sexo"
+                                                        value={collaboratorForm.sexo}
+                                                        onChange={handleCollaboratorChange}
+                                                        className="px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none bg-white text-slate-600"
+                                                    >
+                                                        <option value="" disabled>Sexo</option>
+                                                        <option value="Masculino">Masculino</option>
+                                                        <option value="Feminino">Feminino</option>
+                                                        <option value="Outro">Outro</option>
+                                                    </select>
+                                                </div>
+                                                <input
+                                                    type="tel"
+                                                    name="telefone"
+                                                    value={collaboratorForm.telefone}
+                                                    onChange={handleCollaboratorChange}
+                                                    placeholder="Telefone / WhatsApp"
+                                                    className="px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none"
+                                                />
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <select
+                                                        name="setor"
+                                                        value={collaboratorForm.setor}
+                                                        onChange={handleCollaboratorChange}
+                                                        className="px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none bg-white text-slate-600"
+                                                    >
+                                                        <option value="" disabled>Setor</option>
+                                                        {formData.setores.map((s, i) => <option key={i} value={s}>{s}</option>)}
+                                                    </select>
+                                                    <select
+                                                        name="cargo"
+                                                        value={collaboratorForm.cargo}
+                                                        onChange={handleCollaboratorChange}
+                                                        disabled={!collaboratorForm.setor}
+                                                        className="px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none bg-white text-slate-600 disabled:bg-slate-100 disabled:opacity-70"
+                                                    >
+                                                        <option value="" disabled>Cargo</option>
+                                                        {formData.cargos
+                                                            .filter(c => c.setor === collaboratorForm.setor)
+                                                            .map((c, i) => <option key={i} value={c.nome}>{c.nome}</option>)}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div className="flex justify-end mt-4">
+                                                <Button
+                                                    onClick={addCollaborator}
+                                                    disabled={!collaboratorForm.nome || !collaboratorForm.email || !collaboratorForm.cargo}
+                                                    className="bg-[#35b6cf] text-white px-6 py-2 rounded-xl hover:bg-[#2ca3bc] disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    Adicionar Colaborador
+                                                </Button>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="flex justify-end mt-4">
-                                        <Button
-                                            onClick={addCollaborator}
-                                            disabled={!collaboratorForm.nome || !collaboratorForm.email || !collaboratorForm.cargo}
-                                            className="bg-[#35b6cf] text-white px-6 py-2 rounded-xl hover:bg-[#2ca3bc] disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            Adicionar Colaborador
-                                        </Button>
-                                    </div>
+                                    )}
                                 </div>
 
                                 <div>
-                                    <h3 className="text-lg font-bold text-slate-800 mb-4 px-2">
-                                        Colaboradores Cadastrados ({formData.colaboradores.length})
-                                    </h3>
-                                    {formData.colaboradores.length === 0 ? (
-                                        <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-slate-200">
-                                            <Users size={40} className="mx-auto text-slate-200 mb-2" />
-                                            <p className="text-slate-400">Nenhum colaborador adicionado.</p>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-2">
-                                            {formData.colaboradores.map((colab, idx) => (
-                                                <div key={idx} className="flex items-center justify-between p-4 bg-white border border-slate-200 rounded-xl shadow-sm hover:border-[#35b6cf]/50 transition-colors group">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="w-10 h-10 rounded-full bg-indigo-50 text-indigo-500 flex items-center justify-center font-bold text-lg">
-                                                            {colab.nome.charAt(0).toUpperCase()}
-                                                        </div>
-                                                        <div>
-                                                            <h4 className="font-semibold text-slate-800">{colab.nome}</h4>
-                                                            <div className="flex items-center gap-3 text-xs text-slate-500 mt-0.5">
-                                                                <span className="flex items-center gap-1"><Mail size={12} /> {colab.email}</span>
-                                                                <span className="flex items-center gap-1 bg-slate-100 px-2 py-0.5 rounded-full"><Building size={10} /> {colab.setor}</span>
-                                                                <span className="flex items-center gap-1 bg-slate-100 px-2 py-0.5 rounded-full"><Briefcase size={10} /> {colab.cargo}</span>
+                                    <div className="flex items-center justify-between mb-4 px-2">
+                                        <h3 className="text-lg font-bold text-slate-800">
+                                            Colaboradores Cadastrados ({filteredCollaborators.length})
+                                        </h3>
+                                        <div className="flex items-center gap-2">
+                                            <div className="relative w-64">
+                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                                <input
+                                                    type="text"
+                                                    value={collabSearch}
+                                                    onChange={(e) => setCollabSearch(e.target.value)}
+                                                    placeholder="Buscar nome, cargo..."
+                                                    className="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-[#35b6cf]"
+                                                />
+                                            </div>
+                                            <div className="relative">
+                                                <button
+                                                    onClick={() => setIsFilterMenuOpen(!isFilterMenuOpen)}
+                                                    className={`p-2 rounded-lg border transition-colors ${isFilterMenuOpen || Object.keys(selectedFilters).some(k => selectedFilters[k].length > 0) ? 'bg-[#35b6cf] border-[#35b6cf] text-white' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+                                                >
+                                                    <Filter size={20} />
+                                                </button>
+
+                                                {/* Global Filter Menu */}
+                                                {isFilterMenuOpen && (
+                                                    <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-xl shadow-xl border border-slate-100 p-4 z-50 animate-in fade-in zoom-in-95 duration-200">
+                                                        <div className="space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
+
+                                                            {/* Sexo Filter */}
+                                                            <div>
+                                                                <div className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">Sexo</div>
+                                                                <div className="space-y-1">
+                                                                    {getUniqueValues('sexo').map(opt => (
+                                                                        <div
+                                                                            key={opt}
+                                                                            onClick={() => handleFilterSelect('sexo', opt)}
+                                                                            className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors ${selectedFilters['sexo']?.includes(opt) ? 'bg-[#35b6cf]/10 text-[#35b6cf] font-medium' : 'hover:bg-slate-50 text-slate-600'}`}
+                                                                        >
+                                                                            <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${selectedFilters['sexo']?.includes(opt) ? 'bg-[#35b6cf] border-[#35b6cf]' : 'border-slate-300'}`}>
+                                                                                {selectedFilters['sexo']?.includes(opt) && <Check size={12} className="text-white" />}
+                                                                            </div>
+                                                                            {opt}
+                                                                        </div>
+                                                                    ))}
+                                                                    {getUniqueValues('sexo').length === 0 && <p className="text-xs text-slate-400 italic">Nenhuma opção disponível</p>}
+                                                                </div>
                                                             </div>
+
+                                                            {/* Cargo Filter */}
+                                                            <div>
+                                                                <div className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">Cargo</div>
+                                                                <div className="space-y-1">
+                                                                    {getUniqueValues('cargo').map(opt => (
+                                                                        <div
+                                                                            key={opt}
+                                                                            onClick={() => handleFilterSelect('cargo', opt)}
+                                                                            className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors ${selectedFilters['cargo']?.includes(opt) ? 'bg-[#35b6cf]/10 text-[#35b6cf] font-medium' : 'hover:bg-slate-50 text-slate-600'}`}
+                                                                        >
+                                                                            <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${selectedFilters['cargo']?.includes(opt) ? 'bg-[#35b6cf] border-[#35b6cf]' : 'border-slate-300'}`}>
+                                                                                {selectedFilters['cargo']?.includes(opt) && <Check size={12} className="text-white" />}
+                                                                            </div>
+                                                                            {opt}
+                                                                        </div>
+                                                                    ))}
+                                                                    {getUniqueValues('cargo').length === 0 && <p className="text-xs text-slate-400 italic">Nenhuma opção disponível</p>}
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Setor Filter */}
+                                                            <div>
+                                                                <div className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">Setor</div>
+                                                                <div className="space-y-1">
+                                                                    {getUniqueValues('setor').map(opt => (
+                                                                        <div
+                                                                            key={opt}
+                                                                            onClick={() => handleFilterSelect('setor', opt)}
+                                                                            className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors ${selectedFilters['setor']?.includes(opt) ? 'bg-[#35b6cf]/10 text-[#35b6cf] font-medium' : 'hover:bg-slate-50 text-slate-600'}`}
+                                                                        >
+                                                                            <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${selectedFilters['setor']?.includes(opt) ? 'bg-[#35b6cf] border-[#35b6cf]' : 'border-slate-300'}`}>
+                                                                                {selectedFilters['setor']?.includes(opt) && <Check size={12} className="text-white" />}
+                                                                            </div>
+                                                                            {opt}
+                                                                        </div>
+                                                                    ))}
+                                                                    {getUniqueValues('setor').length === 0 && <p className="text-xs text-slate-400 italic">Nenhuma opção disponível</p>}
+                                                                </div>
+                                                            </div>
+
+                                                        </div>
+                                                        <div className="mt-4 pt-3 border-t border-slate-100 flex justify-end">
+                                                            <button
+                                                                onClick={() => setSelectedFilters({})}
+                                                                className="text-xs font-semibold text-slate-400 hover:text-rose-500 transition-colors"
+                                                            >
+                                                                Limpar Filtros
+                                                            </button>
                                                         </div>
                                                     </div>
-                                                    <button
-                                                        onClick={() => removeCollaborator(idx)}
-                                                        className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                                                        title="Remover"
-                                                    >
-                                                        <Trash2 size={18} />
-                                                    </button>
-                                                </div>
-                                            ))}
+                                                )}
+                                            </div>
                                         </div>
-                                    )}
+                                    </div>
+
+                                    <div className="bg-white rounded-xl border border-slate-200 overflow-visible shadow-sm">
+                                        <table className="w-full text-left text-sm">
+                                            <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 font-semibold relative z-10">
+                                                <tr>
+                                                    <th className="px-4 py-3 rounded-tl-xl">Nome</th>
+                                                    <th className="px-4 py-3">Nascimento</th>
+                                                    <th className="px-4 py-3 relative group">
+                                                        Sexo
+                                                    </th>
+                                                    <th className="px-4 py-3 relative">
+                                                        Cargo
+                                                    </th>
+                                                    <th className="px-4 py-3 relative">
+                                                        Setor
+                                                    </th>
+                                                    <th className="px-4 py-3 rounded-tr-xl text-right">Ações</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100">
+                                                {filteredCollaborators.length === 0 ? (
+                                                    <tr>
+                                                        <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
+                                                            Nenhum colaborador encontrado.
+                                                        </td>
+                                                    </tr>
+                                                ) : (
+                                                    filteredCollaborators.map((colab, idx) => (
+                                                        <tr key={idx} className="hover:bg-slate-50/80 transition-colors group">
+                                                            <td className="px-4 py-3 text-slate-800 font-medium flex items-center gap-2">
+                                                                <div className="w-8 h-8 rounded-full bg-indigo-50 text-indigo-500 flex items-center justify-center text-xs font-bold">
+                                                                    {colab.nome.charAt(0).toUpperCase()}
+                                                                </div>
+                                                                {colab.nome}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-slate-500">{colab.dataNascimento ? new Date(colab.dataNascimento).toLocaleDateString('pt-BR') : '-'}</td>
+                                                            <td className="px-4 py-3 text-slate-500">{colab.sexo || '-'}</td>
+                                                            <td className="px-4 py-3">
+                                                                <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs font-medium">
+                                                                    {colab.cargo}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-4 py-3 text-slate-500 text-xs">{colab.setor}</td>
+                                                            <td className="px-4 py-3 text-right sticky right-0 bg-white group-hover:bg-slate-50/80">
+                                                                <div className="relative">
+                                                                    <button
+                                                                        onClick={() => setActionMenuOpenIndex(actionMenuOpenIndex === idx ? null : idx)}
+                                                                        className="p-1.5 text-slate-400 hover:text-[#35b6cf] hover:bg-slate-100 rounded-lg transition-colors"
+                                                                    >
+                                                                        <MoreVertical size={16} />
+                                                                    </button>
+
+                                                                    {actionMenuOpenIndex === idx && (
+                                                                        <div className="absolute right-0 top-full mt-1 w-32 bg-white rounded-xl shadow-xl border border-slate-100 py-1 z-50 animate-in fade-in zoom-in-95 duration-200">
+                                                                            <button
+                                                                                onClick={() => openEditModal(colab, formData.colaboradores.indexOf(colab))}
+                                                                                className="w-full text-left px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-[#35b6cf] flex items-center gap-2"
+                                                                            >
+                                                                                <Pencil size={14} /> Editar
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    setDeleteConfirmationIndex(formData.colaboradores.indexOf(colab));
+                                                                                    setActionMenuOpenIndex(null);
+                                                                                }}
+                                                                                className="w-full text-left px-3 py-2 text-xs font-medium text-slate-600 hover:bg-rose-50 hover:text-rose-500 flex items-center gap-2"
+                                                                            >
+                                                                                <Trash2 size={14} /> Excluir
+                                                                            </button>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                {/* Overlay to close menu when clicking outside - simplified version, ideally use a global listener */}
+                                                                {actionMenuOpenIndex === idx && (
+                                                                    <div
+                                                                        className="fixed inset-0 z-40"
+                                                                        onClick={() => setActionMenuOpenIndex(null)}
+                                                                    />
+                                                                )}
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
                         )}
 
                     </div>
+
+                    {/* Right Footer - Save/Cancel Actions */}
+                    <div className="p-6 border-t border-slate-200 bg-white flex justify-end gap-3 z-10">
+                        <Button
+                            variant="ghost"
+                            onClick={onClose}
+                            className="text-slate-500 hover:text-slate-700 hover:bg-slate-100"
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            onClick={handleSubmit}
+                            variant="primary"
+                            className="bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-200"
+                        >
+                            <Check size={18} className="mr-2" />
+                            Salvar Alterações
+                        </Button>
+                    </div>
                 </div>
 
             </div>
+
+            {/* Delete Confirmation Modal */}
+            {deleteConfirmationIndex !== null && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setDeleteConfirmationIndex(null)} />
+                    <div className="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm animate-in fade-in zoom-in-95 duration-200">
+                        <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-500 flex items-center justify-center mb-4 mx-auto">
+                            <AlertTriangle size={24} />
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-800 text-center mb-2">Excluir Colaborador?</h3>
+                        <p className="text-sm text-slate-500 text-center mb-6">
+                            Tem certeza que deseja remover este colaborador? Esta ação não pode ser desfeita.
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setDeleteConfirmationIndex(null)}
+                                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={confirmDeleteCollaborator}
+                                className="flex-1 py-2.5 rounded-xl bg-rose-500 text-white font-semibold hover:bg-rose-600 shadow-lg shadow-rose-200 transition-colors"
+                            >
+                                Excluir
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Collaborator Modal */}
+            {isEditModalOpen && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsEditModalOpen(false)} />
+                    <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                <Pencil size={18} className="text-[#35b6cf]" />
+                                Editar Colaborador
+                            </h3>
+                            <button onClick={() => setIsEditModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100">
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-500 uppercase">Nome</label>
+                                    <input
+                                        type="text"
+                                        name="nome"
+                                        value={editCollaboratorForm.nome}
+                                        onChange={handleEditCollaboratorChange}
+                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none"
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-500 uppercase">Email</label>
+                                    <input
+                                        type="email"
+                                        name="email"
+                                        value={editCollaboratorForm.email}
+                                        onChange={handleEditCollaboratorChange}
+                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-bold text-slate-500 uppercase">Nascimento</label>
+                                        <input
+                                            type="date"
+                                            name="dataNascimento"
+                                            value={editCollaboratorForm.dataNascimento}
+                                            onChange={handleEditCollaboratorChange}
+                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none text-slate-600"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-bold text-slate-500 uppercase">Sexo</label>
+                                        <select
+                                            name="sexo"
+                                            value={editCollaboratorForm.sexo}
+                                            onChange={handleEditCollaboratorChange}
+                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none bg-white text-slate-600"
+                                        >
+                                            <option value="" disabled>Selecione</option>
+                                            <option value="Masculino">Masculino</option>
+                                            <option value="Feminino">Feminino</option>
+                                            <option value="Outro">Outro</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-500 uppercase">Telefone</label>
+                                    <input
+                                        type="tel"
+                                        name="telefone"
+                                        value={editCollaboratorForm.telefone}
+                                        onChange={handleEditCollaboratorChange}
+                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-bold text-slate-500 uppercase">Setor</label>
+                                        <select
+                                            name="setor"
+                                            value={editCollaboratorForm.setor}
+                                            onChange={handleEditCollaboratorChange}
+                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none bg-white text-slate-600"
+                                        >
+                                            <option value="" disabled>Selecione</option>
+                                            {formData.setores.map((s, i) => <option key={i} value={s}>{s}</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-bold text-slate-500 uppercase">Cargo</label>
+                                        <select
+                                            name="cargo"
+                                            value={editCollaboratorForm.cargo}
+                                            onChange={handleEditCollaboratorChange}
+                                            disabled={!editCollaboratorForm.setor}
+                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none bg-white text-slate-600 disabled:bg-slate-100"
+                                        >
+                                            <option value="" disabled>Selecione</option>
+                                            {formData.cargos
+                                                .filter(c => c.setor === editCollaboratorForm.setor)
+                                                .map((c, i) => <option key={i} value={c.nome}>{c.nome}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50/50">
+                            <Button variant="ghost" onClick={() => setIsEditModalOpen(false)}>Cancelar</Button>
+                            <Button onClick={saveEditCollaborator} className="bg-[#35b6cf] text-white hover:bg-[#2ca3bc]">Salvar Alterações</Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
