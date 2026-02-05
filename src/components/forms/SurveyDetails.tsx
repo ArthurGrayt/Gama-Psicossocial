@@ -45,6 +45,14 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
     const [totalResponses, setTotalResponses] = useState(0);
     const [recentResponses, setRecentResponses] = useState<any[]>([]);
 
+    // --- PARTICIPATION MODAL STATE ---
+    const [showParticipationModal, setShowParticipationModal] = useState(false);
+    const [participationTab, setParticipationTab] = useState<'participants' | 'pending'>('participants');
+    const [participationSearch, setParticipationSearch] = useState('');
+    const [participantsList, setParticipantsList] = useState<any[]>([]);
+    const [pendingList, setPendingList] = useState<any[]>([]);
+    const [modalLoading, setModalLoading] = useState(false);
+
 
 
     const fetchSectors = async () => {
@@ -378,6 +386,99 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
         );
     };
 
+    const fetchParticipationDetails = async () => {
+        setModalLoading(true);
+        try {
+            // 1. Determine Scope & Fetch ALL Collaborators (Potential Participants)
+            const isCompanyLevel = !(form as any).slug;
+            const sectorId = selectedSector ? sectors.find(s => s.nome === selectedSector)?.id : null;
+
+            let colabQuery = supabase
+                .from('colaboradores')
+                .select('id, nome, email, cargo'); // Minimal fields used for display
+
+            if (selectedUnit) {
+                colabQuery = colabQuery.eq('unidade_id', selectedUnit);
+            } else if (isCompanyLevel) {
+                const { data: units } = await supabase
+                    .from('unidades')
+                    .select('id')
+                    .eq('empresa_mae', (form as any).cliente_uuid);
+                const unitIds = (units || []).map(u => u.id);
+                colabQuery = colabQuery.in('unidade_id', unitIds);
+            } else {
+                colabQuery = colabQuery.eq('unidade_id', form.unidade_id);
+            }
+
+            if (sectorId) {
+                const { data: roles } = await supabase
+                    .from('cargos')
+                    .select('id')
+                    .eq('setor_id', sectorId);
+                const validRoleIds = (roles || []).map(r => r.id);
+                if (validRoleIds.length > 0) {
+                    colabQuery = colabQuery.in('cargo_id', validRoleIds);
+                } else {
+                    colabQuery = colabQuery.in('cargo_id', [-1]);
+                }
+            }
+
+            const { data: allCollaborators } = await colabQuery;
+
+            // 2. Fetch Actual Responses and Determine Status
+            if (isCompanyLevel) {
+                const validColabIds = (allCollaborators || []).map(c => c.id);
+                if (validColabIds.length > 0) {
+                    // Fetch answers for ANY relevant collaborator
+                    const { data: answers } = await supabase
+                        .from('form_answers')
+                        .select('respondedor, created_at')
+                        .in('respondedor', validColabIds);
+
+                    const participatedIds = new Set((answers || []).map(a => a.respondedor));
+
+                    const participated = (allCollaborators || []).filter(c => participatedIds.has(c.id));
+                    const pending = (allCollaborators || []).filter(c => !participatedIds.has(c.id));
+
+                    setParticipantsList(participated);
+                    setPendingList(pending);
+                } else {
+                    setParticipantsList([]);
+                    setPendingList([]);
+                }
+            } else {
+                // Single Form View
+                const { data: answers } = await supabase
+                    .from('form_answers')
+                    .select('respondedor, created_at')
+                    .eq('form_id', form.id);
+
+                const participatedIds = new Set((answers || []).map(a => a.respondedor));
+                // Only filter out collaborators that are in scope (allCollaborators)
+                const participated = (allCollaborators || []).filter(c => participatedIds.has(c.id));
+                const pending = (allCollaborators || []).filter(c => !participatedIds.has(c.id));
+
+                setParticipantsList(participated);
+                setPendingList(pending);
+            }
+
+        } catch (error) {
+            console.error('Error fetching participation details:', error);
+        } finally {
+            setModalLoading(false);
+        }
+    };
+
+    const handleOpenParticipation = () => {
+        setShowParticipationModal(true);
+        fetchParticipationDetails();
+    };
+
+    const filteredParticipationList = (participationTab === 'participants' ? participantsList : pendingList).filter(p =>
+        p.nome.toLowerCase().includes(participationSearch.toLowerCase()) ||
+        (p.email && p.email.toLowerCase().includes(participationSearch.toLowerCase()))
+    );
+
     if (loading) return (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 min-h-[calc(100vh-140px)] flex items-center justify-center">
             <div className="text-center space-y-4">
@@ -473,7 +574,13 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
                         {/* Status Cards Row (New Design) */}
                         <div className="bg-white rounded-xl border border-slate-200 shadow-sm grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-100">
                             {/* Participação */}
-                            <div className="p-6 flex flex-col items-center justify-center text-center">
+                            <div
+                                onClick={handleOpenParticipation}
+                                className="p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-slate-50 transition-colors group relative"
+                            >
+                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Search size={16} className="text-slate-400" />
+                                </div>
                                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Participação</p>
                                 <div className="flex items-baseline gap-1">
                                     <span className="text-3xl font-bold text-slate-900">
@@ -827,6 +934,107 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
                             >
                                 Fechar
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* --- PARTICIPATION DETAILS MODAL --- */}
+            {showParticipationModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 fade-in animate-in duration-200">
+                    <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl scale-in zoom-in-95 duration-200">
+                        {/* Header */}
+                        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
+                            <h3 className="text-lg font-bold text-slate-800">Detalhes de Participação</h3>
+                            <button
+                                onClick={() => setShowParticipationModal(false)}
+                                className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 p-2 rounded-full transition-all"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Stats Row */}
+                        <div className="px-6 py-6 grid grid-cols-2 gap-4">
+                            <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-4 flex flex-col">
+                                <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">Participantes</span>
+                                <span className="text-3xl font-bold text-emerald-700">{participantsList.length}</span>
+                            </div>
+                            <div className="bg-orange-50/50 border border-orange-100 rounded-xl p-4 flex flex-col">
+                                <span className="text-xs font-bold text-orange-600 uppercase tracking-wider mb-1">Pendentes</span>
+                                <span className="text-3xl font-bold text-orange-700">{pendingList.length}</span>
+                            </div>
+                        </div>
+
+                        {/* Tabs */}
+                        <div className="px-6 border-b border-slate-100 flex gap-1 bg-slate-50/50 mx-6 rounded-lg p-1 mb-4">
+                            <button
+                                onClick={() => setParticipationTab('participants')}
+                                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${participationTab === 'participants'
+                                    ? 'bg-white text-emerald-600 shadow-sm'
+                                    : 'text-slate-500 hover:text-slate-700'
+                                    }`}
+                            >
+                                Participantes
+                            </button>
+                            <button
+                                onClick={() => setParticipationTab('pending')}
+                                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${participationTab === 'pending'
+                                    ? 'bg-white text-orange-600 shadow-sm'
+                                    : 'text-slate-500 hover:text-slate-700'
+                                    }`}
+                            >
+                                Pendentes
+                            </button>
+                        </div>
+
+                        {/* Search */}
+                        <div className="px-6 pb-4">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                <input
+                                    type="text"
+                                    value={participationSearch}
+                                    onChange={(e) => setParticipationSearch(e.target.value)}
+                                    placeholder="Buscar em participantes..."
+                                    className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf] transition-all"
+                                />
+                            </div>
+                        </div>
+
+                        {/* List Area */}
+                        <div className="flex-1 overflow-y-auto min-h-[300px] border-t border-slate-100 bg-slate-50/30">
+                            {modalLoading ? (
+                                <div className="flex items-center justify-center h-full text-slate-400 text-sm">
+                                    Carregando dados...
+                                </div>
+                            ) : filteredParticipationList.length > 0 ? (
+                                <div className="divide-y divide-slate-100">
+                                    {filteredParticipationList.map((p: any) => (
+                                        <div key={p.id} className="px-6 py-3 flex items-center justify-between hover:bg-white transition-colors">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${participationTab === 'participants' ? 'bg-emerald-100 text-emerald-600' : 'bg-orange-100 text-orange-600'
+                                                    }`}>
+                                                    {p.nome ? p.nome.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : '??'}
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-slate-700">{p.nome || 'Sem Nome'}</p>
+                                                    {p.email && <p className="text-xs text-slate-400">{p.email}</p>}
+                                                </div>
+                                            </div>
+                                            {participationTab === 'participants' && (
+                                                <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+                                                    Respondido
+                                                </span>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center h-full text-slate-400 text-sm p-8">
+                                    <p>Nenhuma resposta ainda.</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

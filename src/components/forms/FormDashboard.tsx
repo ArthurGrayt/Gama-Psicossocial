@@ -40,7 +40,8 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
     // Selection Modal State
     const [selectingFor, setSelectingFor] = useState<any>(null);
     const [selectedUnit, setSelectedUnit] = useState<any>(null);
-    const [selectionStep, setSelectionStep] = useState<'unit' | 'sector'>('unit');
+
+    const [sectorSearch, setSectorSearch] = useState('');
 
     // Info Modal State
     const [infoModalCompany, setInfoModalCompany] = useState<any>(null);
@@ -119,37 +120,17 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
         c.cnpj.includes(searchTerm)
     );
 
+
+
     const handleGerarFormulario = (company: any) => {
         // Reset selection state
         setSelectingFor(company);
         setSelectedUnit(null);
-
-        // Rules:
-        // 1. If company has more than 1 unit, ask for unit
-        if (company.units.length > 1) {
-            setSelectionStep('unit');
-        } else {
-            // Only 1 unit, auto-select it
-            const unit = company.units[0];
-            setSelectedUnit(unit);
-
-            // 2. If this unit has > 20 collaborators, ask for sector
-            if (unit.collaborators > 20 && unit.sectors.length > 0) {
-                setSelectionStep('sector');
-            } else {
-                // Done! Direct to creation
-                handleFinishSelection(company, unit, '');
-            }
+        // If company has only 1 unit, auto-expand it
+        if (company.units.length === 1) {
+            setSelectedUnit(company.units[0]);
         }
-    };
-
-    const handleUnitSelect = (unit: any) => {
-        setSelectedUnit(unit);
-        if (unit.collaborators > 20 && unit.sectors.length > 0) {
-            setSelectionStep('sector');
-        } else {
-            handleFinishSelection(selectingFor, unit, '');
-        }
+        setSectorSearch('');
     };
 
     const handleFinishSelection = (company: any, unit: any, sector: string) => {
@@ -185,13 +166,16 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
 
     const confirmCreateForm = () => {
         if (!summaryData) return;
+        // Pass data to parent to handle creation (bypassing the wizard)
         onCreateForm({
             company_id: summaryData.company.id,
             company_name: summaryData.company.name,
             unit_id: summaryData.unit.id,
             unit_name: summaryData.unit.name,
             sector: summaryData.sector,
-            selected_collaborators_count: selectedCollaborators.size
+            selected_collaborators_count: selectedCollaborators.size,
+            title: summaryData.formTitle,
+            description: summaryData.formDesc
         });
         setSummaryModalOpen(false);
         setSuccessModalOpen(true);
@@ -344,6 +328,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                 >
                                     <Settings size={18} />
                                 </button>
+
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
@@ -411,6 +396,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                                 >
                                                     Gerar Formulário
                                                 </button>
+
                                                 <button
                                                     onClick={() => onEditForm(company)}
                                                     className="p-1.5 text-slate-400 hover:text-[#35b6cf] transition-colors"
@@ -471,72 +457,75 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
 
                         {/* Modal Content */}
                         <div className="p-6">
-                            {selectionStep === 'unit' ? (
-                                <div className="space-y-4">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <div className="w-8 h-8 rounded-lg bg-[#35b6cf]/10 flex items-center justify-center text-[#35b6cf]">
-                                            <Building size={16} />
-                                        </div>
-                                        <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Escolha a Unidade</label>
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className="w-8 h-8 rounded-lg bg-[#35b6cf]/10 flex items-center justify-center text-[#35b6cf]">
+                                        <Building size={16} />
                                     </div>
-                                    <div className="grid grid-cols-1 gap-2">
-                                        {selectingFor.units.map((unit: any) => (
-                                            <button
-                                                key={unit.id}
-                                                onClick={() => handleUnitSelect(unit)}
-                                                className="flex items-center justify-between p-4 rounded-2xl border border-slate-100 hover:border-[#35b6cf] hover:bg-[#35b6cf]/5 transition-all text-left group"
-                                            >
-                                                <div>
-                                                    <span className="font-bold text-slate-700 group-hover:text-[#35b6cf] transition-colors">{unit.name}</span>
-                                                    <div className="flex items-center gap-2 mt-1 text-xs text-slate-400">
-                                                        <Users size={12} />
-                                                        {unit.collaborators} colaboradores
+                                    <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Escolha a Unidade e Setor</label>
+                                </div>
+                                <div className="grid grid-cols-1 gap-2 max-h-[60vh] overflow-y-auto pr-2">
+                                    {selectingFor.units.map((unit: any) => {
+                                        const isExpanded = selectedUnit?.id === unit.id;
+                                        return (
+                                            <div key={unit.id} className={`rounded-2xl border transition-all duration-300 overflow-hidden ${isExpanded ? 'border-[#35b6cf] bg-[#35b6cf]/5 shadow-md' : 'border-slate-100 hover:border-[#35b6cf]/30'}`}>
+                                                <button
+                                                    onClick={() => setSelectedUnit(isExpanded ? null : unit)}
+                                                    className="w-full flex items-center justify-between p-4 text-left group"
+                                                >
+                                                    <div>
+                                                        <span className={`font-bold transition-colors ${isExpanded ? 'text-[#35b6cf]' : 'text-slate-700 group-hover:text-[#35b6cf]'}`}>
+                                                            {unit.name}
+                                                        </span>
+                                                        <div className="flex items-center gap-2 mt-1 text-xs text-slate-400">
+                                                            <Users size={12} />
+                                                            {unit.collaborators} colaboradores
+                                                        </div>
+                                                    </div>
+                                                    <ChevronRight size={18} className={`text-slate-300 transition-all duration-300 ${isExpanded ? 'rotate-90 text-[#35b6cf]' : 'group-hover:text-[#35b6cf]'}`} />
+                                                </button>
+
+                                                {/* Expanded Content (Sectors) */}
+                                                <div className={`grid transition-all duration-300 ease-in-out ${isExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+                                                    <div className="overflow-hidden">
+                                                        <div className="p-3 pt-0 space-y-2 border-t border-[#35b6cf]/10 mx-3 mt-1 mb-3">
+                                                            <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mt-3 mb-2 px-1 flex items-center gap-2">
+                                                                <LayoutTemplate size={12} />
+                                                                Selecione o Setor
+                                                            </div>
+
+                                                            {/* General Option */}
+                                                            <button
+                                                                onClick={() => handleFinishSelection(selectingFor, unit, 'Geral')}
+                                                                className="w-full flex items-center justify-between p-3 rounded-xl bg-white/60 hover:bg-white border border-transparent hover:border-[#35b6cf]/30 transition-all text-left group/sector"
+                                                            >
+                                                                <span className="text-sm font-medium text-slate-600 group-hover/sector:text-[#35b6cf]">Geral / Todos os setores</span>
+                                                                <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 group-hover/sector:bg-[#35b6cf] group-hover/sector:text-white transition-all">
+                                                                    <ChevronRight size={14} />
+                                                                </div>
+                                                            </button>
+
+                                                            {/* Actual Sectors */}
+                                                            {unit.sectors.map((sector: string) => (
+                                                                <button
+                                                                    key={sector}
+                                                                    onClick={() => handleFinishSelection(selectingFor, unit, sector)}
+                                                                    className="w-full flex items-center justify-between p-3 rounded-xl bg-white/60 hover:bg-white border border-transparent hover:border-[#35b6cf]/30 transition-all text-left group/sector"
+                                                                >
+                                                                    <span className="text-sm font-bold text-slate-700 group-hover/sector:text-[#35b6cf]">{sector}</span>
+                                                                    <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 group-hover/sector:bg-[#35b6cf] group-hover/sector:text-white transition-all">
+                                                                        <ChevronRight size={14} />
+                                                                    </div>
+                                                                </button>
+                                                            ))}
+                                                        </div>
                                                     </div>
                                                 </div>
-                                                <ChevronRight size={18} className="text-slate-300 group-hover:text-[#35b6cf] transition-all" />
-                                            </button>
-                                        ))}
-                                    </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
-                            ) : (
-                                <div className="space-y-4">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <div className="w-8 h-8 rounded-lg bg-[#0f978e]/10 flex items-center justify-center text-[#0f978e]">
-                                            <LayoutTemplate size={16} />
-                                        </div>
-                                        <div>
-                                            <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Escolha o Setor</label>
-                                            <p className="text-xs text-slate-400">Unidade: {selectedUnit?.name}</p>
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-1 gap-2">
-                                        {selectedUnit?.sectors.map((sector: string) => (
-                                            <button
-                                                key={sector}
-                                                onClick={() => handleFinishSelection(selectingFor, selectedUnit, sector)}
-                                                className="flex items-center justify-between p-4 rounded-2xl border border-slate-100 hover:border-[#0f978e] hover:bg-[#0f978e]/5 transition-all text-left group"
-                                            >
-                                                <span className="font-bold text-slate-700 group-hover:text-[#0f978e] transition-colors">{sector}</span>
-                                                <ChevronRight size={18} className="text-slate-300 group-hover:text-[#0f978e] transition-all" />
-                                            </button>
-                                        ))}
-                                        {/* Option for 'All Sectors' or just general */}
-                                        <button
-                                            onClick={() => handleFinishSelection(selectingFor, selectedUnit, 'Geral')}
-                                            className="flex items-center justify-between p-4 rounded-2xl border border-dotted border-slate-200 hover:border-slate-400 hover:bg-slate-50 transition-all text-left group italic"
-                                        >
-                                            <span className="font-medium text-slate-500">Geral / Todos os setores</span>
-                                            <ChevronRight size={18} className="text-slate-300 group-hover:text-slate-500 transition-all" />
-                                        </button>
-                                    </div>
-                                    <button
-                                        onClick={() => setSelectionStep('unit')}
-                                        className="w-full mt-4 py-3 text-slate-400 text-sm font-medium hover:text-[#35b6cf] transition-colors"
-                                    >
-                                        ← Voltar para unidades
-                                    </button>
-                                </div>
-                            )}
+                            </div>
                         </div>
                     </div>
                 </div>

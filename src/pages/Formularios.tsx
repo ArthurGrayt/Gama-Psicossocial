@@ -1,30 +1,58 @@
 import React, { useState } from 'react';
 import { DashboardLayout } from '../layouts/DashboardLayout';
 import { FormDashboard } from '../components/forms/FormDashboard';
-import { FormEditor } from '../components/forms/FormEditor';
+// import { FormEditor } from '../components/forms/FormEditor'; // Removed
 // import { FormAnalytics } from '../components/forms/FormAnalytics'; // OLD
 import { SurveyDetails } from '../components/forms/SurveyDetails'; // NEW
 import type { Form } from '../types';
+import { supabase } from '../services/supabase';
 
 type ViewState = 'dashboard' | 'editor' | 'analytics';
 
 export const Formularios: React.FC = () => {
     const [view, setView] = useState<ViewState>('dashboard');
     const [selectedForm, setSelectedForm] = useState<Form | null>(null);
-    const [editorFormId, setEditorFormId] = useState<number | null>(null);
 
-    const [initialFormData, setInitialFormData] = useState<any>(null);
 
     // Handlers
-    const handleCreateForm = (data?: any) => {
-        setInitialFormData(data || null);
-        setEditorFormId(null);
-        setView('editor');
+    const handleCreateForm = async (data: any) => {
+        try {
+            // Basic slug generation
+            const slug = (data.title || 'novo-formulario')
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/(^-|-$)+/g, '');
+
+            const { error } = await supabase
+                .from('forms')
+                .insert([{
+                    title: data.title,
+                    description: data.description,
+                    slug: `${slug}-${Date.now()}`,
+                    empresa: data.company_id,
+                    unidade_id: data.unit_id,
+                    setor: data.sector,
+                    active: true,
+                    created_at: new Date().toISOString()
+                }]);
+
+            if (error) throw error;
+
+            // Just return to dashboard (which triggers refresh if we used a ref or context, but here maybe just simple reload or state reset)
+            setView('dashboard');
+
+            // Optionally could force refresh FormDashboard list if we had a mechanism, 
+            // but for now user will see it next reload or we could key the component.
+        } catch (error) {
+            console.error('Error creating form:', error);
+        }
     };
 
     const handleEditForm = (form: Form) => {
-        setEditorFormId(form.id);
-        setView('editor');
+        // Feature temporarily disabled
+        console.log('Edit form:', form.id);
     };
 
     const handleAnalyzeForm = (form: Form) => {
@@ -35,12 +63,6 @@ export const Formularios: React.FC = () => {
     const handleBackToDashboard = () => {
         setView('dashboard');
         setSelectedForm(null);
-        setEditorFormId(null);
-    };
-
-    const handleSaveSuccess = () => {
-        setView('dashboard');
-        // Ideally show a toast here
     };
 
     return (
@@ -54,14 +76,7 @@ export const Formularios: React.FC = () => {
                     />
                 )}
 
-                {view === 'editor' && (
-                    <FormEditor
-                        formId={editorFormId}
-                        initialData={initialFormData}
-                        onBack={handleBackToDashboard}
-                        onSaveSuccess={handleSaveSuccess}
-                    />
-                )}
+
 
                 {view === 'analytics' && selectedForm && (
                     <SurveyDetails

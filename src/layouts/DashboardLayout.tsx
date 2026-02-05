@@ -11,7 +11,6 @@ const MENU_ITEMS = [
     { icon: <LayoutDashboard size={18} />, label: 'Dashboard', path: '/dashboard' },
     { icon: <PlusCircle size={18} />, label: 'Cadastro', path: '/cadastro' },
     { icon: <Building size={18} />, label: 'Empresas', path: '/' },
-    { icon: <LayoutTemplate size={18} />, label: 'Modelos', path: '/modelos' },
     { icon: <Settings size={18} />, label: 'Configurações', path: '/settings' },
 ];
 
