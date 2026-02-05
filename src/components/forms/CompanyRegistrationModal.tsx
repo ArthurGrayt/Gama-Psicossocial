@@ -130,7 +130,10 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                     colaboradores: (initialData.collaborators || []).map((c: any) => ({
                         ...c,
                         id: String(c.id),
-                        unidade_id: c.unidade_id ? String(c.unidade_id) : null
+                        dataNascimento: c.dataNascimento || c.data_nascimento || '',
+                        unidade_id: c.unidade_id ? String(c.unidade_id) : null,
+                        cargo: c.cargo || (formData.cargos.find((r: any) => r.id === c.cargo_id)?.nome) || '',
+                        setor: c.setor || (formData.setores.find((s: any, i: number) => i === c.setor_id) || '') // Simplified sector resolution
                     })),
 
                     units: sanitizedUnits,

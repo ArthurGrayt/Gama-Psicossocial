@@ -440,6 +440,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
 
             // 4. Update Units
             const currentUnits = formData.units || [];
+            const unitIdMap: Record<string | number, string | number> = {};
             console.log(`[SAVE] Updating ${currentUnits.length} Units. Roles calculated: ${roleIds.length}`);
 
             for (const unit of currentUnits) {
@@ -473,13 +474,21 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                 // Detailed log for unit persistence verification
                 console.log(`[SAVE UNIT] Payload for "${unit.name}" (Temp? ${isTempId}):`, unitPayload);
 
+                let dbUnitId = unit.id;
+
                 if (isTempId) {
-                    const { error: insertError } = await supabase.from('unidades').insert(unitPayload);
+                    const { data: newUnit, error: insertError } = await supabase
+                        .from('unidades')
+                        .insert(unitPayload)
+                        .select('id')
+                        .single();
+
                     if (insertError) {
                         console.error(`[ERROR] Inserting unit ${unit.name}:`, insertError);
                         alert(`Erro ao criar unidade ${unit.name}: ${insertError.message}`);
-                    } else {
-                        console.log(`[SUCCESS] Inserted unit: ${unit.name}`);
+                    } else if (newUnit) {
+                        console.log(`[SUCCESS] Inserted unit: ${unit.name} with ID: ${newUnit.id}`);
+                        dbUnitId = newUnit.id;
                     }
                 } else {
                     const { error: updateError } = await supabase.from('unidades').update(unitPayload).eq('id', unit.id);
@@ -490,10 +499,52 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                         console.log(`[SUCCESS] Updated unit: ${unit.name}`);
                     }
                 }
+
+                // Keep track of mapping for collaborators if needed
+                unitIdMap[unit.id] = dbUnitId;
             }
             console.log('[SAVE] Unit update sequence finished.');
 
             // 5. Sync Collaborators
+            const collaborators = formData.colaboradores || [];
+            console.log(`[SAVE] Syncing ${collaborators.length} collaborators...`);
+
+            for (const colab of collaborators) {
+                // Resolve IDs
+                const mappedUnitId = unitIdMap[colab.unidade_id] || colab.unidade_id;
+                const sectorId = sectorNameMap[colab.setor];
+                const cargoId = roleNameMap[`${colab.setor}_${colab.nome_cargo || colab.cargo}`]; // Support both names
+
+                const colabPayload = {
+                    nome: colab.nome,
+                    email: colab.email,
+                    telefone: colab.telefone,
+                    sexo: colab.sexo,
+                    data_nascimento: colab.dataNascimento || null, // Ensure null if empty
+                    unidade_id: mappedUnitId,
+                    setor_id: sectorId,
+                    cargo_id: cargoId
+                };
+
+                // Remove undefined or problematic values to avoid DB issues
+                Object.keys(colabPayload).forEach(key => {
+                    const val = (colabPayload as any)[key];
+                    if (val === undefined || (typeof val === 'string' && val.trim() === '' && key !== 'nome')) {
+                        delete (colabPayload as any)[key];
+                    }
+                });
+
+                const isTempColab = !colab.id || String(colab.id).length > 10; // Simple check for temp numeric ID
+
+                if (isTempColab) {
+                    const { error: colabErr } = await supabase.from('colaboradores').insert(colabPayload);
+                    if (colabErr) console.error(`[ERROR] Inserting collaborator ${colab.nome}:`, colabErr);
+                } else {
+                    const { error: colabErr } = await supabase.from('colaboradores').update(colabPayload).eq('id', colab.id);
+                    if (colabErr) console.error(`[ERROR] Updating collaborator ${colab.nome}:`, colabErr);
+                }
+            }
+
             await fetchCompanies();
             setInfoModalCompany(null);
             alert('Dados atualizados com sucesso!');
