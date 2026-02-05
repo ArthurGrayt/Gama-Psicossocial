@@ -1,5 +1,5 @@
 import React from 'react';
-import { Settings, LogOut, LayoutTemplate, LayoutDashboard, PlusCircle, Building } from 'lucide-react';
+import { Settings, LogOut, LayoutDashboard, PlusCircle, Building } from 'lucide-react';
 import { useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
