@@ -41,7 +41,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
     const [selectingFor, setSelectingFor] = useState<any>(null);
     const [selectedUnit, setSelectedUnit] = useState<any>(null);
 
-    const [sectorSearch, setSectorSearch] = useState('');
+
 
     // Info Modal State
     const [infoModalCompany, setInfoModalCompany] = useState<any>(null);
@@ -89,22 +89,89 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                     .select('*', { count: 'exact', head: true })
                     .in('unidade_id', (unitsData || []).map(u => u.id));
 
+                // Fetch Sector Names
+                // Aggregate sector IDs from Client and Units to ensure we have all names
+                // Match User Logic: Client -> Units -> Sectors -> Roles
+                // 1. Get Sector IDs from ALL units (ignoring client column per user request)
+                const unitSectorIds = (unitsData || []).flatMap(u => u.setores || []);
+                const allUniqueSectorIds = Array.from(new Set(unitSectorIds));
+
+                const sectorIdToNameMap: Record<number, string> = {};
+                let allSectors: { id: number, nome: string }[] = [];
+
+                if (allUniqueSectorIds.length > 0) {
+                    const { data: sectorsData } = await supabase
+                        .from('setor')
+                        .select('id, nome')
+                        .in('id', allUniqueSectorIds);
+
+                    if (sectorsData) {
+                        console.log('Dados de Setores Buscados (Via Unidades):', sectorsData);
+                        allSectors = sectorsData;
+                        sectorsData.forEach((s: any) => {
+                            sectorIdToNameMap[s.id] = s.nome;
+                        });
+                    }
+                }
+
+                // 2. Fetch Roles based on 'cargos' column in 'unidades' table (User Request)
+                let allRoles: { id: number, nome: string, setor_id: number, setor_name: string }[] = [];
+
+                // Collect all role IDs from all units
+                // We use 'u.cargos' assuming the column exists on the 'unidades' table as requested
+                const unitRoleIds = (unitsData || []).flatMap(u => u.cargos || []);
+                const allUniqueRoleIds = Array.from(new Set(unitRoleIds));
+                console.log('IDs de Cargos coletados das Unidades:', allUniqueRoleIds);
+
+                if (allUniqueRoleIds.length > 0) {
+                    const { data: rolesData, error: rolesError } = await supabase
+                        .from('cargos')
+                        .select('id, nome, setor_id')
+                        .in('id', allUniqueRoleIds); // Fetch by Role ID from units
+
+                    if (rolesError) {
+                        console.error('Erro ao buscar cargos das unidades:', rolesError);
+                    } else if (rolesData) {
+                        console.log('Dados de Cargos Buscados (Via Unidades.cargos):', rolesData);
+                        allRoles = rolesData.map((r: any) => ({
+                            id: r.id,
+                            nome: r.nome,
+                            setor_id: r.setor_id,
+                            setor_name: sectorIdToNameMap[r.setor_id] || 'Geral'
+                        }));
+                    }
+                } else {
+                    console.log('Nenhum ID de cargo encontrado nas unidades (coluna cargos vazia).');
+                }
+
+                // 3. Construct Unit Objects with their specific data
+                const mappedUnits = (unitsData || []).map(u => {
+                    const uSectorIds = u.setores || [];
+                    const uSectorNames = uSectorIds.map((id: number) => sectorIdToNameMap[id]).filter(Boolean);
+
+                    return {
+                        id: u.id,
+                        name: u.nome_unidade || u.nome,
+                        sectors: uSectorNames,
+                        sectorIds: uSectorIds
+                    };
+                });
+
                 // Map to existing UI structure
                 return {
                     id: client.id,
                     cliente_uuid: client.cliente_uuid,
-                    setores: client.setores || [],
+                    // Unique sector names for the card display
+                    setores: Array.from(new Set(allSectors.map(s => s.nome))),
                     name: client.nome_fantasia || client.razao_social,
                     cnpj: client.cnpj,
                     total_collaborators: colabCount || 0,
-                    units: (unitsData || []).map(u => ({
-                        id: u.id,
-                        name: u.nome_unidade || u.nome,
-                        sectors: [] // We could fetch these if needed for specific logic
-                    })),
-                    // For now using mock/empty for roles as it's not in the main card view
-                    roles: []
+                    units: mappedUnits,
+                    roles: allRoles.map(r => r.nome), // Compatibility
+                    cargos: allRoles.map(r => ({ nome: r.nome, setor: r.setor_name })) // Detailed roles for Modal
                 };
+
+
             }));
 
             setCompanies(companiesWithDetails);
@@ -130,7 +197,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
         if (company.units.length === 1) {
             setSelectedUnit(company.units[0]);
         }
-        setSectorSearch('');
+
     };
 
     const handleFinishSelection = (company: any, unit: any, sector: string) => {
@@ -207,6 +274,176 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
     };
 
 
+
+    const handleUpdateCompany = async (formData: any) => {
+        setIsLoading(true);
+        try {
+            console.log('Updating company with data:', formData);
+            const companyId = formData.id || infoModalCompany?.id;
+
+            if (!companyId) {
+                console.error('Company ID missing for update');
+                return;
+            }
+
+            // 1. Update Basic Info
+            const { error: companyError } = await supabase
+                .from('clientes')
+                .update({
+                    nome_fantasia: formData.nomeFantasia,
+                    razao_social: formData.razaoSocial,
+                    cnpj: formData.cnpj,
+                    email: formData.email,
+                    telefone: formData.telefone,
+                    responsavel: formData.responsavel,
+                    // If address is editable in modal, update it too
+                    endereco: JSON.stringify({
+                        cep: formData.cep,
+                        rua: formData.rua,
+                        bairro: formData.bairro,
+                        cidade: formData.cidade,
+                        uf: formData.uf
+                    })
+                })
+                .eq('id', companyId);
+
+            if (companyError) throw companyError;
+
+            // 2. Sync Sectors
+            const sectorIds: number[] = [];
+            const sectorNameMap: Record<string, number> = {};
+
+            if (formData.setores && formData.setores.length > 0) {
+                for (const sectorName of formData.setores) {
+                    // Try to find existing first
+                    const { data: existingSector } = await supabase
+                        .from('setor')
+                        .select('id')
+                        .eq('nome', sectorName)
+                        .single();
+
+                    if (existingSector) {
+                        sectorIds.push(existingSector.id);
+                        sectorNameMap[sectorName] = existingSector.id;
+                    } else {
+                        // Create new
+                        const { data: newSector, error: sectorError } = await supabase
+                            .from('setor')
+                            .insert({ nome: sectorName })
+                            .select()
+                            .single();
+
+                        if (sectorError) {
+                            console.error(`Error creating sector ${sectorName}:`, sectorError);
+                        } else if (newSector) {
+                            sectorIds.push(newSector.id);
+                            sectorNameMap[sectorName] = newSector.id;
+                        }
+                    }
+                }
+
+                // Update company sectors
+                if (sectorIds.length > 0) {
+                    await supabase
+                        .from('clientes')
+                        .update({ setores: sectorIds })
+                        .eq('id', companyId);
+                }
+            }
+
+            // 3. Sync Roles
+            const roleIds: number[] = [];
+
+            // First, get currently linked roles to potentially merge or replace
+            // For simplicity, we'll try to resolve all roles in formData
+            if (formData.cargos && formData.cargos.length > 0) {
+                const roleNameMap: Record<string, number> = {};
+
+                for (const role of formData.cargos) {
+                    const sectorId = sectorNameMap[role.setor];
+                    if (!sectorId) continue; // Skip if sector not resolved
+
+                    // Try check if role exists in that sector
+                    const { data: existingRole } = await supabase
+                        .from('cargos')
+                        .select('id')
+                        .eq('nome', role.nome)
+                        .eq('setor_id', sectorId)
+                        .single();
+
+                    if (existingRole) {
+                        roleIds.push(existingRole.id);
+                        roleNameMap[`${role.setor}_${role.nome}`] = existingRole.id;
+                    } else {
+                        // Create
+                        const { data: newRole, error: roleError } = await supabase
+                            .from('cargos')
+                            .insert({ nome: role.nome, setor_id: sectorId })
+                            .select()
+                            .single();
+
+                        if (roleError) {
+                            console.error('Error creating role:', roleError);
+                        } else if (newRole) {
+                            roleIds.push(newRole.id);
+                            roleNameMap[`${role.setor}_${role.nome}`] = newRole.id;
+                        }
+                    }
+                }
+
+                if (roleIds.length > 0) {
+                    await supabase
+                        .from('clientes')
+                        .update({ cargos: roleIds })
+                        .eq('id', companyId);
+                }
+            }
+
+            // 4. Update Units
+            // Strategy: Upsert units. 
+            // NOTE: We rely on the modal preserving IDs for existing units. 
+            // New units will have a timestamp-based ID (large number) or null.
+            // Supabase 'unidades' likely has an auto-inc ID. If we send a large fake ID, it might fail if we try to upsert with it.
+            // So we should check if ID is "real" (exists in DB) or "temp".
+            // A simple check is: if it's in the initial list, it's real. But easier: just check if it matches DB pattern? 
+            // Actually, we can fetch units first, or just insert new ones without ID and update existing ones.
+
+            const currentUnits = formData.units || [];
+
+            for (const unit of currentUnits) {
+                const isTempId = unit.id > 2000000000000; // Rough check for Date.now() timestamp
+
+                const unitPayload = {
+                    nome: unit.name,
+                    empresa_mae: infoModalCompany.cliente_uuid, // Use UUID for linking
+                    setores: sectorIds // Link updated sectors to units
+                };
+
+                if (isTempId) {
+                    // Create new
+                    await supabase.from('unidades').insert(unitPayload);
+                } else {
+                    // Update existing
+                    await supabase.from('unidades').update(unitPayload).eq('id', unit.id);
+                }
+            }
+
+            // 5. Sync Collaborators
+            // Note: This is complex because we need to map roles/sectors again.
+            // We'll require a refetch to implement this fully safely, or use the maps we built.
+            // For now, let's refresh the data
+
+            await fetchCompanies();
+            setInfoModalCompany(null);
+            alert('Dados atualizados com sucesso!');
+
+        } catch (error) {
+            console.error('Error updating company:', error);
+            alert('Erro ao atualizar dados. Verifique o console.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
@@ -536,10 +773,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
             <CompanyRegistrationModal
                 isOpen={!!infoModalCompany}
                 onClose={() => setInfoModalCompany(null)}
-                onSave={(data) => {
-                    console.log('Saved data:', data);
-                    setInfoModalCompany(null);
-                }}
+                onSave={handleUpdateCompany}
                 initialData={infoModalCompany}
             />
 
