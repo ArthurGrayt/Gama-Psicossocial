@@ -84,11 +84,21 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                     .select('*')
                     .eq('empresa_mae', client.cliente_uuid);
 
-                // Fetch Collaborator Count for this client
-                const { count: colabCount } = await supabase
+                // Fetch Unit IDs for this client
+                const unitIds = (unitsData || []).map(u => u.id);
+
+                // Fetch Actual Collaborators Data (for Modal)
+                const { data: colaboradoresData, error: colabError } = await supabase
                     .from('colaboradores')
-                    .select('*', { count: 'exact', head: true })
-                    .in('unidade_id', (unitsData || []).map(u => u.id));
+                    .select('*')
+                    .in('unidade_id', unitIds);
+
+                if (colabError) {
+                    console.error('Error fetching collaborators:', colabError);
+                }
+
+                // Count for the card
+                const colabCount = colaboradoresData?.length || 0;
 
                 // Fetch Sector Names
                 // Aggregate sector IDs from Client and Units to ensure we have all names
@@ -101,7 +111,6 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                 let allRolesRaw: any[] = [];
                 const unitRoleIds = (unitsData || []).flatMap(u => u.cargos || []);
                 const allUniqueRoleIds = Array.from(new Set(unitRoleIds));
-                console.log('IDs de Cargos coletados das Unidades:', allUniqueRoleIds);
 
                 if (allUniqueRoleIds.length > 0) {
                     const { data: rolesData, error: rolesError } = await supabase
@@ -112,11 +121,8 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                     if (rolesError) {
                         console.error('Erro ao buscar cargos das unidades:', rolesError);
                     } else if (rolesData) {
-                        console.log('Dados de Cargos Buscados (Via Unidades.cargos):', rolesData);
                         allRolesRaw = rolesData;
                     }
-                } else {
-                    console.log('Nenhum ID de cargo encontrado nas unidades (coluna cargos vazia).');
                 }
 
                 // 2. Identify ALL Sector IDs (from Units + Roles)
@@ -137,13 +143,14 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                         .in('id', allUniqueSectorIds);
 
                     if (sectorsData) {
-                        console.log('Dados de Setores Buscados (Via Unidades + Cargos):', sectorsData);
                         allSectors = sectorsData;
                         sectorsData.forEach((s: any) => {
                             sectorIdToNameMap[s.id] = s.nome;
                         });
                     }
                 }
+
+                console.log(`[LOAD] Client ${client.nome_fantasia || 'Unknown'}: Loaded ${allSectors.length} Sectors and ${allRolesRaw.length} Roles across ${unitsData?.length || 0} Units.`);
 
                 // 3. Map Roles with Sector Names
                 const allRoles = allRolesRaw.map((r: any) => ({
@@ -160,8 +167,8 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
 
                     // Implicit sectors derived from the roles linked to this unit
                     // Find all roles that belong to this unit (u.cargos contains role IDs)
-                    const unitRoleIds = u.cargos || [];
-                    const associatedRoles = allRoles.filter(r => unitRoleIds.includes(r.id));
+                    const unitRolesIds = u.cargos || [];
+                    const associatedRoles = allRoles.filter(r => unitRolesIds.includes(r.id));
                     const roleSectorIds = associatedRoles.map(r => r.setor_id).filter(Boolean);
 
                     // Combine unique sector IDs
@@ -174,7 +181,8 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                         id: u.id,
                         name: u.nome_unidade || u.nome,
                         sectors: uSectorNames,
-                        sectorIds: allUnitSectorIds // Use the combined list
+                        sectorIds: allUnitSectorIds, // Use the combined list
+                        roles: associatedRoles // Include roles for this unit
                     };
                 });
 
@@ -189,7 +197,8 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                     total_collaborators: colabCount || 0,
                     units: mappedUnits,
                     roles: allRoles.map(r => r.nome), // Compatibility
-                    cargos: allRoles.map(r => ({ nome: r.nome, setor: r.setor_name })) // Detailed roles for Modal
+                    cargos: allRoles.map(r => ({ nome: r.nome, setor: r.setor_name })), // Detailed roles for Modal
+                    collaborators: colaboradoresData || [] // Pass full list to Modal
                 };
 
 
@@ -296,6 +305,8 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
 
 
 
+    const normalizeText = (text: string) => text.trim().toLowerCase();
+
     const handleUpdateCompany = async (formData: any) => {
         setIsLoading(true);
         try {
@@ -372,14 +383,15 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                         .update({ setores: sectorIds })
                         .eq('id', companyId);
                 }
+                console.log(`[SAVE] Synced ${sectorIds.length} sectors for company.`);
             }
 
             // 3. Sync Roles
             const roleIds: number[] = [];
+            const roleNameMap: Record<string, number> = {};
 
             // First, get currently linked roles to potentially merge or replace
             if (formData.cargos && formData.cargos.length > 0) {
-                const roleNameMap: Record<string, number> = {};
 
                 for (const role of formData.cargos) {
                     const sectorId = sectorNameMap[role.setor];
@@ -413,8 +425,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                     }
                 }
             }
-
-            console.log('Role IDs resolved:', roleIds);
+            console.log(`[SAVE] Resolved/Synced ${roleIds.length} roles.`);
 
             // REMOVED: Updating clientes.cargos (User requested focus on Unidades table)
             // This was causing the 400 Bad Request if the column didn't exist or type mismatch on clientes
@@ -429,40 +440,58 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
 
             // 4. Update Units
             const currentUnits = formData.units || [];
-            console.log('--- STARTING UNIT UPDATE ---');
-            console.log('Units to update:', currentUnits.length);
-            console.log('Role IDs to save:', roleIds);
-            console.log('Sector IDs to save:', sectorIds);
+            console.log(`[SAVE] Updating ${currentUnits.length} Units. Roles calculated: ${roleIds.length}`);
 
             for (const unit of currentUnits) {
-                const isTempId = unit.id > 2000000000000;
+                // Fix: Threshold was too high (2T). Date.now() is ~1.73T. Lowered to 1T.
+                const isTempId = unit.id > 1000000000000;
+                const parentCompanyUuid = infoModalCompany?.cliente_uuid || formData.cliente_uuid;
+
+                if (!parentCompanyUuid && isTempId) {
+                    console.error('[ERROR] Missing Parent Company UUID for new unit:', unit.name);
+                    alert(`Erro: Empresa mãe não identificada para unidade ${unit.name}`);
+                    continue;
+                }
+
+                // CRITICAL FIX: Resolve IDs strictly for this unit's sectors and roles
+                const unitSectorIds = (unit.sectors || [])
+                    .map((s: string) => sectorNameMap[s])
+                    .filter(Boolean);
+
+                const unitRoleIds = (formData.cargos || [])
+                    .filter((cargo: any) => unit.sectors.some((us: string) => normalizeText(us) === normalizeText(cargo.setor)))
+                    .map((cargo: any) => roleNameMap[`${cargo.setor}_${cargo.nome}`])
+                    .filter(Boolean);
 
                 const unitPayload = {
                     nome: unit.name,
-                    empresa_mae: infoModalCompany.cliente_uuid,
-                    setores: sectorIds,
-                    cargos: roleIds // Fix: Saving roles to the unit as requested
+                    empresa_mae: parentCompanyUuid,
+                    setores: unitSectorIds,
+                    cargos: unitRoleIds
                 };
 
-                console.log(`Payload for Unit "${unit.name}":`, unitPayload);
+                // Detailed log for unit persistence verification
+                console.log(`[SAVE UNIT] Payload for "${unit.name}" (Temp? ${isTempId}):`, unitPayload);
 
                 if (isTempId) {
-                    console.log(`Inserting NEW unit: ${unit.name}`);
                     const { error: insertError } = await supabase.from('unidades').insert(unitPayload);
                     if (insertError) {
-                        console.error('Error inserting unit:', insertError);
+                        console.error(`[ERROR] Inserting unit ${unit.name}:`, insertError);
                         alert(`Erro ao criar unidade ${unit.name}: ${insertError.message}`);
+                    } else {
+                        console.log(`[SUCCESS] Inserted unit: ${unit.name}`);
                     }
                 } else {
-                    console.log(`Updating EXISTING unit: ${unit.name} (ID: ${unit.id})`);
                     const { error: updateError } = await supabase.from('unidades').update(unitPayload).eq('id', unit.id);
                     if (updateError) {
-                        console.error('Error updating unit:', updateError);
+                        console.error(`[ERROR] Updating unit ${unit.name}:`, updateError);
                         alert(`Erro ao atualizar unidade ${unit.name}: ${updateError.message}`);
+                    } else {
+                        console.log(`[SUCCESS] Updated unit: ${unit.name}`);
                     }
                 }
             }
-            console.log('--- FINISHED UNIT UPDATE ---');
+            console.log('[SAVE] Unit update sequence finished.');
 
             // 5. Sync Collaborators
             await fetchCompanies();
