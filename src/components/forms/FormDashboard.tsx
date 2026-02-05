@@ -40,6 +40,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
     // Selection Modal State
     const [selectingFor, setSelectingFor] = useState<any>(null);
     const [selectedUnit, setSelectedUnit] = useState<any>(null);
+    const [sectorSearch, setSectorSearch] = useState('');
 
 
 
@@ -92,9 +93,39 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                 // Fetch Sector Names
                 // Aggregate sector IDs from Client and Units to ensure we have all names
                 // Match User Logic: Client -> Units -> Sectors -> Roles
-                // 1. Get Sector IDs from ALL units (ignoring client column per user request)
-                const unitSectorIds = (unitsData || []).flatMap(u => u.setores || []);
-                const allUniqueSectorIds = Array.from(new Set(unitSectorIds));
+                // Match User Logic: Client -> Units -> Roles -> Sectors
+                // STRATEGY CHANGE: Fetch Roles FIRST to find which sectors are actually used by them,
+                // then combine with unit.setores to get a COMPLETE list of sectors to fetch.
+
+                // 1. Fetch Roles based on 'cargos' column in 'unidades' table
+                let allRolesRaw: any[] = [];
+                const unitRoleIds = (unitsData || []).flatMap(u => u.cargos || []);
+                const allUniqueRoleIds = Array.from(new Set(unitRoleIds));
+                console.log('IDs de Cargos coletados das Unidades:', allUniqueRoleIds);
+
+                if (allUniqueRoleIds.length > 0) {
+                    const { data: rolesData, error: rolesError } = await supabase
+                        .from('cargos')
+                        .select('id, nome, setor_id')
+                        .in('id', allUniqueRoleIds);
+
+                    if (rolesError) {
+                        console.error('Erro ao buscar cargos das unidades:', rolesError);
+                    } else if (rolesData) {
+                        console.log('Dados de Cargos Buscados (Via Unidades.cargos):', rolesData);
+                        allRolesRaw = rolesData;
+                    }
+                } else {
+                    console.log('Nenhum ID de cargo encontrado nas unidades (coluna cargos vazia).');
+                }
+
+                // 2. Identify ALL Sector IDs (from Units + Roles)
+                // Some units might list sectors explicitly in 'setores' column
+                // But roles also point to sectors via 'setor_id'
+                const unitProvidedSectorIds = (unitsData || []).flatMap(u => u.setores || []);
+                const roleReferencedSectorIds = allRolesRaw.map(r => r.setor_id).filter(Boolean);
+
+                const allUniqueSectorIds = Array.from(new Set([...unitProvidedSectorIds, ...roleReferencedSectorIds]));
 
                 const sectorIdToNameMap: Record<number, string> = {};
                 let allSectors: { id: number, nome: string }[] = [];
@@ -106,7 +137,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                         .in('id', allUniqueSectorIds);
 
                     if (sectorsData) {
-                        console.log('Dados de Setores Buscados (Via Unidades):', sectorsData);
+                        console.log('Dados de Setores Buscados (Via Unidades + Cargos):', sectorsData);
                         allSectors = sectorsData;
                         sectorsData.forEach((s: any) => {
                             sectorIdToNameMap[s.id] = s.nome;
@@ -114,46 +145,36 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                     }
                 }
 
-                // 2. Fetch Roles based on 'cargos' column in 'unidades' table (User Request)
-                let allRoles: { id: number, nome: string, setor_id: number, setor_name: string }[] = [];
+                // 3. Map Roles with Sector Names
+                const allRoles = allRolesRaw.map((r: any) => ({
+                    id: r.id,
+                    nome: r.nome,
+                    setor_id: r.setor_id,
+                    setor_name: sectorIdToNameMap[r.setor_id] || 'Geral'
+                }));
 
-                // Collect all role IDs from all units
-                // We use 'u.cargos' assuming the column exists on the 'unidades' table as requested
-                const unitRoleIds = (unitsData || []).flatMap(u => u.cargos || []);
-                const allUniqueRoleIds = Array.from(new Set(unitRoleIds));
-                console.log('IDs de Cargos coletados das Unidades:', allUniqueRoleIds);
-
-                if (allUniqueRoleIds.length > 0) {
-                    const { data: rolesData, error: rolesError } = await supabase
-                        .from('cargos')
-                        .select('id, nome, setor_id')
-                        .in('id', allUniqueRoleIds); // Fetch by Role ID from units
-
-                    if (rolesError) {
-                        console.error('Erro ao buscar cargos das unidades:', rolesError);
-                    } else if (rolesData) {
-                        console.log('Dados de Cargos Buscados (Via Unidades.cargos):', rolesData);
-                        allRoles = rolesData.map((r: any) => ({
-                            id: r.id,
-                            nome: r.nome,
-                            setor_id: r.setor_id,
-                            setor_name: sectorIdToNameMap[r.setor_id] || 'Geral'
-                        }));
-                    }
-                } else {
-                    console.log('Nenhum ID de cargo encontrado nas unidades (coluna cargos vazia).');
-                }
-
-                // 3. Construct Unit Objects with their specific data
+                // 4. Construct Unit Objects with their specific data
                 const mappedUnits = (unitsData || []).map(u => {
-                    const uSectorIds = u.setores || [];
-                    const uSectorNames = uSectorIds.map((id: number) => sectorIdToNameMap[id]).filter(Boolean);
+                    // Explicit sectors linked to the unit
+                    const explicitSectorIds = u.setores || [];
+
+                    // Implicit sectors derived from the roles linked to this unit
+                    // Find all roles that belong to this unit (u.cargos contains role IDs)
+                    const unitRoleIds = u.cargos || [];
+                    const associatedRoles = allRoles.filter(r => unitRoleIds.includes(r.id));
+                    const roleSectorIds = associatedRoles.map(r => r.setor_id).filter(Boolean);
+
+                    // Combine unique sector IDs
+                    const allUnitSectorIds = Array.from(new Set([...explicitSectorIds, ...roleSectorIds]));
+
+                    // Map to names
+                    const uSectorNames = allUnitSectorIds.map((id: number) => sectorIdToNameMap[id]).filter(Boolean);
 
                     return {
                         id: u.id,
                         name: u.nome_unidade || u.nome,
                         sectors: uSectorNames,
-                        sectorIds: uSectorIds
+                        sectorIds: allUnitSectorIds // Use the combined list
                     };
                 });
 
@@ -287,6 +308,8 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
             }
 
             // 1. Update Basic Info
+            // Fix: Pass object directly to avoid double serialization if Supabase handles it, 
+            // or ensure it matches the column type (jsonb).
             const { error: companyError } = await supabase
                 .from('clientes')
                 .update({
@@ -296,14 +319,14 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                     email: formData.email,
                     telefone: formData.telefone,
                     responsavel: formData.responsavel,
-                    // If address is editable in modal, update it too
-                    endereco: JSON.stringify({
+                    // Fix: Supabase JS client automatically handles JSON objects for jsonb columns
+                    endereco: {
                         cep: formData.cep,
                         rua: formData.rua,
                         bairro: formData.bairro,
                         cidade: formData.cidade,
                         uf: formData.uf
-                    })
+                    }
                 })
                 .eq('id', companyId);
 
@@ -320,7 +343,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                         .from('setor')
                         .select('id')
                         .eq('nome', sectorName)
-                        .single();
+                        .maybeSingle(); // Fix: Use maybeSingle to avoid 406
 
                     if (existingSector) {
                         sectorIds.push(existingSector.id);
@@ -355,7 +378,6 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
             const roleIds: number[] = [];
 
             // First, get currently linked roles to potentially merge or replace
-            // For simplicity, we'll try to resolve all roles in formData
             if (formData.cargos && formData.cargos.length > 0) {
                 const roleNameMap: Record<string, number> = {};
 
@@ -369,7 +391,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                         .select('id')
                         .eq('nome', role.nome)
                         .eq('setor_id', sectorId)
-                        .single();
+                        .maybeSingle(); // Fix: Use maybeSingle
 
                     if (existingRole) {
                         roleIds.push(existingRole.id);
@@ -390,49 +412,59 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                         }
                     }
                 }
-
-                if (roleIds.length > 0) {
-                    await supabase
-                        .from('clientes')
-                        .update({ cargos: roleIds })
-                        .eq('id', companyId);
-                }
             }
 
-            // 4. Update Units
-            // Strategy: Upsert units. 
-            // NOTE: We rely on the modal preserving IDs for existing units. 
-            // New units will have a timestamp-based ID (large number) or null.
-            // Supabase 'unidades' likely has an auto-inc ID. If we send a large fake ID, it might fail if we try to upsert with it.
-            // So we should check if ID is "real" (exists in DB) or "temp".
-            // A simple check is: if it's in the initial list, it's real. But easier: just check if it matches DB pattern? 
-            // Actually, we can fetch units first, or just insert new ones without ID and update existing ones.
+            console.log('Role IDs resolved:', roleIds);
 
+            // REMOVED: Updating clientes.cargos (User requested focus on Unidades table)
+            // This was causing the 400 Bad Request if the column didn't exist or type mismatch on clientes
+            /*
+            if (roleIds.length > 0) {
+                 await supabase
+                    .from('clientes')
+                    .update({ cargos: roleIds })
+                    .eq('id', companyId);
+            }
+            */
+
+            // 4. Update Units
             const currentUnits = formData.units || [];
+            console.log('--- STARTING UNIT UPDATE ---');
+            console.log('Units to update:', currentUnits.length);
+            console.log('Role IDs to save:', roleIds);
+            console.log('Sector IDs to save:', sectorIds);
 
             for (const unit of currentUnits) {
-                const isTempId = unit.id > 2000000000000; // Rough check for Date.now() timestamp
+                const isTempId = unit.id > 2000000000000;
 
                 const unitPayload = {
                     nome: unit.name,
-                    empresa_mae: infoModalCompany.cliente_uuid, // Use UUID for linking
-                    setores: sectorIds // Link updated sectors to units
+                    empresa_mae: infoModalCompany.cliente_uuid,
+                    setores: sectorIds,
+                    cargos: roleIds // Fix: Saving roles to the unit as requested
                 };
 
+                console.log(`Payload for Unit "${unit.name}":`, unitPayload);
+
                 if (isTempId) {
-                    // Create new
-                    await supabase.from('unidades').insert(unitPayload);
+                    console.log(`Inserting NEW unit: ${unit.name}`);
+                    const { error: insertError } = await supabase.from('unidades').insert(unitPayload);
+                    if (insertError) {
+                        console.error('Error inserting unit:', insertError);
+                        alert(`Erro ao criar unidade ${unit.name}: ${insertError.message}`);
+                    }
                 } else {
-                    // Update existing
-                    await supabase.from('unidades').update(unitPayload).eq('id', unit.id);
+                    console.log(`Updating EXISTING unit: ${unit.name} (ID: ${unit.id})`);
+                    const { error: updateError } = await supabase.from('unidades').update(unitPayload).eq('id', unit.id);
+                    if (updateError) {
+                        console.error('Error updating unit:', updateError);
+                        alert(`Erro ao atualizar unidade ${unit.name}: ${updateError.message}`);
+                    }
                 }
             }
+            console.log('--- FINISHED UNIT UPDATE ---');
 
             // 5. Sync Collaborators
-            // Note: This is complex because we need to map roles/sectors again.
-            // We'll require a refetch to implement this fully safely, or use the maps we built.
-            // For now, let's refresh the data
-
             await fetchCompanies();
             setInfoModalCompany(null);
             alert('Dados atualizados com sucesso!');

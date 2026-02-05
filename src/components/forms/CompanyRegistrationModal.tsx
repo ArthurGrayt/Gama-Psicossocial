@@ -57,15 +57,17 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                     ? Array.from(new Set(initialData.units.flatMap((u: any) => u.sectors || []))) as string[]
                     : (initialData.setores || []);
 
-                const roles = (Array.isArray(initialData.roles) ? initialData.roles : [])
-                    .flatMap((r: string) =>
+                // Priority: Use 'cargos' which already has sector mapping from FormDashboard
+                // Fallback: Use 'roles' string array and map to all sectors (Legacy/Fallback)
+                let finalRoles = initialData.cargos || [];
+
+                if (!finalRoles.length && initialData.roles && initialData.roles.length > 0) {
+                    finalRoles = initialData.roles.flatMap((r: string) =>
                         flatSectors.length > 0
                             ? flatSectors.map((s: string) => ({ nome: r, setor: s }))
                             : [{ nome: r, setor: 'Geral' }]
                     );
-
-                // Fallback if roles is empty, try cargos
-                const finalRoles = roles.length > 0 ? roles : (initialData.cargos || []);
+                }
 
                 setFormData({
                     nomeFantasia: initialData.nomeFantasia || initialData.name || '', // Handle both naming conventions
