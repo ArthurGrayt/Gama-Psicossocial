@@ -4,6 +4,7 @@ import { CompanyRegistrationModal } from './CompanyRegistrationModal';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
 
+// --- Form Dashboard: Main component for managing forms and companies ---
 interface FormDashboardProps {
     onCreateForm: (initialData?: any) => void;
     // We'll keep these for now but they might need renaming or logic change later
