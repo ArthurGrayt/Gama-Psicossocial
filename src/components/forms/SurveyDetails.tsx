@@ -33,6 +33,8 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('overview');
     const [selectedSector, setSelectedSector] = useState<string>('');
+    const [selectedUnit, setSelectedUnit] = useState<string>('');
+    const [units, setUnits] = useState<{ id: number, nome: string }[]>([]);
     const [selectedParticipant, setSelectedParticipant] = useState<any | null>(null);
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
@@ -43,49 +45,124 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
     const [totalResponses, setTotalResponses] = useState(0);
     const [recentResponses, setRecentResponses] = useState<any[]>([]);
 
-    useEffect(() => {
-        fetchInitialData();
-    }, [form.id]);
 
-    useEffect(() => {
-        fetchFilteredStats();
-    }, [selectedSector, sectors]);
+
+    const fetchSectors = async () => {
+        try {
+            let sectorIdsToFetch: number[] = [];
+
+            if (selectedUnit) {
+                // Fetch specific unit's sectors array
+                const { data: unitData } = await supabase
+                    .from('unidades')
+                    .select('setores')
+                    .eq('id', selectedUnit)
+                    .single();
+
+                if (unitData && unitData.setores) {
+                    sectorIdsToFetch = unitData.setores;
+                }
+            } else {
+                // Logic for "All Units" (Company View) or Single Form View
+                const isCompanyLevel = !(form as any).slug && (form as any).cliente_uuid;
+
+                if (isCompanyLevel) {
+                    // Fetch all sectors for the company's units
+                    const { data: companyUnits } = await supabase
+                        .from('unidades')
+                        .select('setores')
+                        .eq('empresa_mae', (form as any).cliente_uuid);
+
+                    if (companyUnits) {
+                        // Flatten all sectors from all units
+                        const allSectorIds = companyUnits.flatMap(u => u.setores || []);
+                        sectorIdsToFetch = Array.from(new Set(allSectorIds));
+                    }
+                } else {
+                    // Single Form/Unit View fallback
+                    let sectorIds: number[] = (form as any).setores || [];
+                    if (sectorIds.length === 0 && form.unidade_id) {
+                        // Fetch unit sectors
+                        const { data: unitData } = await supabase
+                            .from('unidades')
+                            .select('setores')
+                            .eq('id', form.unidade_id)
+                            .single();
+                        if (unitData && unitData.setores) {
+                            sectorIds = unitData.setores;
+                        }
+                    }
+                    sectorIdsToFetch = sectorIds;
+                }
+            }
+
+            if (sectorIdsToFetch.length > 0) {
+                const { data: sectorsData } = await supabase
+                    .from('setor')
+                    .select('id, nome')
+                    .in('id', sectorIdsToFetch);
+                setSectors(sectorsData || []);
+            } else {
+                setSectors([]);
+            }
+        } catch (error) {
+            console.error('Error fetching sectors:', error);
+        }
+    };
+
 
     const fetchInitialData = async () => {
         setLoading(true);
         try {
-            // 1. Fetch Sector Names
-            // If it's a company (form.setores exists) or if we need to fetch from unit
-            let sectorIds: number[] = (form as any).setores || [];
+            const isCompanyLevel = !(form as any).slug;
 
-            if (sectorIds.length === 0 && form.unidade_id) {
-                const { data: unitData } = await supabase
+            // 0. Fetch Units if Company Level
+            if (isCompanyLevel && (form as any).cliente_uuid) {
+                const { data: unitsData } = await supabase
                     .from('unidades')
-                    .select('setores')
-                    .eq('id', form.unidade_id)
-                    .single();
-                sectorIds = unitData?.setores || [];
+                    .select('id, nome')
+                    .eq('empresa_mae', (form as any).cliente_uuid);
+                setUnits(unitsData || []);
             }
 
-            if (sectorIds.length > 0) {
-                const { data: sectorsData } = await supabase
-                    .from('setores')
-                    .select('id, nome')
-                    .in('id', sectorIds);
-                setSectors(sectorsData || []);
-            }
+            // 1. Sectors are now handled by fetchSectors/useEffect
+            // triggers on mount because form.id triggers fetchSectors via dependency or we call it here?
+            // Actually useEffect [selectedUnit, form.id] will run on mount.
 
             // 2. Resolve Form IDs (if form.id is actually a company ID)
             let formIds: number[] = [];
             // Check if form object looks like a company (has cliente_uuid or name but is used in company context)
-            const isCompanyLevel = !(form as any).slug; // Forms usually have a slug
+
 
             if (isCompanyLevel) {
-                const { data: companyForms } = await supabase
-                    .from('forms')
+                // Since forms table doesn't have direct company link, we find forms via answers from company collaborators
+                const { data: companyUnits } = await supabase
+                    .from('unidades')
                     .select('id')
-                    .eq('empresa', form.id);
-                formIds = (companyForms || []).map(f => f.id);
+                    .eq('empresa_mae', (form as any).cliente_uuid);
+
+                const unitIds = (companyUnits || []).map(u => u.id);
+
+                if (unitIds.length > 0) {
+
+                    // Get all collaborators to find form answers
+                    const { data: collaborators } = await supabase
+                        .from('colaboradores')
+                        .select('id')
+                        .in('unidade_id', unitIds);
+
+                    const collaboratorIds = (collaborators || []).map((c: any) => c.id);
+
+                    if (collaboratorIds.length > 0) {
+                        const { data: answers } = await supabase
+                            .from('form_answers')
+                            .select('form_id')
+                            .in('respondedor', collaboratorIds);
+
+                        const uniqueFormIds = Array.from(new Set((answers || []).map(a => a.form_id)));
+                        formIds = uniqueFormIds;
+                    }
+                }
             } else {
                 formIds = [form.id];
             }
@@ -145,11 +222,25 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
             // 2. Resolve Form IDs
             let formIds: number[] = [];
             if (isCompanyLevel) {
-                const { data: companyForms } = await supabase
-                    .from('forms')
+                const { data: companyUnits } = await supabase
+                    .from('unidades')
                     .select('id')
-                    .eq('empresa', form.id);
-                formIds = (companyForms || []).map(f => f.id);
+                    .eq('empresa_mae', (form as any).cliente_uuid);
+                const unitIds = (companyUnits || []).map(u => u.id);
+                if (unitIds.length > 0) {
+                    const { data: collaborators } = await supabase
+                        .from('colaboradores')
+                        .select('id')
+                        .in('unidade_id', unitIds);
+                    const collaboratorIds = (collaborators || []).map(c => c.id);
+                    if (collaboratorIds.length > 0) {
+                        const { data: answers } = await supabase
+                            .from('form_answers')
+                            .select('form_id')
+                            .in('respondedor', collaboratorIds);
+                        formIds = Array.from(new Set((answers || []).map(a => a.form_id)));
+                    }
+                }
             } else {
                 formIds = [form.id];
             }
@@ -159,7 +250,9 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
                 .from('colaboradores')
                 .select('*', { count: 'exact', head: true });
 
-            if (isCompanyLevel) {
+            if (selectedUnit) {
+                colabQuery = colabQuery.eq('unidade_id', selectedUnit);
+            } else if (isCompanyLevel) {
                 // If company level, we need all collaborators of all units of this company
                 // Since FormDashboard already calculated total_collaborators, we can use it as base
                 // but for sector filtering we need a real query.
@@ -174,7 +267,20 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
             }
 
             if (sectorId) {
-                colabQuery = colabQuery.eq('setorid', sectorId);
+                // Pre-fetch roles for the sector to filter BOTH colabQuery and responseQuery
+                const { data: roles } = await supabase
+                    .from('cargos')
+                    .select('id')
+                    .eq('setor_id', sectorId);
+
+                const validRoleIds = (roles || []).map(r => r.id);
+
+                if (validRoleIds.length > 0) {
+                    colabQuery = colabQuery.in('cargo_id', validRoleIds);
+                } else {
+                    // Sector selected but no roles found? Force 0 results.
+                    colabQuery = colabQuery.in('cargo_id', [-1]);
+                }
             }
 
             const { count: colabCount } = await colabQuery;
@@ -192,7 +298,16 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
                 let filteredResps = respData || [];
 
                 if (sectorId) {
-                    // Filter responses by sector
+                    // Filter responses by sector using PRE-FETCHED roles
+                    // We need to fetch roles again if not already fetched? 
+                    // No, we can re-query or reuse if we scope variables correctly.
+                    // But here I'm replacing the block so I need to re-fetch if I didn't lift variable scope.
+                    // Actually, simpler to just re-fetch or duplicate logic inside this block? 
+                    // Wait, I can't easily share state between the two blocks unless I rewrite the WHOLE function.
+                    // FOR NOW: I will re-fetch inside the second block or rely on independent query essentially keeping it safe.
+                    // BUT for consisteny, the first block MODIFIES colabQuery.
+
+                    // Let's just use the same logic: query roles again. It's an extra request but safe.
                     const { data: rolesInSector } = await supabase
                         .from('cargos')
                         .select('id')
@@ -211,6 +326,18 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
             console.error('Error fetching stats:', error);
         }
     };
+
+    useEffect(() => {
+        fetchInitialData();
+    }, [form.id]);
+
+    useEffect(() => {
+        fetchSectors();
+    }, [selectedUnit, form.id]);
+
+    useEffect(() => {
+        fetchFilteredStats();
+    }, [selectedSector, selectedUnit, sectors]);
 
     // Custom shape function defined inside to access hoveredIndex
     const renderCustomPolarSector = (props: any) => {
@@ -285,12 +412,28 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
                             <h2 className="font-bold text-xl text-slate-800 tracking-tight">
                                 {form.title || (form as any).name || 'Detalhes do Levantamento'}
                             </h2>
-                            <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 border border-emerald-200">
-                                {!(form as any).slug ? 'Visão Empresa' : 'Levantamento'}
-                            </span>
                         </div>
                         {/* Sector Dropdown Replacement */}
-                        <div className="mt-1">
+                        <div className="mt-1 flex items-center gap-2">
+                            {/* Unit Dropdown (Only show if we have units) */}
+                            {units.length > 0 && (
+                                <select
+                                    value={selectedUnit}
+                                    onChange={(e) => {
+                                        setSelectedUnit(e.target.value);
+                                        setSelectedSector(''); // Reset sector when unit changes
+                                    }}
+                                    className="bg-slate-50 border-none text-sm text-slate-500 font-medium focus:ring-0 cursor-pointer hover:text-slate-700 py-0 pl-0 pr-8 transition-colors outline-none"
+                                >
+                                    <option value="">Todas as Unidades</option>
+                                    {units.map(unit => (
+                                        <option key={unit.id} value={unit.id}>{unit.nome}</option>
+                                    ))}
+                                </select>
+                            )}
+
+                            {units.length > 0 && <span className="text-slate-300">|</span>}
+
                             <select
                                 value={selectedSector}
                                 onChange={(e) => setSelectedSector(e.target.value)}
