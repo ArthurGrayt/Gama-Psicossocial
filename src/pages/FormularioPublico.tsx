@@ -862,7 +862,13 @@ const RegistrationModal = ({ isOpen, onClose, cpf, onSuccess }: RegistrationModa
 
         const { data, error } = await supabase
             .from('colaboradores')
-            .insert(newColab)
+            .insert({
+                ...newColab,
+                cod_categoria: 101, // Hardcoded as requested
+                texto_categoria: "Empregado - Geral, inclusive o empregado público da administração direta ou indireta contratado pela CLT",
+                data_desligamento: null,
+                telefone: null // Public form doesn't seem to collect phone?
+            })
             .select()
             .single();
 

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { DashboardLayout } from '../layouts/DashboardLayout';
 import { Building, Wallet, ChevronRight, CheckCircle, Clock, ArrowUpRight, Activity, Calendar, Info, Bell } from 'lucide-react';
 import { BarChart, Bar, XAxis, Tooltip as RechartsTooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { PlanSelectionModal } from '../components/modals/PlanSelectionModal';
+import { PaymentModal } from '../components/modals/PaymentModal';
 
 // Duplicated Mock Data for Dashboard Visualization
 const MOCK_COMPANIES = [
@@ -47,6 +49,16 @@ const MOCK_RISK_DATA = [
 
 export const DashboardPage: React.FC = () => {
     const [activeFilter, setActiveFilter] = useState<'semanal' | 'quinzenal' | 'mensal'>('mensal');
+    const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
+    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+    const [selectedPackage, setSelectedPackage] = useState<{ id: string; name: string; tokens: number; price: string } | null>(null);
+
+    const handlePlanSelect = (pkg: { id: string; name: string; tokens: number; price: string }) => {
+        console.log('Pacote selecionado:', pkg);
+        setSelectedPackage(pkg);
+        setIsPlanModalOpen(false);
+        setIsPaymentModalOpen(true);
+    };
 
     // Filtered Mock Data
     const CHART_DATA = {
@@ -168,7 +180,9 @@ export const DashboardPage: React.FC = () => {
                                 </div>
                             </div>
 
-                            <button className="bg-white hover:bg-[#35b6cf]/10 text-[#35b6cf] border border-[#35b6cf]/20 px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 w-fit mt-3 shadow-sm">
+                            <button
+                                onClick={() => setIsPlanModalOpen(true)}
+                                className="bg-white hover:bg-[#35b6cf]/10 text-[#35b6cf] border border-[#35b6cf]/20 px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 w-fit mt-3 shadow-sm">
                                 Recarregar
                                 <ChevronRight size={12} />
                             </button>
@@ -329,6 +343,17 @@ export const DashboardPage: React.FC = () => {
                     </div>
                 </div>
             </div>
-        </DashboardLayout >
+            <PlanSelectionModal
+                isOpen={isPlanModalOpen}
+                onClose={() => setIsPlanModalOpen(false)}
+                onSelect={handlePlanSelect}
+            />
+
+            <PaymentModal
+                isOpen={isPaymentModalOpen}
+                onClose={() => setIsPaymentModalOpen(false)}
+                selectedPackage={selectedPackage}
+            />
+        </DashboardLayout>
     );
 };

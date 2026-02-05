@@ -523,7 +523,11 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                     data_nascimento: colab.dataNascimento || null, // Ensure null if empty
                     unidade_id: mappedUnitId,
                     setor_id: sectorId,
-                    cargo_id: cargoId
+                    cargo_id: cargoId,
+                    cpf: colab.cpf || null,
+                    data_desligamento: colab.dataDesligamento || null,
+                    cod_categoria: 101,
+                    texto_categoria: "Empregado - Geral, inclusive o empregado público da administração direta ou indireta contratado pela CLT"
                 };
 
                 // Remove undefined or problematic values to avoid DB issues

@@ -52,7 +52,8 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
         setores: [] as string[],
         cargos: [] as { nome: string; setor: string }[],
         // Lista que guarda todos os funcionários (colaboradores)
-        colaboradores: [] as { nome: string; email: string; telefone: string; cargo: string; setor: string; dataNascimento: string; sexo: string; unidade_id?: number | string }[],
+        colaboradores: [] as { nome: string; email: string; telefone: string; cargo: string; setor: string; dataNascimento: string; sexo: string; unidade_id?: number | string; cpf?: string; dataDesligamento?: string | null }[],
+
 
         // Lista de unidades/filiais da empresa (começa com uma chamada 'Matriz')
         units: [{ id: Date.now(), name: 'Matriz', sectors: [] }] as { id: number | string; name: string; sectors: string[] }[],
@@ -331,7 +332,10 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
         setor: '',
         cargo: '',
         dataNascimento: '',
-        sexo: ''
+        sexo: '',
+        cpf: '',
+        dataDesligamento: '',
+        codCategoria: '' as number | string
     });
 
     // Guarda os dados do formulário de 'Novo Funcionário'
@@ -342,7 +346,10 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
         setor: '',
         cargo: '',
         dataNascimento: '',
-        sexo: ''
+        sexo: '',
+        cpf: '',
+        dataDesligamento: '',
+        codCategoria: '' as number | string
     });
 
     // Função que atualiza os campos do formulário de NOVO funcionário conforme o usuário digita
@@ -382,7 +389,7 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
         setFormData(prev => {
             const updated = [...prev.colaboradores];
             // Substitui os dados antigos pelos novos dados do formulário de edição
-            updated[editingCollaboratorIndex] = { ...editCollaboratorForm };
+            updated[editingCollaboratorIndex] = { ...editCollaboratorForm, dataDesligamento: editCollaboratorForm.dataDesligamento || null };
             return { ...prev, colaboradores: updated };
         });
         setIsEditModalOpen(false); // Fecha o modal
@@ -404,6 +411,7 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
             ...prev,
             colaboradores: [...prev.colaboradores, {
                 ...collaboratorForm,
+                dataDesligamento: collaboratorForm.dataDesligamento || null,
                 // Vincula o funcionário à unidade que está selecionada no momento
                 unidade_id: prev.selectedUnitId || undefined
             }]
@@ -416,7 +424,10 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
             setor: '',
             cargo: '',
             dataNascimento: '',
-            sexo: ''
+            sexo: '',
+            cpf: '',
+            dataDesligamento: '',
+            codCategoria: ''
         });
     };
 
@@ -1117,72 +1128,107 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                                     {/* Formulário de Cadastro do Colaborador (Aparece ao clicar em 'Novo Colaborador') */}
                                     {isAddingCollaborator && (
                                         <div className="px-6 pb-6 animate-in slide-in-from-top-2 duration-200">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                {/* Campos básicos: Nome e Email */}
-                                                <input
-                                                    type="text"
-                                                    name="nome"
-                                                    value={collaboratorForm.nome}
-                                                    onChange={handleCollaboratorChange}
-                                                    placeholder="Nome completo"
-                                                    className="px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none"
-                                                />
-                                                <input
-                                                    type="email"
-                                                    name="email"
-                                                    value={collaboratorForm.email}
-                                                    onChange={handleCollaboratorChange}
-                                                    placeholder="Email corporativo"
-                                                    className="px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none"
-                                                />
-                                                {/* Detalhes: Nascimento e Sexo */}
-                                                <div className="grid grid-cols-2 gap-4">
+                                            <div className="grid grid-cols-12 gap-4 items-start">
+                                                <div className="col-span-12 md:col-span-6">
+                                                    <input
+                                                        type="text"
+                                                        name="nome"
+                                                        value={collaboratorForm.nome}
+                                                        onChange={handleCollaboratorChange}
+                                                        placeholder="Nome completo"
+                                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none"
+                                                    />
+                                                </div>
+                                                <div className="col-span-12 md:col-span-6">
+                                                    <input
+                                                        type="email"
+                                                        name="email"
+                                                        value={collaboratorForm.email}
+                                                        onChange={handleCollaboratorChange}
+                                                        placeholder="Email corporativo"
+                                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none"
+                                                    />
+                                                </div>
+
+                                                <div className="col-span-6 md:col-span-3 space-y-1">
+                                                    <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">CPF</label>
+                                                    <input
+                                                        type="text"
+                                                        name="cpf"
+                                                        value={collaboratorForm.cpf}
+                                                        onChange={handleCollaboratorChange}
+                                                        placeholder="CPF"
+                                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none"
+                                                    />
+                                                </div>
+                                                <div className="col-span-6 md:col-span-3 space-y-1">
+                                                    <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Telefone</label>
+                                                    <input
+                                                        type="tel"
+                                                        name="telefone"
+                                                        value={collaboratorForm.telefone}
+                                                        onChange={handleCollaboratorChange}
+                                                        placeholder="Telefone"
+                                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none"
+                                                    />
+                                                </div>
+                                                <div className="col-span-6 md:col-span-3 space-y-1">
+                                                    <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Nascimento</label>
                                                     <input
                                                         type="date"
                                                         name="dataNascimento"
                                                         value={collaboratorForm.dataNascimento}
                                                         onChange={handleCollaboratorChange}
-                                                        className="px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none text-slate-600"
+                                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none text-slate-600"
                                                     />
+                                                </div>
+                                                <div className="col-span-6 md:col-span-3 space-y-1">
+                                                    <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Sexo</label>
                                                     <select
                                                         name="sexo"
                                                         value={collaboratorForm.sexo}
                                                         onChange={handleCollaboratorChange}
-                                                        className="px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none bg-white text-slate-600"
+                                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none bg-white text-slate-600"
                                                     >
-                                                        <option value="" disabled>Sexo</option>
+                                                        <option value="" disabled>Selecione</option>
                                                         <option value="Masculino">Masculino</option>
                                                         <option value="Feminino">Feminino</option>
                                                         <option value="Outro">Outro</option>
                                                     </select>
                                                 </div>
-                                                <input
-                                                    type="tel"
-                                                    name="telefone"
-                                                    value={collaboratorForm.telefone}
-                                                    onChange={handleCollaboratorChange}
-                                                    placeholder="Telefone / WhatsApp"
-                                                    className="px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none"
-                                                />
-                                                {/* Seleção Hierárquica: Setor e depois Cargo (apenas cargos do setor aparecem) */}
-                                                <div className="grid grid-cols-2 gap-2">
+
+                                                <div className="col-span-12 md:col-span-4 space-y-1">
+                                                    <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Data Desligamento</label>
+                                                    <input
+                                                        type="date"
+                                                        name="dataDesligamento"
+                                                        value={collaboratorForm.dataDesligamento}
+                                                        onChange={handleCollaboratorChange}
+                                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none text-slate-600"
+                                                    />
+                                                </div>
+                                                <div className="col-span-12 md:col-span-4 space-y-1">
+                                                    <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Setor</label>
                                                     <select
                                                         name="setor"
                                                         value={collaboratorForm.setor}
                                                         onChange={handleCollaboratorChange}
-                                                        className="px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none bg-white text-slate-600"
+                                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none bg-white text-slate-600"
                                                     >
-                                                        <option value="" disabled>Setor</option>
+                                                        <option value="" disabled>Selecione</option>
                                                         {filteredSectors.map((s, i) => <option key={i} value={s}>{s}</option>)}
                                                     </select>
+                                                </div>
+                                                <div className="col-span-12 md:col-span-4 space-y-1">
+                                                    <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Cargo</label>
                                                     <select
                                                         name="cargo"
                                                         value={collaboratorForm.cargo}
                                                         onChange={handleCollaboratorChange}
                                                         disabled={!collaboratorForm.setor}
-                                                        className="px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none bg-white text-slate-600 disabled:bg-slate-100 disabled:opacity-70"
+                                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none bg-white text-slate-600 disabled:bg-slate-100 disabled:opacity-70"
                                                     >
-                                                        <option value="" disabled>Cargo</option>
+                                                        <option value="" disabled>Selecione</option>
                                                         {formData.cargos
                                                             .filter(c => normalizeText(c.setor) === normalizeText(collaboratorForm.setor))
                                                             .map((c, i) => <option key={i} value={c.nome}>{c.nome}</option>)}
@@ -1471,8 +1517,8 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                             </div>
 
                             <div className="p-6 space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-1.5">
+                                <div className="grid grid-cols-12 gap-4 items-start">
+                                    <div className="col-span-12 md:col-span-6 space-y-1.5">
                                         <label className="text-xs font-bold text-slate-500 uppercase">Nome</label>
                                         <input
                                             type="text"
@@ -1482,7 +1528,7 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                                             className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none"
                                         />
                                     </div>
-                                    <div className="space-y-1.5">
+                                    <div className="col-span-12 md:col-span-6 space-y-1.5">
                                         <label className="text-xs font-bold text-slate-500 uppercase">Email</label>
                                         <input
                                             type="email"
@@ -1492,33 +1538,17 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                                             className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none"
                                         />
                                     </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-1.5">
-                                            <label className="text-xs font-bold text-slate-500 uppercase">Nascimento</label>
-                                            <input
-                                                type="date"
-                                                name="dataNascimento"
-                                                value={editCollaboratorForm.dataNascimento}
-                                                onChange={handleEditCollaboratorChange}
-                                                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none text-slate-600"
-                                            />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="text-xs font-bold text-slate-500 uppercase">Sexo</label>
-                                            <select
-                                                name="sexo"
-                                                value={editCollaboratorForm.sexo}
-                                                onChange={handleEditCollaboratorChange}
-                                                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none bg-white text-slate-600"
-                                            >
-                                                <option value="" disabled>Selecione</option>
-                                                <option value="Masculino">Masculino</option>
-                                                <option value="Feminino">Feminino</option>
-                                                <option value="Outro">Outro</option>
-                                            </select>
-                                        </div>
+                                    <div className="col-span-6 md:col-span-3 space-y-1.5">
+                                        <label className="text-xs font-bold text-slate-500 uppercase">CPF</label>
+                                        <input
+                                            type="text"
+                                            name="cpf"
+                                            value={editCollaboratorForm.cpf}
+                                            onChange={handleEditCollaboratorChange}
+                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none"
+                                        />
                                     </div>
-                                    <div className="space-y-1.5">
+                                    <div className="col-span-6 md:col-span-3 space-y-1.5">
                                         <label className="text-xs font-bold text-slate-500 uppercase">Telefone</label>
                                         <input
                                             type="tel"
@@ -1528,47 +1558,79 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                                             className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none"
                                         />
                                     </div>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <div className="space-y-1.5">
-                                            <label className="text-xs font-bold text-slate-500 uppercase">Setor</label>
-                                            <select
-                                                name="setor"
-                                                value={editCollaboratorForm.setor}
-                                                onChange={handleEditCollaboratorChange}
-                                                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none bg-white text-slate-600"
-                                            >
-                                                <option value="" disabled>Selecione</option>
-                                                {formData.setores.map((s, i) => <option key={i} value={s}>{s}</option>)}
-                                            </select>
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="text-xs font-bold text-slate-500 uppercase">Cargo</label>
-                                            <select
-                                                name="cargo"
-                                                value={editCollaboratorForm.cargo}
-                                                onChange={handleEditCollaboratorChange}
-                                                disabled={!editCollaboratorForm.setor}
-                                                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none bg-white text-slate-600 disabled:bg-slate-100"
-                                            >
-                                                <option value="" disabled>Selecione</option>
-                                                {formData.cargos
-                                                    .filter(c => normalizeText(c.setor) === normalizeText(editCollaboratorForm.setor))
-                                                    .map((c, i) => <option key={i} value={c.nome}>{c.nome}</option>)}
-                                            </select>
-                                        </div>
+                                    <div className="col-span-6 md:col-span-3 space-y-1.5">
+                                        <label className="text-xs font-bold text-slate-500 uppercase">Nascimento</label>
+                                        <input
+                                            type="date"
+                                            name="dataNascimento"
+                                            value={editCollaboratorForm.dataNascimento}
+                                            onChange={handleEditCollaboratorChange}
+                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none text-slate-600"
+                                        />
+                                    </div>
+                                    <div className="col-span-6 md:col-span-3 space-y-1.5">
+                                        <label className="text-xs font-bold text-slate-500 uppercase">Sexo</label>
+                                        <select
+                                            name="sexo"
+                                            value={editCollaboratorForm.sexo}
+                                            onChange={handleEditCollaboratorChange}
+                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none bg-white text-slate-600"
+                                        >
+                                            <option value="" disabled>Selecione</option>
+                                            <option value="Masculino">Masculino</option>
+                                            <option value="Feminino">Feminino</option>
+                                            <option value="Outro">Outro</option>
+                                        </select>
+                                    </div>
+                                    <div className="col-span-12 md:col-span-4 space-y-1.5">
+                                        <label className="text-xs font-bold text-slate-500 uppercase">Data Desligamento</label>
+                                        <input
+                                            type="date"
+                                            name="dataDesligamento"
+                                            value={editCollaboratorForm.dataDesligamento}
+                                            onChange={handleEditCollaboratorChange}
+                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none text-slate-600"
+                                        />
+                                    </div>
+                                    <div className="col-span-12 md:col-span-4 space-y-1.5">
+                                        <label className="text-xs font-bold text-slate-500 uppercase">Setor</label>
+                                        <select
+                                            name="setor"
+                                            value={editCollaboratorForm.setor}
+                                            onChange={handleEditCollaboratorChange}
+                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none bg-white text-slate-600"
+                                        >
+                                            <option value="" disabled>Selecione</option>
+                                            {formData.setores.map((s, i) => <option key={i} value={s}>{s}</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="col-span-12 md:col-span-4 space-y-1.5">
+                                        <label className="text-xs font-bold text-slate-500 uppercase">Cargo</label>
+                                        <select
+                                            name="cargo"
+                                            value={editCollaboratorForm.cargo}
+                                            onChange={handleEditCollaboratorChange}
+                                            disabled={!editCollaboratorForm.setor}
+                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none bg-white text-slate-600 disabled:bg-slate-100"
+                                        >
+                                            <option value="" disabled>Selecione</option>
+                                            {formData.cargos
+                                                .filter(c => normalizeText(c.setor) === normalizeText(editCollaboratorForm.setor))
+                                                .map((c, i) => <option key={i} value={c.nome}>{c.nome}</option>)}
+                                        </select>
                                     </div>
                                 </div>
                             </div>
+                        </div>
 
-                            <div className="p-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50/50">
-                                <Button variant="ghost" onClick={() => setIsEditModalOpen(false)}>Cancelar</Button>
-                                <Button onClick={saveEditCollaborator} className="bg-[#35b6cf] text-white hover:bg-[#2ca3bc]">Salvar Alterações</Button>
-                            </div>
+                        <div className="p-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50/50">
+                            <Button variant="ghost" onClick={() => setIsEditModalOpen(false)}>Cancelar</Button>
+                            <Button onClick={saveEditCollaborator} className="bg-[#35b6cf] text-white hover:bg-[#2ca3bc]">Salvar Alterações</Button>
                         </div>
                     </div>
                 )
             }
-        </div >
+        </div>
     );
 };
 
