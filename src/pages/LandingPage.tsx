@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PaymentModal } from '../components/modals/PaymentModal';
+import { PlansModal } from '../components/modals/PlansModal';
+import logo from '../assets/logo.png';
 
 export const LandingPage: React.FC = () => {
     const navigate = useNavigate();
 
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+    const [isPlansModalOpen, setIsPlansModalOpen] = useState(false);
     const [selectedPackage, setSelectedPackage] = useState<{ id: string, name: string, tokens: number, price: string } | null>(null);
 
     const handlePortalClick = () => {
@@ -21,9 +24,9 @@ export const LandingPage: React.FC = () => {
         <div className="bg-background-light text-slate-800 font-sans antialiased transition-colors duration-300">
             <nav className="fixed top-0 w-full z-50 bg-white/90 backdrop-blur-md border-b border-slate-100">
                 <div className="container mx-auto px-6 py-4 flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                        <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-primary/20">G</div>
-                        <span className="text-slate-900 font-display font-bold text-xl tracking-tight">Gama Center</span>
+                    <div className="flex items-center gap-3">
+                        <img src={logo} alt="Gama Logo" className="w-10 h-10 object-contain" />
+                        <span className="text-slate-900 font-display font-bold text-2xl tracking-tight">Gama Center</span>
                     </div>
                     <div className="hidden md:flex items-center space-x-8 text-sm font-medium text-slate-600">
                         <a className="hover:text-primary transition-colors" href="#workflow">Fluxo de Trabalho</a>
@@ -40,15 +43,7 @@ export const LandingPage: React.FC = () => {
                 </div>
             </nav>
 
-            <section className="relative min-h-[90vh] flex items-center pt-28 pb-20 overflow-hidden bg-slate-50">
-                <div className="absolute inset-0 z-0">
-                    <img
-                        alt="Professional Psychologist"
-                        className="w-full h-full object-cover opacity-20 object-top"
-                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuA1eNgS2BJHBx-5msv6JxFy3FX4B-jPLOpoXGu4SN1Jpp2DDa1yUrEEP-98hPV1BPJtYHlJVPQD5uD4fBT_1k63yVNaNoYqkKm5oZen2fOlL5p5W67-9BN5WwZ_CzcW17RERMjNRejmxzsU_ByoC0KR1xiKybUdMuL-wOlD45rG3d0rud8Tb8yKQIx8iU6_YplbNIbsY-kzp1oYzRZinvxdzDi_csqDhpesos-qmfyr3mUmOesLIKlfmK4V_Y6FqBqemleX3hD3nxo"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-r from-white via-white/80 to-transparent"></div>
-                </div>
+            <section className="relative min-h-[90vh] flex items-center pt-28 pb-20 overflow-hidden bg-white" id="home">
                 <div className="container mx-auto px-6 relative z-10 grid lg:grid-cols-2 gap-12 items-center">
                     <div className="space-y-8 animate-fade-in-up">
                         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-wider">
@@ -126,7 +121,7 @@ export const LandingPage: React.FC = () => {
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-primary/5 blur-3xl rounded-full -z-10"></div>
                     </div>
                 </div>
-            </section>
+            </section >
 
             <section className="py-24 bg-white relative" id="workflow">
                 <div className="container mx-auto px-6">
@@ -195,67 +190,66 @@ export const LandingPage: React.FC = () => {
                 </div>
             </section>
 
-            <section className="py-24 bg-slate-900 text-white relative overflow-hidden" id="benefits">
-                <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '32px 32px' }}></div>
+            <section className="py-24 bg-white relative overflow-hidden" id="benefits">
                 <div className="container mx-auto px-6 relative z-10">
                     <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
                         <div className="max-w-2xl">
                             <span className="text-primary font-bold text-sm uppercase tracking-widest mb-2 block">Por Que Importa</span>
-                            <h2 className="text-3xl lg:text-4xl font-display font-bold">Cultivando uma Mentalidade Saudável</h2>
-                            <p className="mt-4 text-slate-400 text-lg">Além da conformidade, focamos no aspecto humano da sua organização. Mentes saudáveis levam a negócios resilientes.</p>
+                            <h2 className="text-3xl lg:text-4xl font-display font-bold text-slate-900">Cultivando uma Mentalidade Saudável</h2>
+                            <p className="mt-4 text-slate-600 text-lg">Além da conformidade, focamos no aspecto humano da sua organização. Mentes saudáveis levam a negócios resilientes.</p>
                         </div>
-                        <button className="bg-white/10 hover:bg-white/20 text-white px-6 py-3 rounded-lg border border-white/10 transition-all flex items-center gap-2">
+                        <button className="bg-primary hover:bg-teal-700 text-white px-6 py-3 rounded-lg border border-primary/10 transition-all flex items-center gap-2">
                             Baixar Brochura <span className="material-symbols-outlined text-sm">download</span>
                         </button>
                     </div>
                     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <div className="bg-card-dark p-8 rounded-2xl border border-white/5 hover:border-primary/50 transition-all duration-300 group hover:-translate-y-1">
-                            <div className="w-14 h-14 bg-slate-800 rounded-2xl flex items-center justify-center text-primary mb-6 group-hover:bg-primary group-hover:text-white transition-colors">
+                        <div className="bg-white p-8 rounded-2xl border border-slate-100 hover:border-primary/50 transition-all duration-300 group hover:-translate-y-1 shadow-soft">
+                            <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-primary mb-6 group-hover:bg-primary group-hover:text-white transition-colors">
                                 <span className="material-symbols-outlined text-3xl">self_improvement</span>
                             </div>
-                            <h3 className="text-xl font-bold mb-3">Redução de Burnout</h3>
-                            <p className="text-slate-400 leading-relaxed">A identificação precoce de fatores de estresse ajuda a prevenir o esgotamento dos colaboradores e afastamentos.</p>
+                            <h3 className="text-xl font-bold mb-3 text-slate-900">Redução de Burnout</h3>
+                            <p className="text-slate-600 leading-relaxed">A identificação precoce de fatores de estresse ajuda a prevenir o esgotamento dos colaboradores e afastamentos.</p>
                         </div>
-                        <div className="bg-card-dark p-8 rounded-2xl border border-white/5 hover:border-primary/50 transition-all duration-300 group hover:-translate-y-1">
-                            <div className="w-14 h-14 bg-slate-800 rounded-2xl flex items-center justify-center text-primary mb-6 group-hover:bg-primary group-hover:text-white transition-colors">
+                        <div className="bg-white p-8 rounded-2xl border border-slate-100 hover:border-primary/50 transition-all duration-300 group hover:-translate-y-1 shadow-soft">
+                            <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-primary mb-6 group-hover:bg-primary group-hover:text-white transition-colors">
                                 <span className="material-symbols-outlined text-3xl">sentiment_content</span>
                             </div>
-                            <h3 className="text-xl font-bold mb-3">Inteligência Emocional</h3>
-                            <p className="text-slate-400 leading-relaxed">Dados que ajudam a liderança a entender o clima emocional de suas equipes.</p>
+                            <h3 className="text-xl font-bold mb-3 text-slate-900">Inteligência Emocional</h3>
+                            <p className="text-slate-600 leading-relaxed">Dados que ajudam a liderança a entender o clima emocional de suas equipes.</p>
                         </div>
-                        <div className="bg-card-dark p-8 rounded-2xl border border-white/5 hover:border-primary/50 transition-all duration-300 group hover:-translate-y-1">
-                            <div className="w-14 h-14 bg-slate-800 rounded-2xl flex items-center justify-center text-primary mb-6 group-hover:bg-primary group-hover:text-white transition-colors">
+                        <div className="bg-white p-8 rounded-2xl border border-slate-100 hover:border-primary/50 transition-all duration-300 group hover:-translate-y-1 shadow-soft">
+                            <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-primary mb-6 group-hover:bg-primary group-hover:text-white transition-colors">
                                 <span className="material-symbols-outlined text-3xl">diversity_1</span>
                             </div>
-                            <h3 className="text-xl font-bold mb-3">Melhora na Retenção</h3>
-                            <p className="text-slate-400 leading-relaxed">Colaboradores permanecem onde se sentem ouvidos e cuidados. Reduza significativamente os custos de rotatividade.</p>
+                            <h3 className="text-xl font-bold mb-3 text-slate-900">Melhora na Retenção</h3>
+                            <p className="text-slate-600 leading-relaxed">Colaboradores permanecem onde se sentem ouvidos e cuidados. Reduza significativamente os custos de rotatividade.</p>
                         </div>
-                        <div className="bg-card-dark p-8 rounded-2xl border border-white/5 hover:border-primary/50 transition-all duration-300 group hover:-translate-y-1">
-                            <div className="w-14 h-14 bg-slate-800 rounded-2xl flex items-center justify-center text-primary mb-6 group-hover:bg-primary group-hover:text-white transition-colors">
+                        <div className="bg-white p-8 rounded-2xl border border-slate-100 hover:border-primary/50 transition-all duration-300 group hover:-translate-y-1 shadow-soft">
+                            <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-primary mb-6 group-hover:bg-primary group-hover:text-white transition-colors">
                                 <span className="material-symbols-outlined text-3xl">verified_user</span>
                             </div>
-                            <h3 className="text-xl font-bold mb-3">Salvaguardas Legais</h3>
-                            <p className="text-slate-400 leading-relaxed">Evidências documentadas de cuidado proativo protegem a empresa contra ações de responsabilidade.</p>
+                            <h3 className="text-xl font-bold mb-3 text-slate-900">Salvaguardas Legais</h3>
+                            <p className="text-slate-600 leading-relaxed">Evidências documentadas de cuidado proativo protegem a empresa contra ações de responsabilidade.</p>
                         </div>
-                        <div className="bg-card-dark p-8 rounded-2xl border border-white/5 hover:border-primary/50 transition-all duration-300 group hover:-translate-y-1">
-                            <div className="w-14 h-14 bg-slate-800 rounded-2xl flex items-center justify-center text-primary mb-6 group-hover:bg-primary group-hover:text-white transition-colors">
+                        <div className="bg-white p-8 rounded-2xl border border-slate-100 hover:border-primary/50 transition-all duration-300 group hover:-translate-y-1 shadow-soft">
+                            <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-primary mb-6 group-hover:bg-primary group-hover:text-white transition-colors">
                                 <span className="material-symbols-outlined text-3xl">monitor_heart</span>
                             </div>
-                            <h3 className="text-xl font-bold mb-3">Monitoramento Contínuo</h3>
-                            <p className="text-slate-400 leading-relaxed">Acompanhe o progresso ao longo do tempo com dados longitudinais, não apenas avaliações pontuais.</p>
+                            <h3 className="text-xl font-bold mb-3 text-slate-900">Monitoramento Contínuo</h3>
+                            <p className="text-slate-600 leading-relaxed">Acompanhe o progresso ao longo do tempo com dados longitudinais, não apenas avaliações pontuais.</p>
                         </div>
-                        <div className="bg-card-dark p-8 rounded-2xl border border-white/5 hover:border-primary/50 transition-all duration-300 group hover:-translate-y-1">
-                            <div className="w-14 h-14 bg-slate-800 rounded-2xl flex items-center justify-center text-primary mb-6 group-hover:bg-primary group-hover:text-white transition-colors">
+                        <div className="bg-white p-8 rounded-2xl border border-slate-100 hover:border-primary/50 transition-all duration-300 group hover:-translate-y-1 shadow-soft">
+                            <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-primary mb-6 group-hover:bg-primary group-hover:text-white transition-colors">
                                 <span className="material-symbols-outlined text-3xl">rocket_launch</span>
                             </div>
-                            <h3 className="text-xl font-bold mb-3">Aumento de Produtividade</h3>
-                            <p className="text-slate-400 leading-relaxed">Uma força de trabalho mentalmente saudável é uma força de trabalho focada e produtiva.</p>
+                            <h3 className="text-xl font-bold mb-3 text-slate-900">Aumento de Produtividade</h3>
+                            <p className="text-slate-600 leading-relaxed">Uma força de trabalho mentalmente saudável é uma força de trabalho focada e produtiva.</p>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <section className="py-24 bg-slate-50" id="testimonials">
+            <section className="py-24 bg-white" id="testimonials">
                 <div className="container mx-auto px-6">
                     <div className="text-center mb-16">
                         <span className="bg-white border border-slate-200 text-slate-600 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide shadow-sm">Impacto Real</span>
@@ -307,148 +301,48 @@ export const LandingPage: React.FC = () => {
                 </div>
             </section>
 
-            <section className="py-24 bg-slate-50 relative" id="pricing">
+            <PlansModal
+                isOpen={isPlansModalOpen}
+                onClose={() => setIsPlansModalOpen(false)}
+                onPlanSelect={handlePlanSelect}
+            />
+
+            <section className="py-24 bg-white relative" id="pricing">
                 <div className="container mx-auto px-6">
                     <div className="text-center mb-16">
                         <span className="text-primary font-bold text-xs uppercase tracking-widest">Preços</span>
                         <h2 className="text-3xl lg:text-4xl font-display font-bold text-slate-900 mt-2">Invista no Seu Pessoal</h2>
                         <p className="mt-4 text-slate-500">Preços transparentes para empresas de todos os portes.</p>
                     </div>
-                    <div className="grid lg:grid-cols-3 gap-8 max-w-6xl mx-auto items-stretch">
-
-                        {/* Mensal */}
-                        <div className="flex flex-col rounded-2xl border border-slate-100 bg-white p-7 transition-all hover:border-[#35b6cf] hover:shadow-lg hover:shadow-slate-100 group">
-                            <div className="flex flex-col gap-1 mb-8">
-                                <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">Pacote Mensal</h3>
-                                <div className="flex flex-col">
-                                    <p className="flex items-baseline gap-1 text-slate-800 mt-1">
-                                        <span className="text-slate-400 text-sm font-medium">R$</span>
-                                        <span className="text-4xl font-bold tracking-tight">3.000,00</span>
-                                    </p>
-                                    <span className="text-xs text-[#35b6cf] font-bold mt-2 px-2 py-0.5 bg-[#35b6cf]/5 rounded-md border border-[#35b6cf]/10 w-fit">
-                                        R$ 10,00/aval
-                                    </span>
-                                </div>
-                                <ul className="text-left space-y-3 mt-6 text-sm text-slate-600">
-                                    <li className="flex gap-2 items-center">
-                                        <span className="material-symbols-outlined text-[#35b6cf] text-lg">check_circle</span>
-                                        300 avaliações
-                                    </li>
-                                    <li className="flex gap-2 items-center">
-                                        <span className="material-symbols-outlined text-[#35b6cf] text-lg">check_circle</span>
-                                        Relatório de Conformidade Básico
-                                    </li>
-                                </ul>
-                            </div>
-                            <button
-                                onClick={() => handlePlanSelect({ id: 'mensal', name: 'Mensal', tokens: 300, price: '3.000,00' })}
-                                className="mt-auto w-full cursor-pointer flex items-center justify-center rounded-xl h-12 px-6 bg-slate-50 hover:bg-[#35b6cf] text-slate-600 hover:text-white text-sm font-bold transition-all border border-slate-100 hover:border-[#35b6cf]"
-                            >
-                                Começar Agora
-                            </button>
-                        </div>
-
-                        {/* Anual (Featured) */}
-                        <div className="relative flex flex-col rounded-2xl border border-slate-100 bg-white p-7 shadow-sm transition-all hover:border-[#35b6cf] hover:shadow-lg hover:shadow-slate-100">
-                            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#35b6cf] text-white text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-widest shadow-sm">
-                                Melhor Valor
-                            </div>
-
-                            <div className="flex flex-col gap-1 mb-8">
-                                <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
-                                    Plano Anual
-                                    <span className="material-symbols-outlined text-[#35b6cf] text-sm fill-current">star</span>
-                                </h3>
-                                <div className="flex flex-col">
-                                    <p className="flex items-baseline gap-1 text-slate-800 mt-1">
-                                        <span className="text-slate-400 text-sm font-medium">R$</span>
-                                        <span className="text-5xl font-extrabold tracking-tight">6.000,00</span>
-                                    </p>
-                                    <span className="text-xs text-[#35b6cf] font-bold mt-2 px-2 py-0.5 bg-[#35b6cf]/5 rounded-md border border-[#35b6cf]/10 w-fit">
-                                        R$ 5,00/aval
-                                    </span>
-                                </div>
-                                <p className="text-[#35b6cf] text-xs font-bold mt-4 bg-[#35b6cf]/5 p-2 rounded-lg border border-[#35b6cf]/10">
-                                    Economize 50% com faturamento anual
-                                </p>
-                                <ul className="text-left space-y-3 mt-6 text-sm text-slate-600">
-                                    <li className="flex gap-2 items-center">
-                                        <span className="material-symbols-outlined text-[#35b6cf] text-lg">verified</span>
-                                        <span className="font-bold text-slate-800 italic">Até 1.200</span> avaliações
-                                    </li>
-                                    <li className="flex gap-2 items-center">
-                                        <span className="material-symbols-outlined text-[#35b6cf] text-lg">verified</span>
-                                        Suíte Completa de Conformidade
-                                    </li>
-                                    <li className="flex gap-2 items-center">
-                                        <span className="material-symbols-outlined text-[#35b6cf] text-lg">verified</span>
-                                        Suporte Prioritário
-                                    </li>
-                                </ul>
-                            </div>
-
-                            <button
-                                onClick={() => handlePlanSelect({ id: 'anual', name: 'Anual', tokens: 1200, price: '6.000,00' })}
-                                className="mt-auto w-full cursor-pointer flex items-center justify-center rounded-xl h-12 px-6 bg-[#35b6cf] hover:bg-teal-700 text-white text-sm font-bold transition-all shadow-md shadow-[#35b6cf]/20"
-                            >
-                                Iniciar Plano Anual
-                            </button>
-                        </div>
-
-                        {/* Semestral */}
-                        <div className="flex flex-col rounded-2xl border border-slate-100 bg-white p-7 transition-all hover:border-[#35b6cf] hover:shadow-lg hover:shadow-slate-100 group">
-                            <div className="flex flex-col gap-1 mb-8">
-                                <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">Pacote Semestral</h3>
-                                <div className="flex flex-col">
-                                    <p className="flex items-baseline gap-1 text-slate-800 mt-1">
-                                        <span className="text-slate-400 text-sm font-medium">R$</span>
-                                        <span className="text-4xl font-bold tracking-tight">3.500,00</span>
-                                    </p>
-                                    <span className="text-xs text-[#35b6cf] font-bold mt-2 px-2 py-0.5 bg-[#35b6cf]/5 rounded-md border border-[#35b6cf]/10 w-fit">
-                                        R$ 7,00/aval
-                                    </span>
-                                </div>
-                                <ul className="text-left space-y-3 mt-6 text-sm text-slate-600">
-                                    <li className="flex gap-2 items-center">
-                                        <span className="material-symbols-outlined text-[#35b6cf] text-lg">check_circle</span>
-                                        Até 500 avaliações
-                                    </li>
-                                    <li className="flex gap-2 items-center">
-                                        <span className="material-symbols-outlined text-[#35b6cf] text-lg">check_circle</span>
-                                        Relatórios Padrão
-                                    </li>
-                                </ul>
-                            </div>
-                            <button
-                                onClick={() => handlePlanSelect({ id: 'semestral', name: 'Semestral', tokens: 500, price: '3.500,00' })}
-                                className="mt-auto w-full cursor-pointer flex items-center justify-center rounded-xl h-12 px-6 bg-slate-50 hover:bg-[#35b6cf] text-slate-600 hover:text-white text-sm font-bold transition-all border border-slate-100 hover:border-[#35b6cf]"
-                            >
-                                Selecionar Semestral
-                            </button>
-                        </div>
-
+                    <div className="flex justify-center">
+                        <button
+                            onClick={() => setIsPlansModalOpen(true)}
+                            className="bg-primary hover:bg-teal-700 text-white px-12 py-4 rounded-xl font-bold transition-all shadow-xl shadow-primary/30 text-lg transform hover:-translate-y-1"
+                        >
+                            Ver Planos e Preços
+                        </button>
                     </div>
                 </div>
             </section>
 
-            <footer className="bg-black text-slate-400 py-16 border-t border-slate-900">
+            <footer className="bg-white text-slate-500 py-16 border-t border-slate-100">
                 <div className="container mx-auto px-6">
                     <div className="grid md:grid-cols-4 gap-12 mb-12">
                         <div className="col-span-1 md:col-span-1">
-                            <div className="flex items-center gap-2 mb-6">
-                                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white font-bold">G</div>
-                                <span className="text-white font-display font-bold text-xl">Gama Center</span>
+                            <div className="flex items-center gap-3 mb-6">
+                                <img src={logo} alt="Gama Logo" className="w-8 h-8 object-contain" />
+                                <span className="text-slate-900 font-display font-bold text-xl tracking-tight">Gama Center</span>
                             </div>
                             <p className="text-sm text-slate-500 leading-relaxed mb-6">
                                 Preenchendo a lacuna entre os requisitos corporativos e as necessidades humanas. Tornamos a conformidade empática.
                             </p>
                             <div className="flex gap-4">
-                                <a className="w-8 h-8 rounded bg-slate-900 flex items-center justify-center hover:bg-primary hover:text-white transition-colors" href="#"><span className="material-symbols-outlined text-sm">public</span></a>
-                                <a className="w-8 h-8 rounded bg-slate-900 flex items-center justify-center hover:bg-primary hover:text-white transition-colors" href="#"><span className="material-symbols-outlined text-sm">mail</span></a>
+                                <a className="w-8 h-8 rounded bg-slate-50 flex items-center justify-center hover:bg-primary hover:text-white transition-colors" href="#"><span className="material-symbols-outlined text-sm">public</span></a>
+                                <a className="w-8 h-8 rounded bg-slate-50 flex items-center justify-center hover:bg-primary hover:text-white transition-colors" href="#"><span className="material-symbols-outlined text-sm">mail</span></a>
                             </div>
                         </div>
                         <div>
-                            <h4 className="text-white font-bold mb-6">Plataforma</h4>
+                            <h4 className="text-slate-900 font-bold mb-6">Plataforma</h4>
                             <ul className="space-y-3 text-sm">
                                 <li><a className="hover:text-primary transition-colors" href="#">Avaliação Psicossocial</a></li>
                                 <li><a className="hover:text-primary transition-colors" href="#">Conformidade Legal</a></li>
@@ -456,7 +350,7 @@ export const LandingPage: React.FC = () => {
                             </ul>
                         </div>
                         <div>
-                            <h4 className="text-white font-bold mb-6">Recursos</h4>
+                            <h4 className="text-slate-900 font-bold mb-6">Recursos</h4>
                             <ul className="space-y-3 text-sm">
                                 <li><a className="hover:text-primary transition-colors" href="#">Guias de RH</a></li>
                                 <li><a className="hover:text-primary transition-colors" href="#">Blog de Bem-estar</a></li>
@@ -464,20 +358,20 @@ export const LandingPage: React.FC = () => {
                             </ul>
                         </div>
                         <div>
-                            <h4 className="text-white font-bold mb-6">Entre em Contato</h4>
+                            <h4 className="text-slate-900 font-bold mb-6">Entre em Contato</h4>
                             <ul className="space-y-3 text-sm">
                                 <li className="flex items-center gap-2"><span className="material-symbols-outlined text-primary text-sm">mail</span> support@gamacenter.com</li>
                                 <li className="flex items-center gap-2"><span className="material-symbols-outlined text-primary text-sm">call</span> +55 11 99999-9999</li>
-                                <li className="mt-4 text-xs text-slate-600">Av. Paulista, 1000 - São Paulo, SP</li>
+                                <li className="mt-4 text-xs text-slate-400">Av. Paulista, 1000 - São Paulo, SP</li>
                             </ul>
                         </div>
                     </div>
-                    <div className="border-t border-slate-900 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-slate-600">
+                    <div className="border-t border-slate-100 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-slate-400">
                         <p>© 2023 Gama Center. Todos os direitos reservados.</p>
                         <div className="flex space-x-6 mt-4 md:mt-0">
-                            <a className="hover:text-white transition-colors" href="#">Política de Privacidade</a>
-                            <a className="hover:text-white transition-colors" href="#">Termos de Serviço</a>
-                            <a className="hover:text-white transition-colors" href="#">Configurações de Cookies</a>
+                            <a className="hover:text-slate-600 transition-colors" href="#">Política de Privacidade</a>
+                            <a className="hover:text-slate-600 transition-colors" href="#">Termos de Serviço</a>
+                            <a className="hover:text-slate-600 transition-colors" href="#">Configurações de Cookies</a>
                         </div>
                     </div>
                 </div>
@@ -487,6 +381,6 @@ export const LandingPage: React.FC = () => {
                 onClose={() => setIsPaymentModalOpen(false)}
                 selectedPackage={selectedPackage}
             />
-        </div>
+        </div >
     );
 };

@@ -32,7 +32,36 @@ export const CadastroPage: React.FC = () => {
 
             console.log('Iniciando cadastro da empresa:', data);
 
-            // 1. Insert Company
+            // 0. Safety Check: Ensure User Exists in public.users to avoid FK violation
+            const { data: existingPublicUser } = await supabase
+                .from('users')
+                .select('id')
+                .eq('user_id', user.id)
+                .maybeSingle();
+
+            if (!existingPublicUser) {
+                console.log('Usuario nao encontrado na tabela publica. Criando registro de recuperacao...');
+                // Attempt to create the user in public table with REQUIRED fields (including img_url)
+                const { error: createError } = await supabase
+                    .from('users')
+                    .insert({
+                        user_id: user.id,
+                        email: user.email,
+                        username: user.user_metadata?.username || user.email?.split('@')[0] || 'Usuario',
+                        created_at: new Date().toISOString(),
+                        primeiro_acesso: false,
+                        img_url: 'https://wofipjazcxwxzzxjsflh.supabase.co/storage/v1/object/sign/img_user/profile_pics/padrao.jpg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV82YzdhYzE0NS00N2RmLTQ3ZjItYWYyMi0xZDFkOTE0NTM3Y2EiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJpbWdfdXNlci9wcm9maWxlX3BpY3MvcGFkcmFvLmpwZyIsImlhdCI6MTc1OTI0Mzk1MiwiZXhwIjo4ODE1OTE1NzU1Mn0.AWDYc1mewJEuVqVSeUlJJykNj801mzyMequTNPHqfL0'
+                    });
+
+                if (createError) {
+                    console.error('Falha crítica: Não foi possível garantir o usuário público para vínculo.', createError);
+                    alert('Erro interno: Não foi possível criar seu perfil de usuário. Tente novamente ou contate o suporte.');
+                    setIsLoading(false);
+                    return; // Critical stop
+                }
+            }
+
+            // 1. Insert Company using the correct UUID (user.id)
             const { data: companyData, error: companyError } = await supabase
                 .from('clientes')
                 .insert({
@@ -50,7 +79,7 @@ export const CadastroPage: React.FC = () => {
                         uf: data.uf
                     }),
                     status: 'active',
-                    empresa_responsavel: user.id
+                    empresa_responsavel: user.id // Using the Auth UUID which matches public.users.user_id
                 })
                 .select()
                 .single();

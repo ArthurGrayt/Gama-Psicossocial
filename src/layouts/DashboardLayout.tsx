@@ -2,6 +2,7 @@ import React from 'react';
 import { Settings, LogOut, LayoutDashboard, PlusCircle, Building } from 'lucide-react';
 import { useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import logo from '../assets/logo.png';
 
 interface DashboardLayoutProps {
     children: React.ReactNode;
@@ -10,7 +11,7 @@ interface DashboardLayoutProps {
 const MENU_ITEMS = [
     { icon: <LayoutDashboard size={18} />, label: 'Dashboard', path: '/dashboard' },
     { icon: <PlusCircle size={18} />, label: 'Cadastro', path: '/cadastro' },
-    { icon: <Building size={18} />, label: 'Empresas', path: '/' },
+    { icon: <Building size={18} />, label: 'Empresas', path: '/atividades' },
     { icon: <Settings size={18} />, label: 'Configurações', path: '/settings' },
 ];
 
@@ -20,10 +21,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
 
     // Helper to determine active state
     const isActive = (path: string) => {
-        // Special case for our current context where Formularios is default
-        if (path === '/' && (location.pathname === '/' || location.pathname === '/formularios')) return true;
         // Generic match for other routes (exact or sub-path)
-        if (path !== '/' && location.pathname.startsWith(path)) return true;
+        if (location.pathname.startsWith(path)) return true;
         return false;
     };
 
@@ -34,9 +33,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
                 {/* Logo Area */}
                 <div className="h-24 flex items-center px-8">
                     <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#35b6cf] to-[#2ca1b7] flex items-center justify-center text-white font-bold text-xl">
-                            G
-                        </div>
+                        <img src={logo} alt="Gama Logo" className="w-8 h-8 object-contain" />
                         <span className="font-bold text-xl text-slate-800 tracking-tight">Gama Psic</span>
                     </div>
                 </div>

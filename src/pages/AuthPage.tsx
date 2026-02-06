@@ -3,6 +3,9 @@ import React, { useState } from 'react';
 import { supabase } from '../services/supabase';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Lock, Mail, User } from 'lucide-react';
+import { PlansModal } from '../components/modals/PlansModal';
+import { PaymentModal } from '../components/modals/PaymentModal';
+import logo from '../assets/logo.png';
 
 export const AuthPage: React.FC = () => {
     const navigate = useNavigate();
@@ -15,6 +18,15 @@ export const AuthPage: React.FC = () => {
     const [password, setPassword] = useState('');
     const [username, setUsername] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [isPlansModalOpen, setIsPlansModalOpen] = useState(false);
+    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+    const [selectedPackage, setSelectedPackage] = useState<{ id: string, name: string, tokens: number, price: string } | null>(null);
+
+    const handlePlanSelect = (plan: { id: string, name: string, tokens: number, price: string }) => {
+        setSelectedPackage(plan);
+        setIsPlansModalOpen(false);
+        setIsPaymentModalOpen(true);
+    };
 
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -72,9 +84,8 @@ export const AuthPage: React.FC = () => {
             <div className="bg-white rounded-2xl shadow-xl border border-slate-100 w-full max-w-md overflow-hidden flex flex-col">
                 <div className="p-8 bg-white border-b border-slate-50">
                     <div className="text-center mb-8">
-                        {/* Placeholder Logo or Title */}
-                        <div className="w-16 h-16 bg-[#35b6cf]/10 text-[#35b6cf] rounded-2xl flex items-center justify-center mx-auto mb-4">
-                            <User size={32} />
+                        <div className="mx-auto mb-6 flex justify-center">
+                            <img src={logo} alt="Gama Logo" className="w-20 h-20 object-contain" />
                         </div>
                         <h1 className="text-2xl font-bold text-slate-800">
                             {isLogin ? 'Bem-vindo de volta' : 'Crie sua conta'}
@@ -156,16 +167,34 @@ export const AuthPage: React.FC = () => {
                 </div>
                 <div className="p-4 bg-slate-50 text-center border-t border-slate-100">
                     <p className="text-sm text-slate-500">
-                        {isLogin ? 'Não tem uma conta?' : 'Já tem uma conta?'}
+                        {isLogin ? 'Não é cliente?' : 'Já tem uma conta?'}
                         <button
-                            onClick={() => setIsLogin(!isLogin)}
+                            onClick={() => {
+                                if (isLogin) {
+                                    setIsPlansModalOpen(true);
+                                } else {
+                                    setIsLogin(true);
+                                }
+                            }}
                             className="ml-2 font-bold text-[#35b6cf] hover:underline"
                         >
-                            {isLogin ? 'Cadastre-se' : 'Faça Login'}
+                            {isLogin ? 'Adquira agora' : 'Faça Login'}
                         </button>
                     </p>
                 </div>
             </div>
+
+            <PlansModal
+                isOpen={isPlansModalOpen}
+                onClose={() => setIsPlansModalOpen(false)}
+                onPlanSelect={handlePlanSelect}
+            />
+
+            <PaymentModal
+                isOpen={isPaymentModalOpen}
+                onClose={() => setIsPaymentModalOpen(false)}
+                selectedPackage={selectedPackage}
+            />
         </div>
     );
 };
