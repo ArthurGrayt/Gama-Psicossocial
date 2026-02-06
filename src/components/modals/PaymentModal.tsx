@@ -50,39 +50,52 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, sel
     const handleSubmit = async () => {
         setIsLoading(true);
         try {
-            // Clean values (remove non-digits from CPF/CNPJ and Phone if needed)
+            // 1. Limpeza de dados
             const cleanCpfCnpj = customer.cpfCnpj.replace(/\D/g, '');
             const cleanPhone = customer.mobilePhone.replace(/\D/g, '');
+
+            // Tratamento de preço (BRL -> Number)
+            // Remove pontos de milhar e troca vírgula por ponto
             const cleanValue = parseFloat(selectedPackage.price.replace(/\./g, '').replace(',', '.'));
 
+            // 2. Montagem do Payload
             const body = {
                 value: cleanValue,
                 billingType: paymentMethod === 'pix' ? 'PIX' : 'CREDIT_CARD',
+                // ADICIONADO: O Webhook precisa disso para saber quantos tokens dar!
+                description: selectedPackage.name,
                 customer: {
                     ...customer,
                     cpfCnpj: cleanCpfCnpj,
                     mobilePhone: cleanPhone
                 },
-                cardData: (paymentMethod === 'credit' || paymentMethod === 'debit') ? cardData : null
+                cardData: (paymentMethod === 'credit' || paymentMethod === 'debit') ? {
+                    ...cardData,
+                    // Garante que o nome do titular vai junto se for cartão
+                    holderName: customer.name
+                } : null
             };
 
+            // 3. Envio para o Backend
             const response = await fetch('/api/process-payment', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
             });
 
+            // O backend agora sempre retorna JSON, mesmo em erro
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.error || 'Erro ao processar pagamento');
+                throw new Error(data.details || data.error || 'Erro ao processar pagamento');
             }
 
-            // Success: Handle redirect
+            // 4. Sucesso! Redirecionamento
             if (data.invoiceUrl) {
+                // Abre em nova aba para não fechar seu app
                 window.open(data.invoiceUrl, '_blank');
                 onClose();
-            } else if (data.bankSlipUrl) { // Fallback if it returns bankSlipUrl for Pix
+            } else if (data.bankSlipUrl) {
                 window.open(data.bankSlipUrl, '_blank');
                 onClose();
             } else {
