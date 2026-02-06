@@ -10,6 +10,7 @@ import { FormularioPublico } from './pages/FormularioPublico';
 import { CadastroPage } from './pages/CadastroPage';
 import { DashboardPage } from './pages/DashboardPage';
 
+import { LandingPage } from './pages/LandingPage';
 
 function App() {
   return (
@@ -17,11 +18,14 @@ function App() {
       <AuthProvider>
         <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
           <Routes>
+            {/* Public Landing Page */}
+            <Route path="/" element={<LandingPage />} />
+
             {/* Public Auth Route */}
             <Route path="/auth" element={<AuthPage />} />
 
             {/* Admin / Dashboard Route (Protected) */}
-            <Route path="/" element={
+            <Route path="/atividades" element={
               <ProtectedRoute>
                 <Formularios />
               </ProtectedRoute>

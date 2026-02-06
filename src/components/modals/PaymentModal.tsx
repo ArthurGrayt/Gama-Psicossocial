@@ -53,7 +53,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, sel
             // Clean values (remove non-digits from CPF/CNPJ and Phone if needed)
             const cleanCpfCnpj = customer.cpfCnpj.replace(/\D/g, '');
             const cleanPhone = customer.mobilePhone.replace(/\D/g, '');
-            const cleanValue = parseFloat(selectedPackage.price.replace(',', '.'));
+            const cleanValue = parseFloat(selectedPackage.price.replace(/\./g, '').replace(',', '.'));
 
             const body = {
                 value: cleanValue,

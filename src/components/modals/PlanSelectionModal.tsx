@@ -1,5 +1,5 @@
-import React from 'react';
-import { X, Star } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Star, Settings2 } from 'lucide-react';
 
 interface PlanSelectionModalProps {
     isOpen: boolean;
@@ -8,7 +8,15 @@ interface PlanSelectionModalProps {
 }
 
 export const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({ isOpen, onClose, onSelect }) => {
+    const [customTokens, setCustomTokens] = useState<number>(2000);
+
     if (!isOpen) return null;
+
+    const PRICE_PER_TOKEN_BASIC = 49 / 300;
+    const PRICE_PER_TOKEN_PRO = 120 / 1000;
+    const PRICE_PER_TOKEN_CUSTOM = 0.10;
+
+    const customTotal = (customTokens * PRICE_PER_TOKEN_CUSTOM).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm transition-opacity duration-300">
@@ -44,10 +52,15 @@ export const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({ isOpen, 
                         <div className="flex flex-col rounded-2xl border border-slate-100 bg-white p-7 transition-all hover:border-[#35b6cf] hover:shadow-lg hover:shadow-slate-100 group">
                             <div className="flex flex-col gap-1 mb-8">
                                 <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">Pacote Básico</h3>
-                                <p className="flex items-baseline gap-1 text-slate-800 mt-1">
-                                    <span className="text-4xl font-bold tracking-tight">300</span>
-                                    <span className="text-slate-400 text-sm font-medium">tokens</span>
-                                </p>
+                                <div className="flex flex-col">
+                                    <p className="flex items-baseline gap-1 text-slate-800 mt-1">
+                                        <span className="text-4xl font-bold tracking-tight">300</span>
+                                        <span className="text-slate-400 text-sm font-medium">tokens</span>
+                                    </p>
+                                    <span className="text-xs text-[#35b6cf] font-bold ml-1 px-2 py-0.5 bg-[#35b6cf]/5 rounded-md border border-[#35b6cf]/10 w-fit">
+                                        R$ {PRICE_PER_TOKEN_BASIC.toFixed(2).replace('.', ',')}/token
+                                    </span>
+                                </div>
                                 <div className="mt-4 px-3 py-1 bg-slate-50 rounded-lg border border-slate-100 w-fit">
                                     <span className="text-[10px] font-semibold text-slate-500">R$ 49,00</span>
                                 </div>
@@ -72,10 +85,15 @@ export const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({ isOpen, 
                                     Pacote Pro
                                     <Star size={14} className="text-[#35b6cf] fill-[#35b6cf]" />
                                 </h3>
-                                <p className="flex items-baseline gap-1 text-slate-800 mt-1">
-                                    <span className="text-4xl font-bold tracking-tight">1.000</span>
-                                    <span className="text-slate-400 text-sm font-medium">tokens</span>
-                                </p>
+                                <div className="flex flex-col">
+                                    <p className="flex items-baseline gap-1 text-slate-800 mt-1">
+                                        <span className="text-4xl font-bold tracking-tight">1.000</span>
+                                        <span className="text-slate-400 text-sm font-medium">tokens</span>
+                                    </p>
+                                    <span className="text-xs text-[#35b6cf] font-bold ml-1 px-2 py-0.5 bg-[#35b6cf]/5 rounded-md border border-[#35b6cf]/10 w-fit">
+                                        R$ {PRICE_PER_TOKEN_PRO.toFixed(2).replace('.', ',')}/token
+                                    </span>
+                                </div>
                                 <div className="mt-4 px-3 py-1 bg-[#35b6cf]/5 rounded-lg border border-[#35b6cf]/10 w-fit">
                                     <span className="text-[10px] font-bold text-[#35b6cf]">R$ 120,00</span>
                                 </div>
@@ -90,20 +108,45 @@ export const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({ isOpen, 
                         </div>
 
                         {/* Card 3: Custom */}
-                        <div className="flex flex-col rounded-2xl border border-slate-100 bg-white p-7 transition-all hover:border-[#35b6cf] hover:shadow-lg hover:shadow-slate-100 group">
-                            <div className="flex flex-col gap-1 mb-8">
-                                <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">Empresarial</h3>
-                                <p className="flex items-baseline gap-1 text-slate-800 mt-1">
-                                    <span className="text-2xl font-bold tracking-tight">Customizado</span>
-                                </p>
-                                <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">Sob demanda para altos volumes.</p>
+                        <div className="flex flex-col rounded-2xl border border-[#35b6cf]/30 bg-white p-7 transition-all hover:border-[#35b6cf] hover:shadow-lg hover:shadow-slate-100 group">
+                            <div className="flex flex-col gap-1 mb-6">
+                                <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+                                    Customizado
+                                    <Settings2 size={14} className="text-slate-300" />
+                                </h3>
+
+                                <div className="mt-4 space-y-3">
+                                    <div className="relative">
+                                        <input
+                                            type="number"
+                                            value={customTokens}
+                                            onChange={(e) => setCustomTokens(Math.max(0, parseInt(e.target.value) || 0))}
+                                            className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-2xl font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#35b6cf]/20 focus:border-[#35b6cf] transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                            placeholder="Ex: 2000"
+                                        />
+                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold uppercase tracking-tight">tokens</span>
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        <span className="text-xs text-[#35b6cf] font-bold ml-1 px-2 py-0.5 bg-[#35b6cf]/5 rounded-md border border-[#35b6cf]/10 w-fit">
+                                            R$ {PRICE_PER_TOKEN_CUSTOM.toFixed(2).replace('.', ',')}/token
+                                        </span>
+                                        <div className="px-3 py-1.5 bg-slate-50 rounded-lg border border-slate-100 w-fit">
+                                            <span className="text-xs font-bold text-slate-600">Total: R$ {customTotal}</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             <button
-                                onClick={() => onSelect({ id: 'custom', name: 'Empresarial', tokens: 0, price: 'Custom' })}
-                                className="w-full cursor-pointer flex items-center justify-center rounded-xl h-12 px-6 bg-slate-50 hover:bg-[#35b6cf] text-slate-600 hover:text-white text-sm font-bold transition-all border border-slate-100 hover:border-[#35b6cf]"
+                                onClick={() => onSelect({
+                                    id: 'custom',
+                                    name: 'Pacote Customizado',
+                                    tokens: customTokens,
+                                    price: customTotal
+                                })}
+                                className="w-full cursor-pointer flex items-center justify-center rounded-xl h-12 px-6 bg-[#35b6cf]/10 hover:bg-[#35b6cf] text-[#35b6cf] hover:text-white text-sm font-bold transition-all border border-[#35b6cf]/20 hover:border-[#35b6cf]"
                             >
-                                Consultar
+                                Selecionar
                             </button>
                         </div>
 

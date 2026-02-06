@@ -29,7 +29,7 @@ export const AuthPage: React.FC = () => {
                     password,
                 });
                 if (error) throw error;
-                navigate('/');
+                navigate('/dashboard');
             } else {
                 // REGISTER
                 const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -58,7 +58,7 @@ export const AuthPage: React.FC = () => {
                         throw dbError;
                     }
                 }
-                navigate('/');
+                navigate('/dashboard');
             }
         } catch (err: any) {
             setError(err.message || 'An error occurred during authentication.');
