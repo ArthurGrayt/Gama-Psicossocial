@@ -1,23 +1,251 @@
 import React, { useState } from 'react';
 import { DashboardLayout } from '../layouts/DashboardLayout';
-import { FilePlus, FileSpreadsheet, ChevronRight, Upload, Download } from 'lucide-react';
+import { FilePlus, FileSpreadsheet, ChevronRight, Upload, Download, Building2, MapPin } from 'lucide-react';
 import { CompanyRegistrationModal } from '../components/forms/CompanyRegistrationModal';
 import { supabase } from '../services/supabase';
+import * as XLSX from 'xlsx';
 
 type ViewArgs = 'options' | 'import';
 
 export const CadastroPage: React.FC = () => {
     const [view, setView] = useState<ViewArgs>('options');
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isLoading, setIsLoading] = useState(false); // isLoading state is still declared but not used in the new handleRegisterCompany
+    const [isLoading, setIsLoading] = useState(false);
+
+    // Import View State
+    const [companies, setCompanies] = useState<any[]>([]);
+    const [units, setUnits] = useState<any[]>([]);
+    const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
+    const [selectedUnitId, setSelectedUnitId] = useState<string>('');
+    const [importLoading, setImportLoading] = useState(false);
+    const [importData, setImportData] = useState<any[]>([]);
+    const [fileUploaded, setFileUploaded] = useState(false);
 
     const handleBack = () => {
         setView('options');
+        setSelectedCompanyId('');
+        setSelectedUnitId('');
+    };
+
+    // Fetch companies when entering import view
+    React.useEffect(() => {
+        if (view === 'import') {
+            fetchCompanies();
+        }
+    }, [view]);
+
+    // Fetch units when company is selected
+    React.useEffect(() => {
+        if (selectedCompanyId) {
+            fetchUnits(selectedCompanyId);
+        } else {
+            setUnits([]);
+            setSelectedUnitId('');
+        }
+    }, [selectedCompanyId]);
+
+    const fetchCompanies = async () => {
+        const { data, error } = await supabase
+            .from('clientes')
+            .select('id, nome_fantasia, cliente_uuid')
+            .order('nome_fantasia');
+        if (error) console.error('Erro ao buscar empresas:', error);
+        else setCompanies(data || []);
+    };
+
+    const fetchUnits = async (companyUuid: string) => {
+        const { data, error } = await supabase
+            .from('unidades')
+            .select('id, nome')
+            .eq('empresa_mae', companyUuid)
+            .order('nome');
+        if (error) console.error('Erro ao buscar unidades:', error);
+        else setUnits(data || []);
+    };
+
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setImportLoading(true);
+        const reader = new FileReader();
+
+        reader.onload = (evt) => {
+            try {
+                const bstr = evt.target?.result;
+                const wb = XLSX.read(bstr, { type: 'binary' });
+                const wsname = wb.SheetNames[0];
+                const ws = wb.Sheets[wsname];
+                const data = XLSX.utils.sheet_to_json(ws);
+
+                console.log('Dados extraídos da planilha:', data);
+                setImportData(data);
+                setFileUploaded(true);
+
+                // Automate processing immediately
+                executeImport(data);
+            } catch (error) {
+                console.error('Erro ao processar planilha:', error);
+                alert('Erro ao ler a planilha. Verifique se o arquivo está no formato correto.');
+            } finally {
+                setImportLoading(false);
+            }
+        };
+
+        reader.onerror = () => {
+            alert('Erro ao carregar o arquivo.');
+            setImportLoading(false);
+        };
+
+        reader.readAsBinaryString(file);
     };
 
     const handleSaveSuccess = () => {
         setIsModalOpen(false);
         // Optionally show success toast here
+    };
+
+    const processImport = async () => {
+        if (!selectedUnitId || importData.length === 0) return;
+        await executeImport(importData);
+    };
+
+    const executeImport = async (dataToProcess: any[]) => {
+        if (!selectedUnitId || dataToProcess.length === 0) return;
+
+        setImportLoading(true);
+        try {
+            // 1. Filter rows by Category 101
+            const filteredData = dataToProcess.filter(row => {
+                const codCat = row['Código da Categoria'] || row['cod_categoria'];
+                return String(codCat) === '101';
+            });
+
+            if (filteredData.length === 0) {
+                alert('Nenhum registro com Código da Categoria "101" foi encontrado.');
+                setImportLoading(false);
+                return;
+            }
+
+            console.log(`Processando ${filteredData.length} registros...`);
+
+            // 2. Map of existing sectors and roles to avoid redundant DB calls/creation
+            // We'll fetch current unit's sectors and roles
+            const { data: unitData } = await supabase
+                .from('unidades')
+                .select('setores, cargos')
+                .eq('id', selectedUnitId)
+                .single();
+
+            const existingSectorIds = unitData?.setores || [];
+            const existingRoleIds = unitData?.cargos || [];
+
+            // 3. Process each row
+            let successCount = 0;
+            let errorCount = 0;
+
+            for (const row of filteredData) {
+                try {
+                    // a. Resolve Sector (Default to "Geral" if not found in XLS)
+                    const sectorName = row['Setor'] || row['Departamento'] || 'Geral';
+                    let sectorId: number;
+
+                    const { data: sectorRes } = await supabase
+                        .from('setor')
+                        .select('id')
+                        .eq('nome', sectorName)
+                        .maybeSingle();
+
+                    if (sectorRes) {
+                        sectorId = sectorRes.id;
+                    } else {
+                        const { data: newSector } = await supabase
+                            .from('setor')
+                            .insert({ nome: sectorName })
+                            .select('id')
+                            .single();
+                        sectorId = newSector!.id;
+                    }
+
+                    // Ensure sector is linked to unit
+                    if (!existingSectorIds.includes(sectorId)) {
+                        existingSectorIds.push(sectorId);
+                        await supabase
+                            .from('unidades')
+                            .update({ setores: existingSectorIds })
+                            .eq('id', selectedUnitId);
+                    }
+
+                    // b. Resolve Role
+                    const roleName = row['Cargo'] || row['Função'] || 'Colaborador';
+                    let roleId: number;
+
+                    const { data: roleRes } = await supabase
+                        .from('cargos')
+                        .select('id')
+                        .eq('nome', roleName)
+                        .eq('setor_id', sectorId)
+                        .maybeSingle();
+
+                    if (roleRes) {
+                        roleId = roleRes.id;
+                    } else {
+                        const { data: newRole } = await supabase
+                            .from('cargos')
+                            .insert({ nome: roleName, setor_id: sectorId })
+                            .select('id')
+                            .single();
+                        roleId = newRole!.id;
+                    }
+
+                    // Ensure role is linked to unit
+                    if (!existingRoleIds.includes(roleId)) {
+                        existingRoleIds.push(roleId);
+                        await supabase
+                            .from('unidades')
+                            .update({ cargos: existingRoleIds })
+                            .eq('id', selectedUnitId);
+                    }
+
+                    // c. Insert Collaborator
+                    const cpf = String(row['CPF do Trabalhador'] || row['CPF'] || '').replace(/\D/g, '');
+                    const birthDate = row['Data de Nascimento'] || null;
+                    const resignationDate = row['Data de Desligamento'] || null;
+
+                    const insertData = {
+                        nome: String(row['Nome do Trabalhador'] || row['Nome'] || '').trim(),
+                        cpf: cpf,
+                        data_nascimento: birthDate,
+                        data_desligamento: resignationDate,
+                        sexo: row['Sexo'],
+                        cod_categoria: 101,
+                        texto_categoria: row['Categoria'] || 'Importado via Planilha',
+                        unidade_id: selectedUnitId,
+                        setorid: sectorId,
+                        cargo_id: roleId
+                    };
+
+                    const { error: colabError } = await supabase
+                        .from('colaboradores')
+                        .insert(insertData);
+
+                    if (colabError) throw colabError;
+                    successCount++;
+                } catch (err) {
+                    console.error('Erro ao importar linha:', row, err);
+                    errorCount++;
+                }
+            }
+
+            alert(`Importação concluída!\nSucesso: ${successCount}\nErros: ${errorCount}`);
+            if (successCount > 0) handleBack();
+
+        } catch (error: any) {
+            console.error('Erro geral na importação:', error);
+            alert(`Falha na importação: ${error.message}`);
+        } finally {
+            setImportLoading(false);
+        }
     };
 
     const handleRegisterCompany = async (data: any) => {
@@ -326,17 +554,89 @@ export const CadastroPage: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Import Area Placeholder */}
-                        <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-12 text-center hover:border-slate-400 hover:bg-slate-50/50 transition-all cursor-pointer">
-                            <div className="w-20 h-20 bg-indigo-50 text-indigo-500 rounded-full flex items-center justify-center mx-auto mb-6">
-                                <Upload size={32} />
+                        {/* Selection Area */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                                    <Building2 size={16} className="text-indigo-500" />
+                                    Selecionar Empresa
+                                </label>
+                                <select
+                                    value={selectedCompanyId}
+                                    onChange={(e) => setSelectedCompanyId(e.target.value)}
+                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none bg-white shadow-sm transition-all"
+                                >
+                                    <option value="">Selecione uma empresa...</option>
+                                    {companies.map(c => (
+                                        <option key={c.id} value={c.cliente_uuid}>{c.nome_fantasia}</option>
+                                    ))}
+                                </select>
                             </div>
-                            <h3 className="text-lg font-bold text-slate-800 mb-2">Clique ou arraste sua planilha aqui</h3>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                                    <MapPin size={16} className="text-indigo-500" />
+                                    Selecionar Unidade
+                                </label>
+                                <select
+                                    value={selectedUnitId}
+                                    onChange={(e) => setSelectedUnitId(e.target.value)}
+                                    disabled={!selectedCompanyId}
+                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none bg-white shadow-sm transition-all disabled:bg-slate-50 disabled:text-slate-400"
+                                >
+                                    <option value="">Selecione uma unidade...</option>
+                                    {units.map(u => (
+                                        <option key={u.id} value={u.id}>{u.nome}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Import Area */}
+                        <div
+                            className={`bg-white rounded-2xl border-2 border-dashed p-12 text-center transition-all relative ${selectedUnitId
+                                ? 'border-indigo-300 hover:border-indigo-400 hover:bg-indigo-50/30 cursor-pointer'
+                                : 'border-slate-200 bg-slate-50/50 cursor-not-allowed opacity-60'
+                                }`}
+                        >
+                            <input
+                                type="file"
+                                accept=".xlsx, .csv"
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                                disabled={!selectedUnitId || importLoading}
+                                onChange={handleFileUpload}
+                            />
+                            <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 ${selectedUnitId ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-400'}`}>
+                                {importLoading ? (
+                                    <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                    <Upload size={32} />
+                                )}
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-800 mb-2">
+                                {fileUploaded
+                                    ? `Planilha carregada: ${importData.length} linhas encontradas`
+                                    : (selectedUnitId ? 'Clique ou arraste sua planilha aqui' : 'Selecione Empresa e Unidade Primeiro')}
+                            </h3>
                             <p className="text-slate-500 text-sm max-w-sm mx-auto mb-6">
-                                Suportamos arquivos .xlsx e .csv. Certifique-se de que sua planilha siga o modelo padrão.
+                                {fileUploaded
+                                    ? 'Aguardando mapeamento de colunas para processar...'
+                                    : 'Suportamos arquivos .xlsx e .csv. Certifique-se de que sua planilha siga o modelo padrão.'}
                             </p>
-                            <button className="px-6 py-2.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200">
-                                Selecionar Arquivo
+                            <button
+                                onClick={fileUploaded ? processImport : undefined}
+                                disabled={!selectedUnitId || importLoading}
+                                className={`px-6 py-2.5 font-bold rounded-xl transition-colors shadow-lg disabled:bg-slate-400 disabled:shadow-none ${fileUploaded ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-200' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200'
+                                    }`}
+                            >
+                                {importLoading ? (
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                        Processando...
+                                    </div>
+                                ) : (
+                                    fileUploaded ? 'Processar Importação' : 'Selecionar Arquivo'
+                                )}
                             </button>
                         </div>
 

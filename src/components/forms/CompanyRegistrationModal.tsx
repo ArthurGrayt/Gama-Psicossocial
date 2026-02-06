@@ -56,9 +56,9 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
 
 
         // Lista de unidades/filiais da empresa (começa com uma chamada 'Matriz')
-        units: [{ id: Date.now(), name: 'Matriz', sectors: [] }] as { id: number | string; name: string; sectors: string[] }[],
+        units: [{ id: 'matriz-default', name: 'Matriz', sectors: [] }] as { id: number | string; name: string; sectors: string[] }[],
         // Guarda qual unidade o usuário selecionou no momento para ver os detalhes
-        selectedUnitId: null as number | string | null
+        selectedUnitId: 'matriz-default' as number | string | null
     };
 
     // Cria uma variável para controlar qual aba (Dados, Setores, etc.) está selecionada
@@ -192,10 +192,15 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
             sectors: [] // Uma unidade nova começa sem nenhum setor vinculado
         };
         // Adiciona a nova unidade à lista existente na memória
-        setFormData(prev => ({
-            ...prev,
-            units: [...prev.units, newUnit]
-        }));
+        setFormData(prev => {
+            const updatedUnits = [...prev.units, newUnit];
+            return {
+                ...prev,
+                units: updatedUnits,
+                // Se não tinha nenhuma selecionada, seleciona a nova automaticamente
+                selectedUnitId: prev.selectedUnitId || newUnit.id
+            };
+        });
         // Limpa o campo de texto para a próxima unidade
         setNewUnitName('');
     };
@@ -460,22 +465,18 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                 ? prev.setores // Se já existe, não adiciona de novo
                 : [...prev.setores, sName];
 
-            // 2. Vincula o setor à UNIDADE selecionada
+            // 2. Vincula o setor à UNIDADE selecionada (ou à Matriz se for a única)
             let newUnits = prev.units;
-            if (prev.selectedUnitId) {
-                // Procura a unidade ativa e coloca o setor na lista dela
+            const targetUnitId = prev.selectedUnitId || (prev.units.length > 0 ? String(prev.units[0].id) : null);
+
+            if (targetUnitId) {
+                // Procura a unidade alvo e coloca o setor na lista dela
                 newUnits = prev.units.map(u => {
-                    if (String(u.id) === String(prev.selectedUnitId)) {
+                    if (String(u.id) === String(targetUnitId)) {
                         const unitHasSector = u.sectors.some(s => normalizeText(s) === normalizeText(sName));
                         return { ...u, sectors: unitHasSector ? u.sectors : [...u.sectors, sName] };
                     }
                     return u;
-                });
-            } else if (prev.units.length === 1) {
-                // Se só houver uma unidade (Matriz), adiciona automaticamente nela
-                newUnits = prev.units.map((u, idx) => {
-                    const unitHasSector = u.sectors.some(s => normalizeText(s) === normalizeText(sName));
-                    return idx === 0 ? { ...u, sectors: unitHasSector ? u.sectors : [...u.sectors, sName] } : u;
                 });
             }
 
