@@ -88,18 +88,32 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                 // Fetch Unit IDs for this client
                 const unitIds = (unitsData || []).map(u => u.id);
 
-                // Fetch Actual Collaborators Data (for Modal)
+                // Fetch Actual Collaborators Data (for Modal) with cargo and setor names
                 const { data: colaboradoresData, error: colabError } = await supabase
                     .from('colaboradores')
-                    .select('*')
+                    .select(`
+                        *,
+                        cargo:cargos(id, nome),
+                        setor:setor(id, nome)
+                    `)
                     .in('unidade_id', unitIds);
 
                 if (colabError) {
                     console.error('Error fetching collaborators:', colabError);
                 }
 
+                // Map collaborators to include cargo and setor names
+                const mappedCollaborators = (colaboradoresData || []).map((c: any) => ({
+                    ...c,
+                    cargo: c.cargo?.nome || '',
+                    setor: c.setor?.nome || '',
+                    // Keep IDs for reference
+                    cargo_id: c.cargo?.id,
+                    setor_id: c.setor?.id
+                }));
+
                 // Count for the card
-                const colabCount = colaboradoresData?.length || 0;
+                const colabCount = mappedCollaborators?.length || 0;
 
                 // Fetch Sector Names
                 // Aggregate sector IDs from Client and Units to ensure we have all names
@@ -199,7 +213,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                     units: mappedUnits,
                     roles: allRoles.map(r => r.nome), // Compatibility
                     cargos: allRoles.map(r => ({ nome: r.nome, setor: r.setor_name })), // Detailed roles for Modal
-                    collaborators: colaboradoresData || [] // Pass full list to Modal
+                    collaborators: mappedCollaborators || [] // Pass full list to Modal with cargo/setor names
                 };
 
 

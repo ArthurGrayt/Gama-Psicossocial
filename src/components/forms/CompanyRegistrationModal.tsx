@@ -133,8 +133,9 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                         id: String(c.id),
                         dataNascimento: c.dataNascimento || c.data_nascimento || '',
                         unidade_id: c.unidade_id ? String(c.unidade_id) : null,
-                        cargo: c.cargo || (formData.cargos.find((r: any) => r.id === c.cargo_id)?.nome) || '',
-                        setor: c.setor || (formData.setores.find((_: any, i: number) => i === c.setor_id) || '') // Simplified sector resolution
+                        // cargo and setor now come as strings (names) from the database query
+                        cargo: c.cargo || '',
+                        setor: c.setor || ''
                     })),
 
                     units: sanitizedUnits,
@@ -1356,12 +1357,12 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                                         <table className="w-full text-left text-sm">
                                             <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 font-semibold relative z-10">
                                                 <tr>
-                                                    <th className="px-4 py-3 rounded-tl-xl">Nome</th>
-                                                    <th className="px-4 py-3">Nascimento</th>
-                                                    <th className="px-4 py-3">Sexo</th>
-                                                    <th className="px-4 py-3">Cargo</th>
-                                                    <th className="px-4 py-3">Setor</th>
-                                                    <th className="px-4 py-3 rounded-tr-xl text-right">Ações</th>
+                                                    <th className="px-3 py-3 rounded-tl-xl w-[20%]">Nome</th>
+                                                    <th className="px-3 py-3 w-[13%]">Nascimento</th>
+                                                    <th className="px-3 py-3 w-[8%]">Sexo</th>
+                                                    <th className="px-3 py-3 w-[21%]">Cargo</th>
+                                                    <th className="px-3 py-3 w-[21%]">Setor</th>
+                                                    <th className="px-3 py-3 rounded-tr-xl text-right w-[17%]">Ações</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-100">
@@ -1374,21 +1375,27 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                                                 ) : (
                                                     filteredCollaborators.map((colab, idx) => (
                                                         <tr key={idx} className="hover:bg-slate-50/80 transition-colors group">
-                                                            <td className="px-4 py-3 text-slate-800 font-medium flex items-center gap-2">
-                                                                <div className="w-8 h-8 rounded-full bg-indigo-50 text-indigo-500 flex items-center justify-center text-xs font-bold">
-                                                                    {colab.nome.charAt(0).toUpperCase()}
+                                                            <td className="px-3 py-3 text-slate-800 font-medium">
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="w-7 h-7 rounded-full bg-indigo-50 text-indigo-500 flex items-center justify-center text-xs font-bold shrink-0">
+                                                                        {colab.nome.charAt(0).toUpperCase()}
+                                                                    </div>
+                                                                    <span className="truncate">{colab.nome}</span>
                                                                 </div>
-                                                                {colab.nome}
                                                             </td>
-                                                            <td className="px-4 py-3 text-slate-500">{colab.dataNascimento ? new Date(colab.dataNascimento).toLocaleDateString('pt-BR') : '-'}</td>
-                                                            <td className="px-4 py-3 text-slate-500">{colab.sexo || '-'}</td>
-                                                            <td className="px-4 py-3">
-                                                                <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs font-medium">
+                                                            <td className="px-3 py-3 text-slate-500 whitespace-nowrap text-sm">{colab.dataNascimento ? new Date(colab.dataNascimento).toLocaleDateString('pt-BR') : '-'}</td>
+                                                            <td className="px-3 py-3 text-slate-500 text-sm">{colab.sexo || '-'}</td>
+                                                            <td className="px-3 py-3">
+                                                                <span className="inline-block bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-lg text-xs font-semibold">
                                                                     {colab.cargo}
                                                                 </span>
                                                             </td>
-                                                            <td className="px-4 py-3 text-slate-500 text-xs">{colab.setor}</td>
-                                                            <td className="px-4 py-3 text-right">
+                                                            <td className="px-3 py-3">
+                                                                <span className="inline-block bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg text-xs font-semibold">
+                                                                    {colab.setor}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-3 py-3 text-right">
                                                                 <div className="relative inline-block text-left">
                                                                     <button
                                                                         onClick={() => setActionMenuOpenIndex(actionMenuOpenIndex === idx ? null : idx)}

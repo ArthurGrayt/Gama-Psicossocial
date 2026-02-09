@@ -208,9 +208,44 @@ export const CadastroPage: React.FC = () => {
                     }
 
                     // c. Insert Collaborator
+                    // Helper function to parse dates from DD-MM-YYYY to YYYY-MM-DD
+                    const parseDateToDB = (dateStr: any): string | null => {
+                        if (!dateStr) return null;
+
+                        // If it's already a Date object from Excel
+                        if (dateStr instanceof Date) {
+                            return dateStr.toISOString().split('T')[0];
+                        }
+
+                        // If it's a string in DD-MM-YYYY format
+                        const str = String(dateStr).trim();
+                        if (!str) return null;
+
+                        // Try to parse DD-MM-YYYY format
+                        const ddmmyyyyMatch = str.match(/^(\d{2})[/-](\d{2})[/-](\d{4})$/);
+                        if (ddmmyyyyMatch) {
+                            const [, day, month, year] = ddmmyyyyMatch;
+                            return `${year}-${month}-${day}`;
+                        }
+
+                        // Try to parse YYYY-MM-DD format (already correct)
+                        const yyyymmddMatch = str.match(/^(\d{4})[/-](\d{2})[/-](\d{2})$/);
+                        if (yyyymmddMatch) {
+                            return str.replace(/\//g, '-');
+                        }
+
+                        // If Excel serial number (numeric)
+                        if (!isNaN(Number(str))) {
+                            const excelDate = new Date((Number(str) - 25569) * 86400 * 1000);
+                            return excelDate.toISOString().split('T')[0];
+                        }
+
+                        return null;
+                    };
+
                     const cpf = String(row['CPF do Trabalhador'] || row['CPF'] || '').replace(/\D/g, '');
-                    const birthDate = row['Data de Nascimento'] || null;
-                    const resignationDate = row['Data de Desligamento'] || null;
+                    const birthDate = parseDateToDB(row['Data de Nascimento']);
+                    const resignationDate = parseDateToDB(row['Data de Desligamento']);
 
                     const insertData = {
                         nome: String(row['Nome do Trabalhador'] || row['Nome'] || '').trim(),
@@ -221,7 +256,7 @@ export const CadastroPage: React.FC = () => {
                         cod_categoria: 101,
                         texto_categoria: row['Categoria'] || 'Importado via Planilha',
                         unidade_id: selectedUnitId,
-                        setorid: sectorId,
+                        setor_id: sectorId,
                         cargo_id: roleId
                     };
 

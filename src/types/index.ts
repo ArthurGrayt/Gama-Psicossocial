@@ -68,9 +68,11 @@ export interface Collaborator {
     data_nascimento?: string;
     sexo?: string;
     unidade?: number;
+    unidade_id?: number;
     setor?: string;
-    setorid?: number;
+    setor_id?: number;
     cargo?: string | number;
+    cargo_id?: number;
     empresa_nome?: string; // Derived
     avulso?: boolean;
 }
