@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { DashboardLayout } from '../layouts/DashboardLayout';
-import { FilePlus, FileSpreadsheet, ChevronRight, Upload, Download, Building2, MapPin } from 'lucide-react';
+import { FilePlus, FileSpreadsheet, ChevronRight, Upload, Download, Building2, MapPin, CheckCircle } from 'lucide-react';
 import { CompanyRegistrationModal } from '../components/forms/CompanyRegistrationModal';
 import { supabase } from '../services/supabase';
 import * as XLSX from 'xlsx';
@@ -14,6 +14,7 @@ export const CadastroPage: React.FC = () => {
 
     // Import View State
     const [companies, setCompanies] = useState<any[]>([]);
+    const [importResult, setImportResult] = useState<{ success: number; errors: number } | null>(null);
     const [units, setUnits] = useState<any[]>([]);
     const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
     const [selectedUnitId, setSelectedUnitId] = useState<string>('');
@@ -25,6 +26,15 @@ export const CadastroPage: React.FC = () => {
         setView('options');
         setSelectedCompanyId('');
         setSelectedUnitId('');
+        setImportResult(null); // Reset result when backing out
+    };
+
+    const closeImportFeedback = () => {
+        setImportResult(null);
+        setImportData([]);
+        setFileUploaded(false);
+        // We stay on the same screen or go back? Usually user wants to import more or done.
+        // Let's reload companies/units or just reset the form state
     };
 
     // Fetch companies when entering import view
@@ -272,8 +282,9 @@ export const CadastroPage: React.FC = () => {
                 }
             }
 
-            alert(`Importação concluída!\nSucesso: ${successCount}\nErros: ${errorCount}`);
-            if (successCount > 0) handleBack();
+            // alert(`Importação concluída!\nSucesso: ${successCount}\nErros: ${errorCount}`);
+            // if (successCount > 0) handleBack();
+            setImportResult({ success: successCount, errors: errorCount });
 
         } catch (error: any) {
             console.error('Erro geral na importação:', error);
@@ -599,52 +610,81 @@ export const CadastroPage: React.FC = () => {
                         </div>
 
                         {/* Import Area */}
-                        <div
-                            className={`bg-white rounded-2xl border-2 border-dashed p-12 text-center transition-all relative ${selectedUnitId
-                                ? 'border-indigo-300 hover:border-indigo-400 hover:bg-indigo-50/30 cursor-pointer'
-                                : 'border-slate-200 bg-slate-50/50 cursor-not-allowed opacity-60'
-                                }`}
-                        >
-                            <input
-                                type="file"
-                                accept=".xlsx, .csv"
-                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
-                                disabled={!selectedUnitId || importLoading}
-                                onChange={handleFileUpload}
-                            />
-                            <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 ${selectedUnitId ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-400'}`}>
-                                {importLoading ? (
-                                    <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-                                ) : (
-                                    <Upload size={32} />
-                                )}
+                        {/* Import Result Feedback or Upload Area */}
+                        {importResult ? (
+                            <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center animate-in zoom-in-95 duration-300">
+                                <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                                    <CheckCircle size={40} />
+                                </div>
+                                <h2 className="text-2xl font-bold text-slate-800 mb-2">Importação Concluída!</h2>
+                                <p className="text-slate-500 mb-8">O processamento do arquivo foi finalizado.</p>
+
+                                <div className="grid grid-cols-2 gap-4 max-w-md mx-auto mb-8">
+                                    <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100">
+                                        <div className="text-3xl font-bold text-emerald-600 mb-1">{importResult.success}</div>
+                                        <div className="text-sm font-medium text-emerald-700">Importados com Sucesso</div>
+                                    </div>
+                                    <div className={`p-4 rounded-xl border ${importResult.errors > 0 ? 'bg-red-50 border-red-100' : 'bg-slate-50 border-slate-100'}`}>
+                                        <div className={`text-3xl font-bold mb-1 ${importResult.errors > 0 ? 'text-red-600' : 'text-slate-400'}`}>{importResult.errors}</div>
+                                        <div className={`text-sm font-medium ${importResult.errors > 0 ? 'text-red-700' : 'text-slate-500'}`}>Erros / Não Importados</div>
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={closeImportFeedback}
+                                    className="px-8 py-3 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-700 transition-colors shadow-lg shadow-slate-200"
+                                >
+                                    Concluir
+                                </button>
                             </div>
-                            <h3 className="text-lg font-bold text-slate-800 mb-2">
-                                {fileUploaded
-                                    ? `Planilha carregada: ${importData.length} linhas encontradas`
-                                    : (selectedUnitId ? 'Clique ou arraste sua planilha aqui' : 'Selecione Empresa e Unidade Primeiro')}
-                            </h3>
-                            <p className="text-slate-500 text-sm max-w-sm mx-auto mb-6">
-                                {fileUploaded
-                                    ? 'Aguardando mapeamento de colunas para processar...'
-                                    : 'Suportamos arquivos .xlsx e .csv. Certifique-se de que sua planilha siga o modelo padrão.'}
-                            </p>
-                            <button
-                                onClick={fileUploaded ? processImport : undefined}
-                                disabled={!selectedUnitId || importLoading}
-                                className={`px-6 py-2.5 font-bold rounded-xl transition-colors shadow-lg disabled:bg-slate-400 disabled:shadow-none ${fileUploaded ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-200' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200'
+                        ) : (
+                            <div
+                                className={`bg-white rounded-2xl border-2 border-dashed p-12 text-center transition-all relative ${selectedUnitId
+                                    ? 'border-indigo-300 hover:border-indigo-400 hover:bg-indigo-50/30 cursor-pointer'
+                                    : 'border-slate-200 bg-slate-50/50 cursor-not-allowed opacity-60'
                                     }`}
                             >
-                                {importLoading ? (
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                        Processando...
-                                    </div>
-                                ) : (
-                                    fileUploaded ? 'Processar Importação' : 'Selecionar Arquivo'
-                                )}
-                            </button>
-                        </div>
+                                <input
+                                    type="file"
+                                    accept=".xlsx, .csv"
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                                    disabled={!selectedUnitId || importLoading}
+                                    onChange={handleFileUpload}
+                                />
+                                <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 ${selectedUnitId ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-400'}`}>
+                                    {importLoading ? (
+                                        <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                                    ) : (
+                                        <Upload size={32} />
+                                    )}
+                                </div>
+                                <h3 className="text-lg font-bold text-slate-800 mb-2">
+                                    {fileUploaded
+                                        ? `Planilha carregada: ${importData.length} linhas encontradas`
+                                        : (selectedUnitId ? 'Clique ou arraste sua planilha aqui' : 'Selecione Empresa e Unidade Primeiro')}
+                                </h3>
+                                <p className="text-slate-500 text-sm max-w-sm mx-auto mb-6">
+                                    {fileUploaded
+                                        ? 'Aguardando mapeamento de colunas para processar...'
+                                        : 'Suportamos arquivos .xlsx e .csv. Certifique-se de que sua planilha siga o modelo padrão.'}
+                                </p>
+                                <button
+                                    onClick={fileUploaded ? processImport : undefined}
+                                    disabled={!selectedUnitId || importLoading}
+                                    className={`px-6 py-2.5 font-bold rounded-xl transition-colors shadow-lg disabled:bg-slate-400 disabled:shadow-none ${fileUploaded ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-200' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200'
+                                        }`}
+                                >
+                                    {importLoading ? (
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                            Processando...
+                                        </div>
+                                    ) : (
+                                        fileUploaded ? 'Processar Importação' : 'Selecionar Arquivo'
+                                    )}
+                                </button>
+                            </div>
+                        )}
 
                         {/* Support / Template Info */}
                         <div className="mt-8 p-6 bg-slate-50 rounded-2xl border border-slate-100 flex items-start gap-4">
