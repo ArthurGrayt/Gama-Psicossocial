@@ -15,7 +15,7 @@ import { useAuth } from './contexts/AuthContext';
 import { FirstAccessModal } from './components/modals/FirstAccessModal';
 
 function AppContent() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   console.log('AppContent render - profile:', profile);
   if (profile) {
     console.log('AppContent render - primeiro_acesso:', profile.primeiro_acesso);
@@ -61,7 +61,18 @@ function AppContent() {
       </Routes>
 
       {/* Global Modals */}
-      <FirstAccessModal isOpen={profile?.primeiro_acesso === true} />
+      {/* Show if user exists, profile is loaded, and primeiro_acesso is NOT explicitly false */}
+      <FirstAccessModal isOpen={!!user && !!profile && profile.primeiro_acesso !== false} />
+
+      {/* DEBUG OVERLAY - REMOVE AFTER FIXING */}
+      {import.meta.env.DEV && (
+        <div className="fixed bottom-4 right-4 bg-black/80 text-white p-4 rounded-lg text-xs font-mono z-[9999] max-w-sm pointer-events-none">
+          <p>User: {user ? 'Logged In' : 'Null'}</p>
+          <p>Profile: {profile ? 'Loaded' : 'Null'}</p>
+          <p>Primeiro Acesso: {String(profile?.primeiro_acesso)}</p>
+          <p>Modal Check: {String(!!user && !!profile && profile?.primeiro_acesso !== false)}</p>
+        </div>
+      )}
     </div>
   );
 }

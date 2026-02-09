@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { supabase } from '../services/supabase';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Lock, Mail, User } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 import { PlansModal } from '../components/modals/PlansModal';
 import { PaymentModal } from '../components/modals/PaymentModal';
 import logo from '../assets/logo.png';
@@ -21,6 +22,14 @@ export const AuthPage: React.FC = () => {
     const [isPlansModalOpen, setIsPlansModalOpen] = useState(false);
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
     const [selectedPackage, setSelectedPackage] = useState<{ id: string, name: string, tokens: number, price: string } | null>(null);
+
+    const { session } = useAuth();
+
+    React.useEffect(() => {
+        if (session) {
+            navigate('/dashboard');
+        }
+    }, [session, navigate]);
 
     const handlePlanSelect = (plan: { id: string, name: string, tokens: number, price: string }) => {
         setSelectedPackage(plan);

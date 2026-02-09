@@ -17,7 +17,8 @@ export const FirstAccessModal: React.FC<FirstAccessModalProps> = ({ isOpen }) =>
     const [success, setSuccess] = useState(false);
 
     console.log('FirstAccessModal isOpen:', isOpen);
-    if (!isOpen) return null;
+    // Safety check: logic requires both isOpen=true AND a valid user object
+    if (!isOpen || !user) return null;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
