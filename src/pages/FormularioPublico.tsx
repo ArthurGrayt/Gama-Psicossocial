@@ -854,7 +854,7 @@ const RegistrationModal = ({ isOpen, onClose, cpf, onSuccess }: RegistrationModa
             cpf, // Clean CPF is passed prop
             data_nascimento: dataNascimento,
             unidade: unidadeId,
-            setorid: setorId,
+            setor_id: setorId,
             cargo: cargoId,
             sexo,
             avulso: true
