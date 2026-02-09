@@ -50,7 +50,7 @@ export const PlansModal: React.FC<PlansModalProps> = ({ isOpen, onClose, onPlanS
                 </button>
 
                 <div className="text-center mb-12">
-                    <span className="text-[#35b6cf] font-bold text-xs uppercase tracking-widest">Preços</span>
+                    <span className="text-[#139690] font-bold text-xs uppercase tracking-widest">Preços</span>
                     <h2 className="text-3xl lg:text-4xl font-display font-bold text-slate-900 mt-2">Invista no Seu Pessoal</h2>
                     <p className="mt-4 text-slate-500">Preços transparentes para empresas de todos os portes.</p>
                 </div>
@@ -60,12 +60,12 @@ export const PlansModal: React.FC<PlansModalProps> = ({ isOpen, onClose, onPlanS
                         <div
                             key={plan.id}
                             className={`relative flex flex-col rounded-2xl border p-7 transition-all hover:shadow-lg group ${plan.isFeatured
-                                    ? 'border-[#35b6cf] bg-white shadow-md'
-                                    : 'border-slate-100 bg-white hover:border-[#35b6cf]'
+                                ? 'border-[#139690] bg-white shadow-md'
+                                : 'border-slate-100 bg-white hover:border-[#139690]'
                                 }`}
                         >
                             {plan.isFeatured && (
-                                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#35b6cf] text-white text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-widest shadow-sm">
+                                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#139690] text-white text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-widest shadow-sm">
                                     Melhor Valor
                                 </div>
                             )}
@@ -73,26 +73,26 @@ export const PlansModal: React.FC<PlansModalProps> = ({ isOpen, onClose, onPlanS
                             <div className="flex flex-col gap-1 mb-8">
                                 <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
                                     {plan.name}
-                                    {plan.isFeatured && <Check className="text-[#35b6cf]" size={14} />}
+                                    {plan.isFeatured && <Check className="text-[#139690]" size={14} />}
                                 </h3>
                                 <div className="flex flex-col">
                                     <p className="flex items-baseline gap-1 text-slate-800 mt-1">
                                         <span className="text-slate-400 text-sm font-medium">R$</span>
                                         <span className={`${plan.isFeatured ? 'text-5xl' : 'text-4xl'} font-extrabold tracking-tight`}>{plan.price}</span>
                                     </p>
-                                    <span className="text-xs text-[#35b6cf] font-bold mt-2 px-2 py-0.5 bg-[#35b6cf]/5 rounded-md border border-[#35b6cf]/10 w-fit">
+                                    <span className="text-xs text-[#139690] font-bold mt-2 px-2 py-0.5 bg-[#139690]/5 rounded-md border border-[#139690]/10 w-fit">
                                         R$ {plan.pricePerEval}/aval
                                     </span>
                                 </div>
                                 {plan.discount && (
-                                    <p className="text-[#35b6cf] text-xs font-bold mt-4 bg-[#35b6cf]/5 p-2 rounded-lg border border-[#35b6cf]/10">
+                                    <p className="text-[#139690] text-xs font-bold mt-4 bg-[#139690]/5 p-2 rounded-lg border border-[#139690]/10">
                                         {plan.discount}
                                     </p>
                                 )}
                                 <ul className="text-left space-y-3 mt-6 text-sm text-slate-600">
                                     {plan.features.map((feature, idx) => (
                                         <li key={idx} className="flex gap-2 items-center">
-                                            <Check className="text-[#35b6cf]" size={18} />
+                                            <Check className="text-[#139690]" size={18} />
                                             {feature}
                                         </li>
                                     ))}
@@ -102,8 +102,8 @@ export const PlansModal: React.FC<PlansModalProps> = ({ isOpen, onClose, onPlanS
                             <button
                                 onClick={() => onPlanSelect({ id: plan.id, name: plan.name, tokens: plan.tokens, price: plan.price })}
                                 className={`mt-auto w-full cursor-pointer flex items-center justify-center rounded-xl h-12 px-6 font-bold transition-all ${plan.isFeatured
-                                        ? 'bg-[#35b6cf] hover:bg-teal-700 text-white shadow-md shadow-[#35b6cf]/20'
-                                        : 'bg-slate-50 hover:bg-[#35b6cf] text-slate-600 hover:text-white border border-slate-100 hover:border-[#35b6cf]'
+                                    ? 'bg-[#139690] hover:bg-teal-700 text-white shadow-md shadow-[#139690]/20'
+                                    : 'bg-slate-50 hover:bg-[#139690] text-slate-600 hover:text-white border border-slate-100 hover:border-[#139690]'
                                     }`}
                             >
                                 Selecionar Plano

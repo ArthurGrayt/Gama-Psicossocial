@@ -106,7 +106,7 @@ export const AuthPage: React.FC = () => {
                                         required={!isLogin}
                                         value={username}
                                         onChange={(e) => setUsername(e.target.value)}
-                                        className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#35b6cf]/20 focus:border-[#35b6cf] transition-all outline-none text-slate-800 font-medium"
+                                        className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#139690]/20 focus:border-[#139690] transition-all outline-none text-slate-800 font-medium"
                                         placeholder="Seu nome"
                                     />
                                 </div>
@@ -159,7 +159,7 @@ export const AuthPage: React.FC = () => {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full bg-[#35b6cf] hover:bg-[#2ca1b7] text-white font-bold py-3 rounded-lg transition-all active:scale-[0.98] shadow-md shadow-blue-500/20 disabled:opacity-70 disabled:cursor-not-allowed mt-4"
+                            className="w-full bg-[#139690] hover:bg-[#0f807a] text-white font-bold py-3 rounded-lg transition-all active:scale-[0.98] shadow-md shadow-emerald-500/20 disabled:opacity-70 disabled:cursor-not-allowed mt-4"
                         >
                             {loading ? 'Processando...' : (isLogin ? 'Entrar' : 'Criar Conta')}
                         </button>
@@ -176,7 +176,7 @@ export const AuthPage: React.FC = () => {
                                     setIsLogin(true);
                                 }
                             }}
-                            className="ml-2 font-bold text-[#35b6cf] hover:underline"
+                            className="ml-2 font-bold text-[#139690] hover:underline"
                         >
                             {isLogin ? 'Adquira agora' : 'Faça Login'}
                         </button>

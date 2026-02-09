@@ -134,29 +134,29 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, sel
                         <button
                             disabled={isLoading}
                             onClick={() => setPaymentMethod('credit')}
-                            className={`flex flex-col items-center justify-center p-4 border rounded-xl transition-all group ${paymentMethod === 'credit' ? 'border-[#35b6cf] bg-[#35b6cf]/5 shadow-sm' : 'border-slate-100 hover:bg-slate-50'} ${isLoading ? 'opacity-50' : ''}`}
+                            className={`flex flex-col items-center justify-center p-4 border rounded-xl transition-all group ${paymentMethod === 'credit' ? 'border-[#139690] bg-[#139690]/5 shadow-sm' : 'border-slate-100 hover:bg-slate-50'} ${isLoading ? 'opacity-50' : ''}`}
                         >
-                            <CreditCard className={`mb-2 transition-colors ${paymentMethod === 'credit' ? 'text-[#35b6cf]' : 'text-slate-400 group-hover:text-[#35b6cf]'}`} size={24} />
-                            <span className={`text-sm font-medium transition-colors ${paymentMethod === 'credit' ? 'text-[#35b6cf]' : 'text-slate-500 group-hover:text-[#35b6cf]'}`}>Cartão de Crédito</span>
+                            <CreditCard className={`mb-2 transition-colors ${paymentMethod === 'credit' ? 'text-[#139690]' : 'text-slate-400 group-hover:text-[#139690]'}`} size={24} />
+                            <span className={`text-sm font-medium transition-colors ${paymentMethod === 'credit' ? 'text-[#139690]' : 'text-slate-500 group-hover:text-[#139690]'}`}>Cartão de Crédito</span>
                         </button>
 
                         <button
                             disabled={isLoading}
                             onClick={() => setPaymentMethod('debit')}
-                            className={`flex flex-col items-center justify-center p-4 border rounded-xl transition-all group ${paymentMethod === 'debit' ? 'border-[#35b6cf] bg-[#35b6cf]/5 shadow-sm' : 'border-slate-100 hover:bg-slate-50'} ${isLoading ? 'opacity-50' : ''}`}
+                            className={`flex flex-col items-center justify-center p-4 border rounded-xl transition-all group ${paymentMethod === 'debit' ? 'border-[#139690] bg-[#139690]/5 shadow-sm' : 'border-slate-100 hover:bg-slate-50'} ${isLoading ? 'opacity-50' : ''}`}
                         >
-                            <Wallet className={`mb-2 transition-colors ${paymentMethod === 'debit' ? 'text-[#35b6cf]' : 'text-slate-400 group-hover:text-[#35b6cf]'}`} size={24} />
-                            <span className={`text-sm font-medium transition-colors ${paymentMethod === 'debit' ? 'text-[#35b6cf]' : 'text-slate-500 group-hover:text-[#35b6cf]'}`}>Cartão de Débito</span>
+                            <Wallet className={`mb-2 transition-colors ${paymentMethod === 'debit' ? 'text-[#139690]' : 'text-slate-400 group-hover:text-[#139690]'}`} size={24} />
+                            <span className={`text-sm font-medium transition-colors ${paymentMethod === 'debit' ? 'text-[#139690]' : 'text-slate-500 group-hover:text-[#139690]'}`}>Cartão de Débito</span>
                         </button>
 
                         <button
                             disabled={isLoading}
                             onClick={() => setPaymentMethod('pix')}
-                            className={`relative flex flex-col items-center justify-center p-4 border-2 rounded-xl transition-all ${paymentMethod === 'pix' ? 'border-[#35b6cf] bg-[#35b6cf]/5 shadow-sm scale-[1.02]' : 'border-slate-100 hover:bg-slate-50'} ${isLoading ? 'opacity-50' : ''}`}
+                            className={`relative flex flex-col items-center justify-center p-4 border-2 rounded-xl transition-all ${paymentMethod === 'pix' ? 'border-[#139690] bg-[#139690]/5 shadow-sm scale-[1.02]' : 'border-slate-100 hover:bg-slate-50'} ${isLoading ? 'opacity-50' : ''}`}
                         >
                             <div className="absolute -top-2 -right-2 bg-emerald-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm">INSTANTÂNEO</div>
-                            <QrCode className="text-[#35b6cf] mb-2" size={24} />
-                            <span className="text-sm font-bold text-[#35b6cf]">Pix</span>
+                            <QrCode className="text-[#139690] mb-2" size={24} />
+                            <span className="text-sm font-bold text-[#139690]">Pix</span>
                         </button>
                     </div>
 
@@ -173,7 +173,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, sel
                                     onChange={handleCustomerChange}
                                     disabled={isLoading}
                                     placeholder="Como impresso no cartão"
-                                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#35b6cf]/20 focus:border-[#35b6cf] transition-all disabled:opacity-50"
+                                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#139690]/20 focus:border-[#139690] transition-all disabled:opacity-50"
                                 />
                             </div>
                         </div>
@@ -187,7 +187,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, sel
                                 onChange={handleCustomerChange}
                                 disabled={isLoading}
                                 placeholder="000.000.000-00"
-                                className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#35b6cf]/20 focus:border-[#35b6cf] transition-all disabled:opacity-50"
+                                className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#139690]/20 focus:border-[#139690] transition-all disabled:opacity-50"
                             />
                         </div>
 
@@ -202,7 +202,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, sel
                                     onChange={handleCustomerChange}
                                     disabled={isLoading}
                                     placeholder="(00) 00000-0000"
-                                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#35b6cf]/20 focus:border-[#35b6cf] transition-all disabled:opacity-50"
+                                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#139690]/20 focus:border-[#139690] transition-all disabled:opacity-50"
                                 />
                             </div>
                         </div>
@@ -218,7 +218,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, sel
                                     onChange={handleCustomerChange}
                                     disabled={isLoading}
                                     placeholder="exemplo@email.com"
-                                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#35b6cf]/20 focus:border-[#35b6cf] transition-all disabled:opacity-50"
+                                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#139690]/20 focus:border-[#139690] transition-all disabled:opacity-50"
                                 />
                             </div>
                         </div>
@@ -235,7 +235,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, sel
                                         onChange={handleCardChange}
                                         disabled={isLoading}
                                         placeholder="0000 0000 0000 0000"
-                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#35b6cf]/20 focus:border-[#35b6cf] transition-all disabled:opacity-50"
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#139690]/20 focus:border-[#139690] transition-all disabled:opacity-50"
                                     />
                                 </div>
                                 <div className="relative group">
@@ -248,7 +248,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, sel
                                         disabled={isLoading}
                                         placeholder="000"
                                         maxLength={4}
-                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#35b6cf]/20 focus:border-[#35b6cf] transition-all disabled:opacity-50"
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#139690]/20 focus:border-[#139690] transition-all disabled:opacity-50"
                                     />
                                 </div>
                                 <div className="relative group">
@@ -261,7 +261,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, sel
                                         disabled={isLoading}
                                         placeholder="MM"
                                         maxLength={2}
-                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#35b6cf]/20 focus:border-[#35b6cf] transition-all disabled:opacity-50"
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#139690]/20 focus:border-[#139690] transition-all disabled:opacity-50"
                                     />
                                 </div>
                                 <div className="relative group">
@@ -274,7 +274,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, sel
                                         disabled={isLoading}
                                         placeholder="AAAA"
                                         maxLength={4}
-                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#35b6cf]/20 focus:border-[#35b6cf] transition-all disabled:opacity-50"
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#139690]/20 focus:border-[#139690] transition-all disabled:opacity-50"
                                     />
                                 </div>
                                 <div className="relative group">
@@ -286,7 +286,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, sel
                                         onChange={handleCardChange}
                                         disabled={isLoading}
                                         placeholder="00000-000"
-                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#35b6cf]/20 focus:border-[#35b6cf] transition-all disabled:opacity-50"
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#139690]/20 focus:border-[#139690] transition-all disabled:opacity-50"
                                     />
                                 </div>
                                 <div className="relative group">
@@ -298,7 +298,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, sel
                                         onChange={handleCardChange}
                                         disabled={isLoading}
                                         placeholder="123"
-                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#35b6cf]/20 focus:border-[#35b6cf] transition-all disabled:opacity-50"
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#139690]/20 focus:border-[#139690] transition-all disabled:opacity-50"
                                     />
                                 </div>
                             </div>
@@ -308,11 +308,11 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, sel
                     {paymentMethod === 'pix' && (
                         <>
                             <h2 className="text-lg font-semibold text-slate-800 mb-4 tracking-tight">Pagamento via Pix</h2>
-                            <div className="bg-[#f0f9fa] border border-[#35b6cf]/10 rounded-2xl p-6 mb-8 flex flex-col md:flex-row items-center justify-between gap-6">
+                            <div className="bg-[#f0f9fa] border border-[#139690]/10 rounded-2xl p-6 mb-8 flex flex-col md:flex-row items-center justify-between gap-6">
                                 <div className="flex-1 space-y-4">
                                     <div className="flex items-start gap-3">
-                                        <div className="p-1.5 bg-[#35b6cf]/10 rounded-lg shrink-0 mt-0.5">
-                                            <Zap size={16} className="text-[#35b6cf] fill-[#35b6cf]" />
+                                        <div className="p-1.5 bg-[#139690]/10 rounded-lg shrink-0 mt-0.5">
+                                            <Zap size={16} className="text-[#139690] fill-[#139690]" />
                                         </div>
                                         <div>
                                             <h3 className="font-bold text-slate-800 text-sm">Aprovação Imediata</h3>
@@ -320,8 +320,8 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, sel
                                         </div>
                                     </div>
                                     <div className="flex items-start gap-3">
-                                        <div className="p-1.5 bg-[#35b6cf]/10 rounded-lg shrink-0 mt-0.5">
-                                            <QrCode size={16} className="text-[#35b6cf]" />
+                                        <div className="p-1.5 bg-[#139690]/10 rounded-lg shrink-0 mt-0.5">
+                                            <QrCode size={16} className="text-[#139690]" />
                                         </div>
                                         <div>
                                             <h3 className="font-bold text-slate-800 text-sm">QR Code Exclusivo</h3>
@@ -338,7 +338,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, sel
                     )}
 
                     <div className="text-[10px] text-slate-400 mb-6 leading-relaxed">
-                        Ao clicar em {paymentMethod === 'pix' ? 'gerar pix' : 'pagar agora'}, você concorda com os nossos <a className="font-bold text-[#35b6cf] hover:underline" href="#">Termos e Condições</a>.
+                        Ao clicar em {paymentMethod === 'pix' ? 'gerar pix' : 'pagar agora'}, você concorda com os nossos <a className="font-bold text-[#139690] hover:underline" href="#">Termos e Condições</a>.
                     </div>
 
                     <div className="flex flex-col-reverse md:flex-row items-center gap-4 mb-8">
@@ -353,7 +353,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, sel
                         <button
                             onClick={handleSubmit}
                             disabled={isLoading}
-                            className="w-full md:w-auto flex-1 bg-[#35b6cf] hover:bg-[#2ca3bc] text-white px-8 py-4 rounded-xl font-bold shadow-lg shadow-cyan-200/50 transition-all flex items-center justify-center gap-2 group disabled:opacity-75 disabled:cursor-not-allowed"
+                            className="w-full md:w-auto flex-1 bg-[#139690] hover:bg-[#0f807a] text-white px-8 py-4 rounded-xl font-bold shadow-lg shadow-emerald-500/50 transition-all flex items-center justify-center gap-2 group disabled:opacity-75 disabled:cursor-not-allowed"
                         >
                             {isLoading ? (
                                 <Loader2 size={18} className="animate-spin" />
@@ -382,7 +382,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, sel
                     <h2 className="text-xl font-bold text-slate-800 pl-1 tracking-tight">Detalhes do Pacote</h2>
                     <div className="bg-[#f8fafc] rounded-[2rem] p-8 border border-slate-100 sticky top-6">
                         <div className="mb-6 pb-6 border-b border-slate-200">
-                            <h3 className="text-2xl font-black text-[#35b6cf] mb-1 tracking-tight">{selectedPackage.name}</h3>
+                            <h3 className="text-2xl font-black text-[#139690] mb-1 tracking-tight">{selectedPackage.name}</h3>
                             <div className="flex items-baseline gap-1.5">
                                 <span className="text-2xl font-bold text-slate-800">R$ {selectedPackage.price}</span>
                                 <span className="text-xs font-medium text-slate-400 lowercase">pagamento único</span>
@@ -408,10 +408,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, sel
                         </ul>
 
                         <div className="bg-white rounded-2xl p-6 flex flex-col items-center justify-center text-center shadow-sm border border-slate-50">
-                            <div className="w-12 h-12 rounded-full bg-[#35b6cf]/10 flex items-center justify-center mb-3 text-[#35b6cf]">
+                            <div className="w-12 h-12 rounded-full bg-[#139690]/10 flex items-center justify-center mb-3 text-[#139690]">
                                 <ShieldCheck size={24} className="animate-pulse" />
                             </div>
-                            <span className="text-sm font-bold text-[#35b6cf]">Garantia de 30 dias</span>
+                            <span className="text-sm font-bold text-[#139690]">Garantia de 30 dias</span>
                             <span className="text-[10px] text-slate-400 mt-1 font-medium leading-tight">Reembolso total se não estiver satisfeito</span>
                         </div>
                     </div>
