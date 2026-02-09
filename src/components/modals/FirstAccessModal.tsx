@@ -16,6 +16,7 @@ export const FirstAccessModal: React.FC<FirstAccessModalProps> = ({ isOpen }) =>
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
 
+    console.log('FirstAccessModal isOpen:', isOpen);
     if (!isOpen) return null;
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -66,7 +67,7 @@ export const FirstAccessModal: React.FC<FirstAccessModalProps> = ({ isOpen }) =>
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-300 border border-slate-200">
-                <div className="bg-[#35b6cf] p-8 text-center text-white relative">
+                <div className="bg-[#139690] p-8 text-center text-white relative">
                     <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none overflow-hidden">
                         <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full bg-white blur-3xl" />
                         <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] rounded-full bg-white blur-3xl" />
@@ -82,7 +83,7 @@ export const FirstAccessModal: React.FC<FirstAccessModalProps> = ({ isOpen }) =>
                 <div className="p-8">
                     {success ? (
                         <div className="text-center py-6 animate-in zoom-in-90 duration-500">
-                            <div className="mx-auto w-16 h-16 bg-green-50 text-green-500 rounded-full flex items-center justify-center mb-4">
+                            <div className="mx-auto w-16 h-16 bg-[#139690]/10 text-[#139690] rounded-full flex items-center justify-center mb-4">
                                 <CheckCircle size={32} />
                             </div>
                             <h3 className="text-xl font-bold text-slate-800">Senha Alterada!</h3>
@@ -94,13 +95,13 @@ export const FirstAccessModal: React.FC<FirstAccessModalProps> = ({ isOpen }) =>
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Nova Senha</label>
                                 <div className="relative group">
-                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#35b6cf] transition-colors" size={18} />
+                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#139690] transition-colors" size={18} />
                                     <input
                                         type={showPassword ? 'text' : 'password'}
                                         required
                                         value={newPassword}
                                         onChange={(e) => setNewPassword(e.target.value)}
-                                        className="w-full pl-10 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#35b6cf]/20 focus:border-[#35b6cf] transition-all outline-none text-slate-800 font-medium placeholder:text-slate-300"
+                                        className="w-full pl-10 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#139690]/20 focus:border-[#139690] transition-all outline-none text-slate-800 font-medium placeholder:text-slate-300"
                                         placeholder="Mínimo 6 caracteres"
                                     />
                                     <button
@@ -116,13 +117,13 @@ export const FirstAccessModal: React.FC<FirstAccessModalProps> = ({ isOpen }) =>
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Confirmar Nova Senha</label>
                                 <div className="relative group">
-                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#35b6cf] transition-colors" size={18} />
+                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#139690] transition-colors" size={18} />
                                     <input
                                         type={showPassword ? 'text' : 'password'}
                                         required
                                         value={confirmPassword}
                                         onChange={(e) => setConfirmPassword(e.target.value)}
-                                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#35b6cf]/20 focus:border-[#35b6cf] transition-all outline-none text-slate-800 font-medium placeholder:text-slate-300"
+                                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#139690]/20 focus:border-[#139690] transition-all outline-none text-slate-800 font-medium placeholder:text-slate-300"
                                         placeholder="Repita sua nova senha"
                                     />
                                 </div>
@@ -138,7 +139,7 @@ export const FirstAccessModal: React.FC<FirstAccessModalProps> = ({ isOpen }) =>
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full bg-[#35b6cf] hover:bg-[#2ca1b7] text-white font-bold py-4 rounded-xl transition-all active:scale-[0.98] shadow-lg shadow-blue-500/20 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 group"
+                                className="w-full bg-[#139690] hover:bg-[#0f807a] text-white font-bold py-4 rounded-xl transition-all active:scale-[0.98] shadow-lg shadow-emerald-500/20 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 group"
                             >
                                 {loading ? (
                                     <span className="flex items-center gap-2">

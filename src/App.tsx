@@ -16,6 +16,7 @@ import { FirstAccessModal } from './components/modals/FirstAccessModal';
 
 function AppContent() {
   const { profile } = useAuth();
+  console.log('AppContent profile:', profile);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
