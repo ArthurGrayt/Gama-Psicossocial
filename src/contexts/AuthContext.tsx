@@ -38,9 +38,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (error) {
             console.error('Error fetching profile:', error);
+            console.log('Error details - message:', error.message, 'code:', error.code);
             return;
         }
-        console.log('Profile fetched:', data);
+        console.log('Profile fetched raw data:', data);
+        if (data) {
+            console.log('Profile keys:', Object.keys(data));
+            console.log('primeiro_acesso value:', data.primeiro_acesso);
+        } else {
+            console.warn('Profile not found for this user in public.users table.');
+        }
         setProfile(data);
     };
 

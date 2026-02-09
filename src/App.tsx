@@ -16,7 +16,11 @@ import { FirstAccessModal } from './components/modals/FirstAccessModal';
 
 function AppContent() {
   const { profile } = useAuth();
-  console.log('AppContent profile:', profile);
+  console.log('AppContent render - profile:', profile);
+  if (profile) {
+    console.log('AppContent render - primeiro_acesso:', profile.primeiro_acesso);
+    console.log('AppContent render - Is modal open condition:', profile.primeiro_acesso === true);
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
