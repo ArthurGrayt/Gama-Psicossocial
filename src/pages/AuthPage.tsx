@@ -87,16 +87,27 @@ export const AuthPage: React.FC = () => {
                 navigate('/dashboard');
             }
         } catch (err: any) {
-            console.error('Auth Error:', err);
+            console.error('❌ Auth Error caught:', err);
+            console.error('❌ Error type:', err.constructor.name);
+            console.error('❌ Error message:', err.message);
 
             // Double check: If session exists despite error, redirect
-            const { data: { session: validSession } } = await supabase.auth.getSession();
+            console.log('🔍 Double-checking for existing session...');
+            const { data: { session: validSession }, error: sessionError } = await supabase.auth.getSession();
+
+            console.log('🔍 Session check result:', {
+                hasSession: !!validSession,
+                sessionError: sessionError?.message,
+                userId: validSession?.user?.id
+            });
+
             if (validSession) {
-                console.log('Session found despite error, redirecting...');
+                console.log('✅ Session found despite error! Redirecting to dashboard...');
                 navigate('/dashboard');
                 return;
             }
 
+            console.log('❌ No session found. Displaying error to user.');
             setError(err.message || 'An error occurred during authentication.');
         } finally {
             setLoading(false);

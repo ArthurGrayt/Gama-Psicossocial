@@ -2,6 +2,7 @@ import React from 'react';
 import { Settings, LogOut, LayoutDashboard, PlusCircle, Building } from 'lucide-react';
 import { useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { FirstAccessModal } from '../components/modals/FirstAccessModal';
 import logo from '../assets/logo.png';
 
 interface DashboardLayoutProps {
@@ -17,7 +18,17 @@ const MENU_ITEMS = [
 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     const location = useLocation();
-    const { signOut, user } = useAuth();
+    const { signOut, user, profile } = useAuth();
+
+    // DIAGNOSTIC LOGS
+    console.log('🔍 DashboardLayout - Profile State:', {
+        hasProfile: !!profile,
+        profile: profile,
+        primeiro_acesso_value: profile?.primeiro_acesso,
+        primeiro_acesso_type: typeof profile?.primeiro_acesso,
+        isStrictlyTrue: profile?.primeiro_acesso === true,
+        modalShouldOpen: profile?.primeiro_acesso === true
+    });
 
     // Helper to determine active state
     const isActive = (path: string) => {
@@ -92,6 +103,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
                     {children}
                 </div>
             </main>
+
+            {/* First Access Modal - Only renders if user has primeiro_acesso === true */}
+            <FirstAccessModal isOpen={profile?.primeiro_acesso === true} />
         </div>
     );
 };

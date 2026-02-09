@@ -32,49 +32,68 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const fetchProfile = async (uid: string) => {
         console.log('Fetching profile for UID:', uid);
-        const { data, error } = await supabase
-            .from('users')
-            .select('*')
-            .eq('user_id', uid)
-            .maybeSingle();
 
-        if (error) {
-            console.error('Error fetching profile:', error);
-            console.log('Error details - message:', error.message, 'code:', error.code);
-            return;
-        }
+        try {
+            const queryStartTime = performance.now();
 
-        console.log('Profile fetched raw data:', data);
+            // Create a timeout promise
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Query timeout after 5 seconds')), 5000);
+            });
 
-        if (data) {
-            console.log('Profile keys:', Object.keys(data));
-            console.log('primeiro_acesso value:', data.primeiro_acesso);
-            setProfile(data);
-        } else {
-            console.warn('Profile not found for this user in public.users table. Attempting recovery...');
+            // Race the query against the timeout
+            const queryPromise = supabase
+                .from('users')
+                .select('*')
+                .eq('user_id', uid)
+                .maybeSingle();
 
-            // Auto Recovery: Create profile from Auth metadata
-            const { data: { user: authUser } } = await supabase.auth.getUser();
-            if (authUser) {
-                const { data: newData, error: insertError } = await supabase
-                    .from('users')
-                    .insert({
-                        user_id: authUser.id,
-                        email: authUser.email,
-                        username: authUser.user_metadata?.username || authUser.email?.split('@')[0] || 'Usuario',
-                        primeiro_acesso: true, // Default to true for recovered/new users
-                        img_url: 'https://wofipjazcxwxzzxjsflh.supabase.co/storage/v1/object/sign/img_user/profile_pics/padrao.jpg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV82YzdhYzE0NS00N2RmLTQ3ZjItYWYyMi0xZDFkOTE0NTM3Y2EiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJpbWdfdXNlci9wcm9maWxlX3BpY3MvcGFkcmFvLmpwZyIsImlhdCI6MTc1OTI0Mzk1MiwiZXhwIjo4ODE1OTE1NzU1Mn0.AWDYc1mewJEuVqVSeUlJJykNj801mzyMequTNPHqfL0'
-                    })
-                    .select()
-                    .single();
+            const { data, error } = await Promise.race([queryPromise, timeoutPromise]) as any;
 
-                if (insertError) {
-                    console.error('Recovery failed:', insertError);
-                } else {
-                    console.log('Profile successfully recovered:', newData);
-                    setProfile(newData);
+            const queryDuration = performance.now() - queryStartTime;
+            console.log(`✅ Query completed in ${queryDuration.toFixed(2)}ms`);
+
+            if (error) {
+                console.error('❌ Error fetching profile:', error);
+                console.log('Error details - message:', error.message, 'code:', error.code);
+                return;
+            }
+
+            console.log('Profile fetched raw data:', data);
+
+            if (data) {
+                console.log('Profile keys:', Object.keys(data));
+                console.log('primeiro_acesso value:', data.primeiro_acesso);
+                setProfile(data);
+            } else {
+                console.warn('⚠️ Profile not found for this user in public.users table. Attempting recovery...');
+
+                // Auto Recovery: Create profile from Auth metadata
+                const { data: { user: authUser } } = await supabase.auth.getUser();
+                if (authUser) {
+                    console.log('Creating profile for user:', authUser.id);
+                    const { data: newData, error: insertError } = await supabase
+                        .from('users')
+                        .insert({
+                            user_id: authUser.id,
+                            email: authUser.email,
+                            username: authUser.user_metadata?.username || authUser.email?.split('@')[0] || 'Usuario',
+                            primeiro_acesso: true, // Default to true for recovered/new users
+                            img_url: 'https://wofipjazcxwxzzxjsflh.supabase.co/storage/v1/object/sign/img_user/profile_pics/padrao.jpg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV82YzdhYzE0NS00N2RmLTQ3ZjItYWYyMi0xZDFkOTE0NTM3Y2EiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJpbWdfdXNlci9wcm9maWxlX3BpY3MvcGFkcmFvLmpwZyIsImlhdCI6MTc1OTI0Mzk1MiwiZXhwIjo4ODE1OTE1NzU1Mn0.AWDYc1mewJEuVqVSeUlJJykNj801mzyMequTNPHqfL0'
+                        })
+                        .select()
+                        .single();
+
+                    if (insertError) {
+                        console.error('❌ Recovery failed:', insertError);
+                    } else {
+                        console.log('✅ Profile successfully recovered:', newData);
+                        setProfile(newData);
+                    }
                 }
             }
+        } catch (err) {
+            console.error('💥 CRITICAL: Exception during fetchProfile:', err);
         }
     };
 
