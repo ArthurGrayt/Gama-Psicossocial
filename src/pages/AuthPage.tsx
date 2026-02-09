@@ -45,9 +45,14 @@ export const AuthPage: React.FC = () => {
         try {
             if (isLogin) {
                 // LOGIN
+                const cleanEmail = email.trim();
+                const cleanPassword = password.trim();
+
+                console.log(`Attempting login with: Email="${cleanEmail}" (len=${cleanEmail.length}), Password len=${cleanPassword.length}`);
+
                 const { error } = await supabase.auth.signInWithPassword({
-                    email,
-                    password,
+                    email: cleanEmail,
+                    password: cleanPassword,
                 });
                 if (error) throw error;
                 navigate('/dashboard');
@@ -82,6 +87,16 @@ export const AuthPage: React.FC = () => {
                 navigate('/dashboard');
             }
         } catch (err: any) {
+            console.error('Auth Error:', err);
+
+            // Double check: If session exists despite error, redirect
+            const { data: { session: validSession } } = await supabase.auth.getSession();
+            if (validSession) {
+                console.log('Session found despite error, redirecting...');
+                navigate('/dashboard');
+                return;
+            }
+
             setError(err.message || 'An error occurred during authentication.');
         } finally {
             setLoading(false);
