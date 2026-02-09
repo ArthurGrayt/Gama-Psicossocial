@@ -11,49 +11,61 @@ import { CadastroPage } from './pages/CadastroPage';
 import { DashboardPage } from './pages/DashboardPage';
 
 import { LandingPage } from './pages/LandingPage';
+import { useAuth } from './contexts/AuthContext';
+import { FirstAccessModal } from './components/modals/FirstAccessModal';
+
+function AppContent() {
+  const { profile } = useAuth();
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
+      <Routes>
+        {/* Public Landing Page */}
+        <Route path="/" element={<LandingPage />} />
+
+        {/* Public Auth Route */}
+        <Route path="/auth" element={<AuthPage />} />
+
+        {/* Admin / Dashboard Route (Protected) */}
+        <Route path="/atividades" element={
+          <ProtectedRoute>
+            <Formularios />
+          </ProtectedRoute>
+        } />
+        <Route path="/dashboard" element={
+          <ProtectedRoute>
+            <DashboardPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/modelos" element={
+          <ProtectedRoute>
+            <ModelosPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/cadastro" element={
+          <ProtectedRoute>
+            <CadastroPage />
+          </ProtectedRoute>
+        } />
+
+        {/* Public Form Route */}
+        <Route path="/form/:slug" element={<FormularioPublico />} />
+
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+
+      {/* Global Modals */}
+      <FirstAccessModal isOpen={profile?.primeiro_acesso === true} />
+    </div>
+  );
+}
 
 function App() {
   return (
     <Router>
       <AuthProvider>
-        <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
-          <Routes>
-            {/* Public Landing Page */}
-            <Route path="/" element={<LandingPage />} />
-
-            {/* Public Auth Route */}
-            <Route path="/auth" element={<AuthPage />} />
-
-            {/* Admin / Dashboard Route (Protected) */}
-            <Route path="/atividades" element={
-              <ProtectedRoute>
-                <Formularios />
-              </ProtectedRoute>
-            } />
-            <Route path="/dashboard" element={
-              <ProtectedRoute>
-                <DashboardPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/modelos" element={
-              <ProtectedRoute>
-                <ModelosPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/cadastro" element={
-              <ProtectedRoute>
-                <CadastroPage />
-              </ProtectedRoute>
-            } />
-
-
-            {/* Public Form Route (Should probably remain public?) Assuming yes for now */}
-            <Route path="/form/:slug" element={<FormularioPublico />} />
-
-            {/* Fallback */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </div>
+        <AppContent />
       </AuthProvider>
     </Router>
   );
