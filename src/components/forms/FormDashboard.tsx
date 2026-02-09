@@ -553,7 +553,16 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                     }
                 });
 
-                const isTempColab = !colab.id || String(colab.id).length > 10; // Simple check for temp numeric ID
+                // FIX: Enhanced Heuristic with Logging
+                const strId = String(colab.id || '');
+                const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(strId);
+                const isSmallInt = strId.match(/^\d+$/) && Number(strId) < 1000000000000;
+
+                // It is a real ID if it's a UUID or a legacy small integer
+                const isRealId = isUuid || isSmallInt;
+                const isTempColab = !colab.id || !isRealId;
+
+                console.log(`[SAVE] Checking Colab: "${colab.nome}" ID: "${colab.id}" -> isTemp? ${isTempColab} (UUID: ${isUuid}, SmallInt: ${isSmallInt})`);
 
                 if (isTempColab) {
                     const { error: colabErr } = await supabase.from('colaboradores').insert(colabPayload);
