@@ -17,20 +17,25 @@ export const Formularios: React.FC = () => {
     // Handlers
     const handleCreateForm = async (data: any) => {
         try {
-            // Basic slug generation
-            const slug = (data.title || 'novo-formulario')
-                .toLowerCase()
-                .normalize('NFD')
-                .replace(/[\u0300-\u036f]/g, '')
-                .replace(/[^a-z0-9]+/g, '-')
-                .replace(/(^-|-$)+/g, '');
+            // Use provided slug or generate logical one
+            let finalSlug = data.slug;
+
+            if (!finalSlug) {
+                const slugBase = (data.title || 'novo-formulario')
+                    .toLowerCase()
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/(^-|-$)+/g, '');
+                finalSlug = `${slugBase}-${Date.now()}`;
+            }
 
             const { error } = await supabase
                 .from('forms')
                 .insert([{
                     title: data.title,
                     description: data.description,
-                    slug: `${slug}-${Date.now()}`,
+                    slug: finalSlug,
                     empresa: data.company_id,
                     unidade_id: data.unit_id,
                     setor: data.sector,

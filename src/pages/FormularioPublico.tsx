@@ -264,11 +264,11 @@ export const FormularioPublico: React.FC = () => {
             .from('forms')
             .select('*')
             .eq('slug', slug)
-            .eq('active', true)
+            .eq('slug', slug)
             .single();
 
         if (formError || !formData) {
-            setError('Formulário não encontrado ou inativo.');
+            setError('Formulário não encontrado.');
             setLoading(false);
             return;
         }
@@ -364,18 +364,18 @@ export const FormularioPublico: React.FC = () => {
         if (colabData) {
             // Found! Get Company Name via Unit
             let companyName = '';
-            if (colabData.unidade) {
+            if (colabData.unidade_id) {
                 const { data: unitData } = await supabase
                     .from('unidades')
-                    .select('empresaid')
-                    .eq('id', colabData.unidade)
+                    .select('empresa_mae')
+                    .eq('id', colabData.unidade_id)
                     .single();
 
-                if (unitData?.empresaid) {
+                if (unitData?.empresa_mae) {
                     const { data: companyData } = await supabase
                         .from('clientes')
                         .select('nome_fantasia, razao_social')
-                        .eq('id', unitData.empresaid)
+                        .eq('cliente_uuid', unitData.empresa_mae)
                         .single();
                     companyName = companyData?.nome_fantasia || companyData?.razao_social || '';
                 }
@@ -402,8 +402,8 @@ export const FormularioPublico: React.FC = () => {
 
     const validate = (qs: FormQuestion[]) => {
         for (const q of qs) {
-            if (q.required) {
-                const val = answers[q.id!];
+            if (q.required && q.id) {
+                const val = answers[q.id];
                 if (val === undefined || val === '' || val === null) {
                     alert(`A pergunta "${q.label}" é obrigatória.`);
                     return false;
@@ -437,8 +437,8 @@ export const FormularioPublico: React.FC = () => {
         setLoading(true);
 
         const answersToInsert = questions.map(q => {
-            if (q.question_type === 'section_break') return null;
-            const val = answers[q.id!];
+            if (q.question_type === 'section_break' || !q.id) return null;
+            const val = answers[q.id];
 
             // Map text answers to numbers if applicable
             let answerNumber: number | null = null;
@@ -463,10 +463,10 @@ export const FormularioPublico: React.FC = () => {
 
             return {
                 form_id: form.id,
-                question_id: q.id!,
+                question_id: q.id,
                 respondedor: collaborator.id, // User ID/UUID
-                unidade_colaborador: collaborator.unidade, // Unit ID
-                cargo: collaborator.cargo, // Role ID
+                unidade_colaborador: collaborator.unidade_id, // Unit ID
+                cargo: collaborator.cargo_id, // Role ID
                 answer_text: (q.question_type !== 'rating') ? String(val) : null,
                 answer_number: answerNumber,
             };
@@ -777,7 +777,6 @@ interface RegistrationModalProps {
 }
 
 const RegistrationModal = ({ isOpen, onClose, cpf, onSuccess }: RegistrationModalProps) => {
-    // const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
 
     // Form Data
@@ -799,7 +798,6 @@ const RegistrationModal = ({ isOpen, onClose, cpf, onSuccess }: RegistrationModa
         if (isOpen) {
             fetchInitialData();
             // Reset state
-            // setStep(1);
             setNome('');
             setDataNascimento('');
             setEmpresaId('');
@@ -821,7 +819,7 @@ const RegistrationModal = ({ isOpen, onClose, cpf, onSuccess }: RegistrationModa
 
     const fetchInitialData = async () => {
         const [resCompanies, resSectores, resCargos] = await Promise.all([
-            supabase.from('clientes').select('id, nome_fantasia, razao_social').order('nome_fantasia'),
+            supabase.from('clientes').select('id, cliente_uuid, nome_fantasia, razao_social').order('nome_fantasia'),
             supabase.from('setor').select('id, nome').order('nome'),
             supabase.from('cargos').select('id, nome').order('nome')
         ]);
@@ -834,8 +832,8 @@ const RegistrationModal = ({ isOpen, onClose, cpf, onSuccess }: RegistrationModa
     const fetchUnits = async (companyId: string) => {
         const { data } = await supabase
             .from('unidades')
-            .select('id, nome_unidade')
-            .eq('empresaid', companyId)
+            .select('id, nome_unidade, nome')
+            .eq('empresa_mae', companyId)
             .order('nome_unidade');
 
         if (data) setUnits(data);
@@ -851,24 +849,18 @@ const RegistrationModal = ({ isOpen, onClose, cpf, onSuccess }: RegistrationModa
 
         const newColab: Collaborator = {
             nome,
-            cpf, // Clean CPF is passed prop
+            cpf: cpf.replace(/\D/g, ''), // Clean CPF
             data_nascimento: dataNascimento,
-            unidade: unidadeId,
+            unidade_id: unidadeId,
             setor_id: setorId,
-            cargo: cargoId,
+            cargo_id: cargoId,
             sexo,
             avulso: true
         };
 
         const { data, error } = await supabase
             .from('colaboradores')
-            .insert({
-                ...newColab,
-                cod_categoria: 101, // Hardcoded as requested
-                texto_categoria: "Empregado - Geral, inclusive o empregado público da administração direta ou indireta contratado pela CLT",
-                data_desligamento: null,
-                telefone: null // Public form doesn't seem to collect phone?
-            })
+            .insert(newColab)
             .select()
             .single();
 
@@ -880,8 +872,8 @@ const RegistrationModal = ({ isOpen, onClose, cpf, onSuccess }: RegistrationModa
         }
 
         // Get company name for display
-        const company = companies.find(c => c.id === empresaId);
-        const savedColab = { ...newColab, id: data.id, empresa_nome: company?.nome_fantasia || company?.razao_social };
+        const company = companies.find((c: any) => String(c.id) === String(empresaId) || c.cliente_uuid === empresaId);
+        const savedColab: Collaborator = { ...newColab, id: data.id, empresa_nome: company?.nome_fantasia || company?.razao_social };
 
         onSuccess(savedColab);
         onClose();
@@ -938,7 +930,7 @@ const RegistrationModal = ({ isOpen, onClose, cpf, onSuccess }: RegistrationModa
                             <label className="block text-sm font-medium text-slate-700 mb-1">Empresa <span className="text-red-500">*</span></label>
                             <SearchableSelect
                                 placeholder="Buscar..."
-                                options={companies.map(c => ({ value: c.id, label: c.nome_fantasia || c.razao_social }))}
+                                options={companies.map((c: any) => ({ value: c.cliente_uuid, label: c.nome_fantasia || c.razao_social }))}
                                 value={empresaId}
                                 onChange={setEmpresaId}
                                 requireSearch={true}
@@ -954,7 +946,7 @@ const RegistrationModal = ({ isOpen, onClose, cpf, onSuccess }: RegistrationModa
                             <label className="block text-sm font-medium text-slate-700 mb-1">Unidade <span className="text-red-500">*</span></label>
                             <SearchableSelect
                                 placeholder={empresaId ? "Selecione..." : "Escolha a empresa"}
-                                options={units.map(u => ({ value: u.id, label: u.nome_unidade }))}
+                                options={units.map((u: any) => ({ value: u.id, label: u.nome_unidade || u.nome }))}
                                 value={unidadeId}
                                 onChange={setUnidadeId}
                                 disabled={!empresaId}
@@ -1014,4 +1006,3 @@ const RegistrationModal = ({ isOpen, onClose, cpf, onSuccess }: RegistrationModa
         </div>
     );
 };
-

@@ -60,6 +60,19 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
     const [selectedCollaborators, setSelectedCollaborators] = useState<Set<number>>(new Set());
     const [loadingDetailsFor, setLoadingDetailsFor] = useState<string | number | null>(null);
 
+    const generateSlug = (text: string) => {
+        return text
+            .toString()
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/[^\w\-]+/g, '')
+            .replace(/\-\-+/g, '-')
+            .replace(/^-+/, '')
+            .replace(/-+$/, '') + '-' + Date.now();
+    };
+
     useEffect(() => {
         if (user) {
             fetchCompanies();
@@ -314,7 +327,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
             kpiQuestions: 15, // Mock
             formTitle: 'Pesquisa de Clima Organizacional 2024',
             formDesc: 'Avaliação completa de engajamento e satisfação dos colaboradores.',
-            publicLink: `app.gama.com/f/${company.id}-${unit.id}-${Date.now().toString().slice(-4)}`
+            publicLink: '' // Will be generated on confirm
         });
         setSelectingFor(null);
         setSummaryModalOpen(true);
@@ -337,6 +350,13 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
 
     const confirmCreateForm = () => {
         if (!summaryData) return;
+
+        const slug = generateSlug(summaryData.formTitle);
+        const publicLink = `${window.location.origin}/form/${slug}`;
+
+        // Update summary data with REAL link to show in success modal
+        setSummaryData((prev: any) => ({ ...prev, publicLink }));
+
         // Pass data to parent to handle creation (bypassing the wizard)
         onCreateForm({
             company_id: summaryData.company.id,
@@ -346,11 +366,13 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
             sector: summaryData.sector,
             selected_collaborators_count: selectedCollaborators.size,
             title: summaryData.formTitle,
-            description: summaryData.formDesc
+            description: summaryData.formDesc,
+            slug: slug
         });
         setSummaryModalOpen(false);
         setSuccessModalOpen(true);
     };
+
 
     const toggleCollaborator = (idx: number) => {
         const newSelected = new Set(selectedCollaborators);
