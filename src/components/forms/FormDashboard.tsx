@@ -58,6 +58,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [successModalOpen, setSuccessModalOpen] = useState(false);
     const [selectedCollaborators, setSelectedCollaborators] = useState<Set<number>>(new Set());
+    const [loadingDetailsFor, setLoadingDetailsFor] = useState<string | number | null>(null);
 
     useEffect(() => {
         if (user) {
@@ -68,7 +69,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
     const fetchCompanies = async () => {
         setIsLoading(true);
         try {
-            // 1. Fetch Clients (Companies)
+            // 1. Lite Fetch: Clients
             const { data: clientsData, error: clientsError } = await supabase
                 .from('clientes')
                 .select('*')
@@ -77,153 +78,209 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
 
             if (clientsError) throw clientsError;
 
-            // 2. Fetch Units and Collaborator Counts
-            const companiesWithDetails = await Promise.all((clientsData || []).map(async (client: any) => {
-                // Fetch Units
-                const { data: unitsData } = await supabase
-                    .from('unidades')
-                    .select('*')
-                    .eq('empresa_mae', client.cliente_uuid);
+            if (!clientsData || clientsData.length === 0) {
+                setCompanies([]);
+                setIsLoading(false);
+                return;
+            }
 
-                // Fetch Unit IDs for this client
-                const unitIds = (unitsData || []).map(u => u.id);
+            const clientUuids = clientsData.map(c => c.cliente_uuid);
 
-                // Fetch Actual Collaborators Data (for Modal) with cargo and setor names
-                const { data: colaboradoresData, error: colabError } = await supabase
+            // 2. Lite Fetch: Units (Basic info only)
+            const { data: allUnits, error: unitsError } = await supabase
+                .from('unidades')
+                .select('id, nome, empresa_mae')
+                .in('empresa_mae', clientUuids);
+
+            if (unitsError) throw unitsError;
+
+            const unitIds = (allUnits || []).map(u => u.id);
+
+            // 3. Lite Fetch: Collaborator Counts ONLY
+            // We fetch just the IDs and unit_ids to count them in memory.
+            // This avoids fetching potentially thousands of full collaborator records with joins.
+            let unitCollaboratorCounts: Record<number, number> = {};
+
+            if (unitIds.length > 0) {
+                const { data: colabsRef, error: colabError } = await supabase
                     .from('colaboradores')
-                    .select(`
-                        *,
-                        cargo:cargos(id, nome),
-                        setor:setor(id, nome)
-                    `)
+                    .select('unidade_id')
                     .in('unidade_id', unitIds);
 
                 if (colabError) {
-                    console.error('Error fetching collaborators:', colabError);
+                    console.error('Error fetching collaborator counts:', colabError);
+                } else if (colabsRef) {
+                    colabsRef.forEach((c: any) => {
+                        unitCollaboratorCounts[c.unidade_id] = (unitCollaboratorCounts[c.unidade_id] || 0) + 1;
+                    });
                 }
+            }
 
-                // Map collaborators to include cargo and setor names
-                const mappedCollaborators = (colaboradoresData || []).map((c: any) => ({
-                    ...c,
-                    cargo: c.cargo?.nome || '',
-                    setor: c.setor?.nome || '',
-                    // Keep IDs for reference
-                    cargo_id: c.cargo?.id,
-                    setor_id: c.setor?.id
-                }));
+            // 4. Construct Lite Objects
+            const liteCompanies = clientsData.map(client => {
+                const clientUnits = (allUnits || []).filter(u => u.empresa_mae === client.cliente_uuid);
 
-                // Count for the card
-                const colabCount = mappedCollaborators?.length || 0;
-
-                // Fetch Sector Names
-                // Aggregate sector IDs from Client and Units to ensure we have all names
-                // Match User Logic: Client -> Units -> Sectors -> Roles
-                // Match User Logic: Client -> Units -> Roles -> Sectors
-                // STRATEGY CHANGE: Fetch Roles FIRST to find which sectors are actually used by them,
-                // then combine with unit.setores to get a COMPLETE list of sectors to fetch.
-
-                // 1. Fetch Roles based on 'cargos' column in 'unidades' table
-                let allRolesRaw: any[] = [];
-                const unitRoleIds = (unitsData || []).flatMap(u => u.cargos || []);
-                const allUniqueRoleIds = Array.from(new Set(unitRoleIds));
-
-                if (allUniqueRoleIds.length > 0) {
-                    const { data: rolesData, error: rolesError } = await supabase
-                        .from('cargos')
-                        .select('id, nome, setor_id')
-                        .in('id', allUniqueRoleIds);
-
-                    if (rolesError) {
-                        console.error('Erro ao buscar cargos das unidades:', rolesError);
-                    } else if (rolesData) {
-                        allRolesRaw = rolesData;
-                    }
-                }
-
-                // 2. Identify ALL Sector IDs (from Units + Roles)
-                // Some units might list sectors explicitly in 'setores' column
-                // But roles also point to sectors via 'setor_id'
-                const unitProvidedSectorIds = (unitsData || []).flatMap(u => u.setores || []);
-                const roleReferencedSectorIds = allRolesRaw.map(r => r.setor_id).filter(Boolean);
-
-                const allUniqueSectorIds = Array.from(new Set([...unitProvidedSectorIds, ...roleReferencedSectorIds]));
-
-                const sectorIdToNameMap: Record<number, string> = {};
-                let allSectors: { id: number, nome: string }[] = [];
-
-                if (allUniqueSectorIds.length > 0) {
-                    const { data: sectorsData } = await supabase
-                        .from('setor')
-                        .select('id, nome')
-                        .in('id', allUniqueSectorIds);
-
-                    if (sectorsData) {
-                        allSectors = sectorsData;
-                        sectorsData.forEach((s: any) => {
-                            sectorIdToNameMap[s.id] = s.nome;
-                        });
-                    }
-                }
-
-                console.log(`[LOAD] Client ${client.nome_fantasia || 'Unknown'}: Loaded ${allSectors.length} Sectors and ${allRolesRaw.length} Roles across ${unitsData?.length || 0} Units.`);
-
-                // 3. Map Roles with Sector Names
-                const allRoles = allRolesRaw.map((r: any) => ({
-                    id: r.id,
-                    nome: r.nome,
-                    setor_id: r.setor_id,
-                    setor_name: sectorIdToNameMap[r.setor_id] || 'Geral'
-                }));
-
-                // 4. Construct Unit Objects with their specific data
-                const mappedUnits = (unitsData || []).map(u => {
-                    // Explicit sectors linked to the unit
-                    const explicitSectorIds = u.setores || [];
-
-                    // Implicit sectors derived from the roles linked to this unit
-                    // Find all roles that belong to this unit (u.cargos contains role IDs)
-                    const unitRolesIds = u.cargos || [];
-                    const associatedRoles = allRoles.filter(r => unitRolesIds.includes(r.id));
-                    const roleSectorIds = associatedRoles.map(r => r.setor_id).filter(Boolean);
-
-                    // Combine unique sector IDs
-                    const allUnitSectorIds = Array.from(new Set([...explicitSectorIds, ...roleSectorIds]));
-
-                    // Map to names
-                    const uSectorNames = allUnitSectorIds.map((id: number) => sectorIdToNameMap[id]).filter(Boolean);
-
+                let totalCollaborators = 0;
+                const mappedUnits = clientUnits.map(u => {
+                    const count = unitCollaboratorCounts[u.id] || 0;
+                    totalCollaborators += count;
                     return {
                         id: u.id,
-                        name: u.nome_unidade || u.nome,
-                        sectors: uSectorNames,
-                        sectorIds: allUnitSectorIds, // Use the combined list
-                        roles: associatedRoles // Include roles for this unit
+                        name: u.nome,
+                        sectors: [], // Unknown in lite mode
+                        sectorIds: [],
+                        roles: []
                     };
                 });
 
-                // Map to existing UI structure
                 return {
                     id: client.id,
                     cliente_uuid: client.cliente_uuid,
-                    // Unique sector names for the card display
-                    setores: Array.from(new Set(allSectors.map(s => s.nome))),
                     name: client.nome_fantasia || client.razao_social,
                     cnpj: client.cnpj,
-                    total_collaborators: colabCount || 0,
+                    total_collaborators: totalCollaborators,
                     units: mappedUnits,
-                    roles: allRoles.map(r => r.nome), // Compatibility
-                    cargos: allRoles.map(r => ({ nome: r.nome, setor: r.setor_name })), // Detailed roles for Modal
-                    collaborators: mappedCollaborators || [] // Pass full list to Modal with cargo/setor names
+                    roles: [],
+                    cargos: [],
+                    collaborators: [],
+                    setores: [],
+                    detailsLoaded: false
                 };
+            });
 
-
-            }));
-
-            setCompanies(companiesWithDetails);
+            console.log(`[LITE LOAD] Loaded ${liteCompanies.length} companies (Lite Mode).`);
+            setCompanies(liteCompanies);
         } catch (error) {
             console.error('Error fetching companies:', error);
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const fetchCompanyDetails = async (company: any) => {
+        if (company.detailsLoaded) return company;
+
+        console.log(`[LAZY LOAD] Fetching details for ${company.name}...`);
+        setLoadingDetailsFor(company.id);
+
+        try {
+            // Re-fetch clean list of units for this company
+            const { data: unitsData, error: uErr } = await supabase
+                .from('unidades')
+                .select('*')
+                .eq('empresa_mae', company.cliente_uuid);
+
+            if (uErr) throw uErr;
+
+            const unitIds = (unitsData || []).map(u => u.id);
+
+            // Fetch Full Collaborators with Joins
+            const { data: colaboradoresData, error: colabError } = await supabase
+                .from('colaboradores')
+                .select(`
+                    *,
+                    cargo:cargos(id, nome),
+                    setor:setor(id, nome)
+                `)
+                .in('unidade_id', unitIds);
+
+            if (colabError) throw colabError;
+
+            // Fetch Metadata (Roles & Sectors)
+            const unitRoleIds = (unitsData || []).flatMap(u => u.cargos || []);
+            const unitSectorIds = (unitsData || []).flatMap(u => u.setores || []);
+
+            // Fetch Roles
+            let allRolesRaw: any[] = [];
+            if (unitRoleIds.length > 0) {
+                const { data: rData } = await supabase
+                    .from('cargos')
+                    .select('id, nome, setor_id')
+                    .in('id', unitRoleIds);
+                allRolesRaw = rData || [];
+            }
+
+            // Consolidate Sector IDs
+            const roleSectorIds = allRolesRaw.map(r => r.setor_id).filter(Boolean);
+            const allSectorIds = Array.from(new Set([...unitSectorIds, ...roleSectorIds])) as number[];
+
+            // Fetch Sectors
+            let allSectorsRaw: any[] = [];
+            if (allSectorIds.length > 0) {
+                const { data: sData } = await supabase
+                    .from('setor')
+                    .select('id, nome')
+                    .in('id', allSectorIds);
+                allSectorsRaw = sData || [];
+            }
+
+            // Maps
+            const sectorMap = new Map(allSectorsRaw.map(s => [s.id, s.nome]));
+
+            // Reconstruct Units with Details
+            const mappedUnits = (unitsData || []).map(u => {
+                const explicitSectorIds = u.setores || [];
+                const unitRolesIds = u.cargos || [];
+
+                const associatedRoles = allRolesRaw.filter(r => unitRolesIds.includes(r.id));
+                const roleSectorIdsFromUnit = associatedRoles.map(r => r.setor_id).filter(Boolean);
+
+                const allUnitSectorIds = Array.from(new Set([...explicitSectorIds, ...roleSectorIdsFromUnit])) as number[];
+                const uSectorNames = allUnitSectorIds.map(id => sectorMap.get(id)).filter(Boolean);
+
+                return {
+                    id: u.id,
+                    name: u.nome_unidade || u.nome,
+                    sectors: uSectorNames,
+                    sectorIds: allUnitSectorIds,
+                    roles: associatedRoles.map(r => ({
+                        ...r,
+                        setor_name: sectorMap.get(r.setor_id) || 'Geral'
+                    }))
+                };
+            });
+
+            // Process Collaborators
+            const uiCollaborators = (colaboradoresData || []).map((c: any) => ({
+                ...c,
+                cargo: c.cargo?.nome || '',
+                setor: c.setor?.nome || '',
+                cargo_id: c.cargo?.id,
+                setor_id: c.setor?.id
+            }));
+
+            // Process Roles & Sectors List
+            const allCompanySectorNames = new Set<string>();
+            mappedUnits.forEach(u => u.sectors.forEach((s: string | undefined) => {
+                if (s) allCompanySectorNames.add(s);
+            }));
+
+            const allCompanyRoles = mappedUnits.flatMap(u => u.roles).map(r => ({
+                nome: r.nome,
+                setor: r.setor_name
+            }));
+            const uniqueRoleNames = Array.from(new Set(allCompanyRoles.map(r => r.nome)));
+
+            const fullCompany = {
+                ...company,
+                // Update with full details
+                units: mappedUnits,
+                setores: Array.from(allCompanySectorNames),
+                roles: uniqueRoleNames,
+                cargos: allCompanyRoles,
+                collaborators: uiCollaborators,
+                detailsLoaded: true // Mark as loaded
+            };
+
+            // Update State
+            setCompanies(prev => prev.map(c => c.id === company.id ? fullCompany : c));
+            return fullCompany;
+
+        } catch (err) {
+            console.error("Error lazy loading details:", err);
+            return company; // Return original if fail
+        } finally {
+            setLoadingDetailsFor(null);
         }
     };
 
@@ -234,15 +291,17 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
 
 
 
-    const handleGerarFormulario = (company: any) => {
+    const handleGerarFormulario = async (company: any) => {
+        // LAZY LOAD
+        const fullCompany = await fetchCompanyDetails(company);
+
         // Reset selection state
-        setSelectingFor(company);
+        setSelectingFor(fullCompany);
         setSelectedUnit(null);
         // If company has only 1 unit, auto-expand it
-        if (company.units.length === 1) {
-            setSelectedUnit(company.units[0]);
+        if (fullCompany.units.length === 1) {
+            setSelectedUnit(fullCompany.units[0]);
         }
-
     };
 
     const handleFinishSelection = (company: any, unit: any, sector: string) => {
@@ -313,9 +372,10 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
         }
     };
 
-    const openInfoModal = (e: React.MouseEvent, company: any) => {
+    const openInfoModal = async (e: React.MouseEvent, company: any) => {
         e.stopPropagation(); // Prevent card navigation
-        setInfoModalCompany(company);
+        const fullCompany = await fetchCompanyDetails(company);
+        setInfoModalCompany(fullCompany);
     };
 
 
@@ -665,7 +725,10 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                     {filteredCompanies.map((company) => (
                         <div
                             key={company.id}
-                            onClick={() => onAnalyzeForm(company)}
+                            onClick={async () => {
+                                const full = await fetchCompanyDetails(company);
+                                onAnalyzeForm(full);
+                            }}
                             className="group bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-[#35b6cf]/10 hover:border-[#35b6cf]/30 hover:-translate-y-1 transition-all duration-300 flex flex-col h-full overflow-hidden cursor-pointer relative"
                         >
 
@@ -675,7 +738,8 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                     <div className="p-3 bg-[#35b6cf]/10 text-[#35b6cf] rounded-xl group-hover:bg-[#35b6cf] group-hover:text-white transition-colors duration-300 shadow-sm">
                                         <Building size={24} />
                                     </div>
-                                    <div className="px-2.5 py-1 bg-slate-50 text-slate-500 rounded-lg text-xs font-bold border border-slate-100">
+                                    <div className="px-2.5 py-1 bg-slate-50 text-slate-500 rounded-lg text-xs font-bold border border-slate-100 flex items-center gap-2">
+                                        {loadingDetailsFor === company.id && <div className="w-3 h-3 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />}
                                         {company.units.length} {company.units.length === 1 ? 'Unidade' : 'Unidades'}
                                     </div>
                                 </div>
@@ -717,9 +781,10 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                     <FilePlus size={18} />
                                 </button>
                                 <button
-                                    onClick={(e) => {
+                                    onClick={async (e) => {
                                         e.stopPropagation();
-                                        onAnalyzeForm(company);
+                                        const full = await fetchCompanyDetails(company);
+                                        onAnalyzeForm(full);
                                     }}
                                     className="p-2 text-slate-400 hover:text-[#35b6cf] hover:bg-white rounded-lg transition-all"
                                     title="Levantamentos"
@@ -782,7 +847,10 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                                     <Edit size={16} />
                                                 </button>
                                                 <button
-                                                    onClick={() => onAnalyzeForm(company)}
+                                                    onClick={async () => {
+                                                        const full = await fetchCompanyDetails(company);
+                                                        onAnalyzeForm(full);
+                                                    }}
                                                     className="p-1.5 text-slate-400 hover:text-[#35b6cf] transition-colors"
                                                     title="Levantamentos"
                                                 >

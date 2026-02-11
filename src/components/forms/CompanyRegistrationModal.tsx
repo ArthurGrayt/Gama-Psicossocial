@@ -11,9 +11,10 @@
 // Importa as ferramentas básicas do React para criar componentes e gerenciar estados (memória local)
 import React, { useState, useEffect } from 'react';
 // Importa ícones da biblioteca lucide-react para deixar a interface visualmente amigável
-import { X, Building, Camera, ChevronRight, Check, Plus, Trash2, Pencil, Users, LayoutGrid, Briefcase, Search, Filter, MoreVertical, AlertTriangle } from 'lucide-react';
+import { X, Building, Camera, ChevronRight, Check, Plus, Trash2, Pencil, Users, LayoutGrid, Briefcase, Search, Filter, MoreVertical, AlertTriangle, FileSpreadsheet } from 'lucide-react';
 // Importa um componente de botão padronizado do próprio projeto
 import { Button } from '../ui/Button';
+import { ImportCollaboratorsModal } from './ImportCollaboratorsModal';
 
 // Define quais informações o componente (janela) precisa receber para funcionar
 interface CompanyRegistrationModalProps {
@@ -358,6 +359,84 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
         codCategoria: '' as number | string
     });
 
+    // Estado do Modal de Importação
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    // Estado do Modal de Aviso de Setor Geral
+    const [isGeralSectorWarningOpen, setIsGeralSectorWarningOpen] = useState(false);
+    const [geralSectorCount, setGeralSectorCount] = useState(0);
+
+    // Função para processar os dados importados do modal
+    const handleImportCollaborators = (importedData: any[]) => {
+        let addedCount = 0;
+        let updatedSectors = 0;
+        let updatedRoles = 0;
+
+        setFormData(prev => {
+            let newSectors = [...prev.setores];
+            let newRoles = [...prev.cargos];
+            let newCollaborators = [...prev.colaboradores];
+
+            // Unidade Alvo: Selecionada ou Primeira Disponível
+            const targetUnitId = prev.selectedUnitId || (prev.units.length > 0 ? String(prev.units[0].id) : null);
+            let units = prev.units;
+
+            importedData.forEach(colab => {
+                // 1. Verificar e Adicionar Setor
+                const sectorName = colab.setor;
+                const normalize = (t: string) => t.trim().toLowerCase();
+
+                if (!newSectors.some(s => normalize(s) === normalize(sectorName))) {
+                    newSectors.push(sectorName);
+                    updatedSectors++;
+                }
+
+                // 2. Verificar e Adicionar Cargo
+                const roleName = colab.cargo;
+                if (!newRoles.some(r => normalize(r.nome) === normalize(roleName) && normalize(r.setor) === normalize(sectorName))) {
+                    newRoles.push({ nome: roleName, setor: sectorName });
+                    updatedRoles++;
+                }
+
+                // 3. Adicionar Colaborador
+                newCollaborators.push({
+                    nome: colab.nome,
+                    cpf: colab.cpf,
+                    email: colab.email || `improtado.${Date.now()}_${addedCount}@temporario.com`, // Email temporário se não houver
+                    telefone: colab.telefone || '',
+                    dataNascimento: colab.dataNascimento,
+                    sexo: colab.sexo,
+                    setor: sectorName,
+                    cargo: roleName,
+                    dataDesligamento: colab.dataDesligamento,
+                    unidade_id: targetUnitId || undefined
+                });
+                addedCount++;
+            });
+
+            // Atualizar setores na unidade alvo
+            if (targetUnitId) {
+                units = units.map(u => {
+                    if (String(u.id) === String(targetUnitId)) {
+                        // Merge unique sectors
+                        const uniqueUnitSectors = Array.from(new Set([...u.sectors, ...importedData.map(c => c.setor)]));
+                        return { ...u, sectors: uniqueUnitSectors };
+                    }
+                    return u;
+                });
+            }
+
+            return {
+                ...prev,
+                setores: newSectors,
+                cargos: newRoles,
+                colaboradores: newCollaborators,
+                units: units
+            };
+        });
+
+        alert(`Importação Concluída!\n\n${addedCount} colaboradores adicionados.\n${updatedSectors} novos setores identificados.\n${updatedRoles} novos cargos identificados.`);
+    };
+
     // Função que atualiza os campos do formulário de NOVO funcionário conforme o usuário digita
     const handleCollaboratorChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -643,7 +722,21 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
     })();
 
     // Função final que envia todos os dados do formulário para salvar no sistema
+    // Função final que envia todos os dados do formulário para salvar no sistema
     const handleSubmit = () => {
+        const normalize = (t: string) => (t || '').trim().toLowerCase();
+        const geralCount = formData.colaboradores.filter(c => normalize(c.setor) === normalize('Geral')).length;
+
+        if (geralCount > 0) {
+            setGeralSectorCount(geralCount);
+            setIsGeralSectorWarningOpen(true);
+            return;
+        }
+        onSave(formData);
+    };
+
+    const confirmSaveGeral = () => {
+        setIsGeralSectorWarningOpen(false);
         onSave(formData);
     };
 
@@ -1110,145 +1203,163 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                             <div className="space-y-8 animate-in slide-in-from-right-4 duration-300">
 
                                 {/* Botão Expansível para Adicionar Novo Colaborador */}
-                                <div className=" bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden">
+                                {/* Botão Expansível para Adicionar Novo Colaborador */}
+                                <div className="flex gap-4 items-start mb-6">
+                                    <div className="flex-1 bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden">
+                                        <button
+                                            onClick={() => setIsAddingCollaborator(!isAddingCollaborator)}
+                                            className="w-full flex items-center justify-between p-6 hover:bg-slate-100 transition-colors text-left"
+                                        >
+                                            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                                <div className="p-1 rounded bg-[#35b6cf]/10 text-[#35b6cf]">
+                                                    <Plus size={18} />
+                                                </div>
+                                                Novo Colaborador
+                                            </h3>
+                                            <ChevronRight
+                                                size={20}
+                                                className={`text-slate-400 transition-transform duration-300 ${isAddingCollaborator ? 'rotate-90' : ''}`}
+                                            />
+                                        </button>
+
+                                        {/* Formulário de Cadastro do Colaborador (Aparece ao clicar em 'Novo Colaborador') */}
+                                        {isAddingCollaborator && (
+                                            <div className="px-6 pb-6 animate-in slide-in-from-top-2 duration-200">
+                                                <div className="grid grid-cols-12 gap-4 items-start">
+                                                    <div className="col-span-12 md:col-span-6">
+                                                        <input
+                                                            type="text"
+                                                            name="nome"
+                                                            value={collaboratorForm.nome}
+                                                            onChange={handleCollaboratorChange}
+                                                            placeholder="Nome completo"
+                                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none"
+                                                        />
+                                                    </div>
+                                                    <div className="col-span-12 md:col-span-6">
+                                                        <input
+                                                            type="email"
+                                                            name="email"
+                                                            value={collaboratorForm.email}
+                                                            onChange={handleCollaboratorChange}
+                                                            placeholder="Email corporativo"
+                                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none"
+                                                        />
+                                                    </div>
+
+                                                    <div className="col-span-6 md:col-span-3 space-y-1">
+                                                        <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">CPF</label>
+                                                        <input
+                                                            type="text"
+                                                            name="cpf"
+                                                            value={collaboratorForm.cpf}
+                                                            onChange={handleCollaboratorChange}
+                                                            placeholder="CPF"
+                                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none"
+                                                        />
+                                                    </div>
+                                                    <div className="col-span-6 md:col-span-3 space-y-1">
+                                                        <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Telefone</label>
+                                                        <input
+                                                            type="tel"
+                                                            name="telefone"
+                                                            value={collaboratorForm.telefone}
+                                                            onChange={handleCollaboratorChange}
+                                                            placeholder="Telefone"
+                                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none"
+                                                        />
+                                                    </div>
+                                                    <div className="col-span-6 md:col-span-3 space-y-1">
+                                                        <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Nascimento</label>
+                                                        <input
+                                                            type="date"
+                                                            name="dataNascimento"
+                                                            value={collaboratorForm.dataNascimento}
+                                                            onChange={handleCollaboratorChange}
+                                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none text-slate-600"
+                                                        />
+                                                    </div>
+                                                    <div className="col-span-6 md:col-span-3 space-y-1">
+                                                        <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Sexo</label>
+                                                        <select
+                                                            name="sexo"
+                                                            value={collaboratorForm.sexo}
+                                                            onChange={handleCollaboratorChange}
+                                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none bg-white text-slate-600"
+                                                        >
+                                                            <option value="" disabled>Selecione</option>
+                                                            <option value="Masculino">Masculino</option>
+                                                            <option value="Feminino">Feminino</option>
+                                                            <option value="Outro">Outro</option>
+                                                        </select>
+                                                    </div>
+
+                                                    <div className="col-span-12 md:col-span-4 space-y-1">
+                                                        <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Data Desligamento</label>
+                                                        <input
+                                                            type="date"
+                                                            name="dataDesligamento"
+                                                            value={collaboratorForm.dataDesligamento}
+                                                            onChange={handleCollaboratorChange}
+                                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none text-slate-600"
+                                                        />
+                                                    </div>
+                                                    <div className="col-span-12 md:col-span-4 space-y-1">
+                                                        <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Setor</label>
+                                                        <select
+                                                            name="setor"
+                                                            value={collaboratorForm.setor}
+                                                            onChange={handleCollaboratorChange}
+                                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none bg-white text-slate-600"
+                                                        >
+                                                            <option value="" disabled>Selecione</option>
+                                                            {filteredSectors.map((s, i) => <option key={i} value={s}>{s}</option>)}
+                                                        </select>
+                                                    </div>
+                                                    <div className="col-span-12 md:col-span-4 space-y-1">
+                                                        <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Cargo</label>
+                                                        <select
+                                                            name="cargo"
+                                                            value={collaboratorForm.cargo}
+                                                            onChange={handleCollaboratorChange}
+                                                            disabled={!collaboratorForm.setor}
+                                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none bg-white text-slate-600 disabled:bg-slate-100 disabled:opacity-70"
+                                                        >
+                                                            <option value="" disabled>Selecione</option>
+                                                            {formData.cargos
+                                                                .filter(c => normalizeText(c.setor) === normalizeText(collaboratorForm.setor))
+                                                                .map((c, i) => <option key={i} value={c.nome}>{c.nome}</option>)}
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                {/* Botão para Confirmar Cadastro Temporário */}
+                                                <div className="flex justify-end mt-4">
+                                                    <Button
+                                                        onClick={addCollaborator}
+                                                        disabled={!collaboratorForm.nome || !collaboratorForm.email || !collaboratorForm.cargo}
+                                                        className="bg-[#35b6cf] text-white px-6 py-2 rounded-xl hover:bg-[#2ca3bc] disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    >
+                                                        Adicionar Colaborador
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                     <button
-                                        onClick={() => setIsAddingCollaborator(!isAddingCollaborator)}
-                                        className="w-full flex items-center justify-between p-6 hover:bg-slate-100 transition-colors text-left"
+                                        onClick={() => setIsImportModalOpen(true)}
+                                        className="hidden md:flex flex-col items-center justify-center gap-2 px-4 h-20 w-24 bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 hover:border-emerald-200 hover:text-emerald-600 transition-all group shadow-sm shrink-0"
+                                        title="Importar Planilha"
                                     >
-                                        <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                                            <div className="p-1 rounded bg-[#35b6cf]/10 text-[#35b6cf]">
-                                                <Plus size={18} />
-                                            </div>
-                                            Novo Colaborador
-                                        </h3>
-                                        <ChevronRight
-                                            size={20}
-                                            className={`text-slate-400 transition-transform duration-300 ${isAddingCollaborator ? 'rotate-90' : ''}`}
-                                        />
+                                        <FileSpreadsheet size={24} className="text-slate-400 group-hover:text-emerald-500 transition-colors" />
+                                        <span className="font-bold text-slate-600 group-hover:text-emerald-600 text-xs text-center leading-tight">Importar</span>
                                     </button>
-
-                                    {/* Formulário de Cadastro do Colaborador (Aparece ao clicar em 'Novo Colaborador') */}
-                                    {isAddingCollaborator && (
-                                        <div className="px-6 pb-6 animate-in slide-in-from-top-2 duration-200">
-                                            <div className="grid grid-cols-12 gap-4 items-start">
-                                                <div className="col-span-12 md:col-span-6">
-                                                    <input
-                                                        type="text"
-                                                        name="nome"
-                                                        value={collaboratorForm.nome}
-                                                        onChange={handleCollaboratorChange}
-                                                        placeholder="Nome completo"
-                                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none"
-                                                    />
-                                                </div>
-                                                <div className="col-span-12 md:col-span-6">
-                                                    <input
-                                                        type="email"
-                                                        name="email"
-                                                        value={collaboratorForm.email}
-                                                        onChange={handleCollaboratorChange}
-                                                        placeholder="Email corporativo"
-                                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none"
-                                                    />
-                                                </div>
-
-                                                <div className="col-span-6 md:col-span-3 space-y-1">
-                                                    <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">CPF</label>
-                                                    <input
-                                                        type="text"
-                                                        name="cpf"
-                                                        value={collaboratorForm.cpf}
-                                                        onChange={handleCollaboratorChange}
-                                                        placeholder="CPF"
-                                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none"
-                                                    />
-                                                </div>
-                                                <div className="col-span-6 md:col-span-3 space-y-1">
-                                                    <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Telefone</label>
-                                                    <input
-                                                        type="tel"
-                                                        name="telefone"
-                                                        value={collaboratorForm.telefone}
-                                                        onChange={handleCollaboratorChange}
-                                                        placeholder="Telefone"
-                                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none"
-                                                    />
-                                                </div>
-                                                <div className="col-span-6 md:col-span-3 space-y-1">
-                                                    <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Nascimento</label>
-                                                    <input
-                                                        type="date"
-                                                        name="dataNascimento"
-                                                        value={collaboratorForm.dataNascimento}
-                                                        onChange={handleCollaboratorChange}
-                                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none text-slate-600"
-                                                    />
-                                                </div>
-                                                <div className="col-span-6 md:col-span-3 space-y-1">
-                                                    <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Sexo</label>
-                                                    <select
-                                                        name="sexo"
-                                                        value={collaboratorForm.sexo}
-                                                        onChange={handleCollaboratorChange}
-                                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none bg-white text-slate-600"
-                                                    >
-                                                        <option value="" disabled>Selecione</option>
-                                                        <option value="Masculino">Masculino</option>
-                                                        <option value="Feminino">Feminino</option>
-                                                        <option value="Outro">Outro</option>
-                                                    </select>
-                                                </div>
-
-                                                <div className="col-span-12 md:col-span-4 space-y-1">
-                                                    <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Data Desligamento</label>
-                                                    <input
-                                                        type="date"
-                                                        name="dataDesligamento"
-                                                        value={collaboratorForm.dataDesligamento}
-                                                        onChange={handleCollaboratorChange}
-                                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none text-slate-600"
-                                                    />
-                                                </div>
-                                                <div className="col-span-12 md:col-span-4 space-y-1">
-                                                    <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Setor</label>
-                                                    <select
-                                                        name="setor"
-                                                        value={collaboratorForm.setor}
-                                                        onChange={handleCollaboratorChange}
-                                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none bg-white text-slate-600"
-                                                    >
-                                                        <option value="" disabled>Selecione</option>
-                                                        {filteredSectors.map((s, i) => <option key={i} value={s}>{s}</option>)}
-                                                    </select>
-                                                </div>
-                                                <div className="col-span-12 md:col-span-4 space-y-1">
-                                                    <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Cargo</label>
-                                                    <select
-                                                        name="cargo"
-                                                        value={collaboratorForm.cargo}
-                                                        onChange={handleCollaboratorChange}
-                                                        disabled={!collaboratorForm.setor}
-                                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none bg-white text-slate-600 disabled:bg-slate-100 disabled:opacity-70"
-                                                    >
-                                                        <option value="" disabled>Selecione</option>
-                                                        {formData.cargos
-                                                            .filter(c => normalizeText(c.setor) === normalizeText(collaboratorForm.setor))
-                                                            .map((c, i) => <option key={i} value={c.nome}>{c.nome}</option>)}
-                                                    </select>
-                                                </div>
-                                            </div>
-                                            {/* Botão para Confirmar Cadastro Temporário */}
-                                            <div className="flex justify-end mt-4">
-                                                <Button
-                                                    onClick={addCollaborator}
-                                                    disabled={!collaboratorForm.nome || !collaboratorForm.email || !collaboratorForm.cargo}
-                                                    className="bg-[#35b6cf] text-white px-6 py-2 rounded-xl hover:bg-[#2ca3bc] disabled:opacity-50 disabled:cursor-not-allowed"
-                                                >
-                                                    Adicionar Colaborador
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    )}
+                                    <button
+                                        onClick={() => setIsImportModalOpen(true)}
+                                        className="md:hidden p-4 bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 text-slate-600 hover:text-emerald-600 transition-all shrink-0"
+                                        title="Importar Planilha"
+                                    >
+                                        <FileSpreadsheet size={24} />
+                                    </button>
                                 </div>
 
                                 {/* Lista/Tabela de Colaboradores já cadastrados */}
@@ -1638,6 +1749,44 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                     </div>
                 )
             }
+            {/* Import Collaborators Modal */}
+            <ImportCollaboratorsModal
+                isOpen={isImportModalOpen}
+                onClose={() => setIsImportModalOpen(false)}
+                onImport={handleImportCollaborators}
+            />
+
+            {/* Geral Sector Warning Modal */}
+            {isGeralSectorWarningOpen && (
+                <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsGeralSectorWarningOpen(false)} />
+                    <div className="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm animate-in fade-in zoom-in-95 duration-200">
+                        <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-500 flex items-center justify-center mb-4 mx-auto">
+                            <AlertTriangle size={24} />
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-800 text-center mb-2">Atenção!</h3>
+                        <p className="text-sm text-slate-500 text-center mb-6">
+                            Você tem <span className="font-bold text-slate-700">{geralSectorCount}</span> colaborador(es) no setor <span className="font-bold text-slate-700">"Geral"</span>.
+                            <br /><br />
+                            Deseja salvar assim mesmo? Você poderá alterar o setor deles posteriormente.
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setIsGeralSectorWarningOpen(false)}
+                                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={confirmSaveGeral}
+                                className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-white font-semibold hover:bg-emerald-600 shadow-lg shadow-emerald-200 transition-colors"
+                            >
+                                Salvar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
