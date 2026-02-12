@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Building, Search, Filter, Trash2, Users, FileText, ChevronRight, Edit, X, LayoutGrid, List, LayoutTemplate, Settings, FilePlus, Copy, ExternalLink, Check, HelpCircle, Plus } from 'lucide-react';
 import { CompanyRegistrationModal } from './CompanyRegistrationModal';
 import { CollaboratorManagerModal } from './CollaboratorManagerModal';
+import { FormsListModal } from '../modals/FormsListModal';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
 
@@ -52,6 +53,10 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
     // Collaborator Management Modal
     const [showCollaboratorManager, setShowCollaboratorManager] = useState(false);
     const [managingCompany, setManagingCompany] = useState<any>(null);
+
+    // Forms List Modal
+    const [showFormsListModal, setShowFormsListModal] = useState(false);
+    const [selectedCompanyForForms, setSelectedCompanyForForms] = useState<any>(null);
 
     // Summary Modal State
     const [summaryModalOpen, setSummaryModalOpen] = useState(false);
@@ -278,15 +283,24 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
 
 
     const handleGerarFormulario = async (company: any) => {
-        // LAZY LOAD
-        const fullCompany = await fetchCompanyDetails(company);
+        setSelectedCompanyForForms(company);
+        setShowFormsListModal(true);
+    };
 
-        // Reset selection state
-        setSelectingFor(fullCompany);
-        setSelectedUnit(null);
-        // If company has only 1 unit, auto-expand it
-        if (fullCompany.units.length === 1) {
-            setSelectedUnit(fullCompany.units[0]);
+    const handleCreateNewForm = async () => {
+        if (selectedCompanyForForms) {
+            setShowFormsListModal(false);
+
+            // LAZY LOAD
+            const fullCompany = await fetchCompanyDetails(selectedCompanyForForms);
+
+            // Reset selection state
+            setSelectingFor(fullCompany);
+            setSelectedUnit(null);
+            // If company has only 1 unit, auto-expand it
+            if (fullCompany.units.length === 1) {
+                setSelectedUnit(fullCompany.units[0]);
+            }
         }
     };
 
@@ -833,9 +847,9 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                         handleGerarFormulario(company);
                                     }}
                                     className="p-2 text-slate-400 hover:text-[#35b6cf] hover:bg-white rounded-lg transition-all"
-                                    title="Gerar Formulário"
+                                    title="Formulários"
                                 >
-                                    <FilePlus size={18} />
+                                    <FileText size={18} />
                                 </button>
                                 <button
                                     onClick={(e) => {
@@ -930,15 +944,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                 </div>
             )}
 
-            {filteredCompanies.length === 0 && (
-                <div className="col-span-full flex flex-col items-center justify-center py-20 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
-                    <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-4">
-                        <Building size={32} className="text-slate-300" />
-                    </div>
-                    <h3 className="text-lg font-bold text-slate-900">Nenhuma empresa encontrada</h3>
-                    <p className="text-slate-500 text-sm mt-1 max-w-xs text-center">Tente ajustar sua busca ou verifique se há filtros ativos.</p>
-                </div>
-            )}
+         
 
             {/* Selection Modal Overlay */}
             {selectingFor && (
@@ -1489,6 +1495,17 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                 }}
                 company={managingCompany}
                 companies={companies} // Pass all companies for global selection
+            />
+
+            {/* Forms List Modal */}
+            <FormsListModal
+                isOpen={showFormsListModal}
+                onClose={() => {
+                    setShowFormsListModal(false);
+                    setSelectedCompanyForForms(null);
+                }}
+                company={selectedCompanyForForms}
+                onCreateNew={handleCreateNewForm}
             />
         </div>
     );

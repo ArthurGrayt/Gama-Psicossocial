@@ -271,9 +271,8 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                 // But DB expects cargo_id.
                 // And we want to save Text too for legacy support?
                 // We'll calculate the text from the selected ID.
-                cargo_id: newColab.cargo ? Number(newColab.cargo) : null, // Assuming newColab.cargo stores ID now
-                setor: refData.sectors.find(s => String(s.id) === newColab.setor)?.nome || null,
-                cargo: refData.roles.find(r => String(r.id) === newColab.cargo)?.nome || null,
+                cargo_id: newColab.cargo ? Number(newColab.cargo) : null,
+                setor_id: newColab.setor ? Number(newColab.setor) : null,
                 unidade_id: Number(newColab.unidade_id),
                 cod_categoria: 101,
                 texto_categoria: "Empregado - Geral"

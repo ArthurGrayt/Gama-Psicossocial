@@ -6,10 +6,12 @@ import { FormDashboard } from '../components/forms/FormDashboard';
 import { SurveyDetails } from '../components/forms/SurveyDetails'; // NEW
 import type { Form } from '../types';
 import { supabase } from '../services/supabase';
+import { useAuth } from '../contexts/AuthContext';
 
 type ViewState = 'dashboard' | 'editor' | 'analytics';
 
 export const Formularios: React.FC = () => {
+    const { user } = useAuth();
     const [view, setView] = useState<ViewState>('dashboard');
     const [selectedForm, setSelectedForm] = useState<Form | null>(null);
 
@@ -28,6 +30,38 @@ export const Formularios: React.FC = () => {
                     .replace(/[^a-z0-9]+/g, '-')
                     .replace(/(^-|-$)+/g, '');
                 finalSlug = `${slugBase}-${Date.now()}`;
+            }
+
+            // TOKEN DEDUCTION LOGIC
+            const cost = data.selected_collaborators_count || 0;
+            if (user && cost > 0) {
+                // Check balance
+                const { data: userData, error: userError } = await supabase
+                    .from('users')
+                    .select('total_tokens')
+                    .eq('id', user.id)
+                    .single();
+
+                if (userError || !userData) {
+                    alert('Erro ao verificar saldo de tokens.');
+                    return;
+                }
+
+                if ((userData.total_tokens || 0) < cost) {
+                    alert(`Saldo insuficiente. Você precisa de ${cost} tokens para ${cost} colaboradores, mas tem apenas ${userData.total_tokens || 0}.`);
+                    return;
+                }
+
+                // Deduct
+                const { error: updateError } = await supabase
+                    .from('users')
+                    .update({ total_tokens: (userData.total_tokens || 0) - cost })
+                    .eq('id', user.id);
+
+                if (updateError) {
+                    alert('Erro ao processar débito de tokens.');
+                    return;
+                }
             }
 
             const { error } = await supabase

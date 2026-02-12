@@ -7,8 +7,6 @@ import { PaymentModal } from '../components/modals/PaymentModal';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../services/supabase';
 
-
-
 // Mock Data for Risk Ranking (Lowest Adherence First)
 const MOCK_RISK_DATA = [
     { id: 1, name: 'Logística - Filial RJ', total: 20, responses: 4, percentage: 20, status: 'critical' as const },
@@ -25,6 +23,7 @@ export const DashboardPage: React.FC = () => {
     const [selectedPackage, setSelectedPackage] = useState<{ id: string; name: string; tokens: number; price: string } | null>(null);
     const [companiesCount, setCompaniesCount] = useState<number>(0);
     const [totalResponses, setTotalResponses] = useState<number>(0);
+    const [pendingResponses, setPendingResponses] = useState<number>(0);
     const [tokenBalance, setTokenBalance] = useState<number>(0);
 
     const handlePlanSelect = (pkg: { id: string; name: string; tokens: number; price: string }) => {
@@ -39,58 +38,23 @@ export const DashboardPage: React.FC = () => {
             if (!user) return;
 
             try {
-                // 0. Fetch User Tokens
-                const { data: userData, error: userError } = await supabase
-                    .from('users')
-                    .select('tokens')
-                    .eq('user_id', user.id)
+                // Fetch consolidated KPI data from SQL View
+                const { data, error } = await supabase
+                    .from('vw_kpis_dashboard')
+                    .select('*')
                     .single();
 
-                if (userError) {
-                    console.error('Error fetching user tokens:', userError);
-                } else if (userData) {
-                    setTokenBalance(userData.tokens || 0);
+                if (error) {
+                    console.error('Error fetching dashboard KPIs:', error);
+                    return;
                 }
 
-                // 1. Fetch Companies Count
-                const { data: companies, error: companiesError } = await supabase
-                    .from('clientes')
-                    .select('id, cliente_uuid')
-                    .eq('empresa_responsavel', user.id);
-
-                if (companiesError) {
-                    console.error('Error fetching companies:', companiesError);
-                } else {
-                    setCompaniesCount(companies?.length || 0);
-
-                    if (companies && companies.length > 0) {
-                        const clienteUuids = companies.map(c => c.cliente_uuid);
-
-                        // 2. Fetch Units for these companies
-                        const { data: units, error: unitsError } = await supabase
-                            .from('unidades')
-                            .select('id')
-                            .in('empresa_mae', clienteUuids);
-
-                        if (unitsError) {
-                            console.error('Error fetching units:', unitsError);
-                        } else if (units && units.length > 0) {
-                            const unitIds = units.map(u => u.id);
-
-                            // 3. Fetch Forms for these units and sum responses
-                            const { data: forms, error: formsError } = await supabase
-                                .from('forms')
-                                .select('qtd_respostas')
-                                .in('unidade_id', unitIds);
-
-                            if (formsError) {
-                                console.error('Error fetching forms:', formsError);
-                            } else if (forms) {
-                                const total = forms.reduce((sum, f) => sum + (f.qtd_respostas || 0), 0);
-                                setTotalResponses(total);
-                            }
-                        }
-                    }
+                // Security check and state update
+                if (data && data.usuario_id === user.id) {
+                    setTokenBalance(data.total_tokens || 0);
+                    setCompaniesCount(data.empresas_ativas || 0);
+                    setTotalResponses(data.total_respondidos || 0);
+                    setPendingResponses(data.total_pendentes || 0);
                 }
             } catch (err) {
                 console.error('Exception fetching dashboard data:', err);
@@ -138,7 +102,7 @@ export const DashboardPage: React.FC = () => {
                             Bom dia, Arthur. <span className="text-2xl">👋</span>
                         </h1>
                         <p className="text-slate-500 mt-1 text-lg">
-                            Você tem <span className="text-[#35b6cf] font-bold">3 avaliações críticas</span> pendentes hoje.
+                            Você tem <span className="text-[#35b6cf] font-bold">{pendingResponses} avaliações críticas</span> pendentes hoje.
                         </p>
                     </div>
                 </div>
@@ -146,10 +110,8 @@ export const DashboardPage: React.FC = () => {
                 {/* 2. TOP CARDS GRID (BENTO) */}
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
 
-                    {/* TOKEN WALLET CARD (Gradient) */}
-                    {/* TOKEN WALLET CARD (Gradient) */}
+                    {/* TOKEN WALLET CARD */}
                     <div className="bg-[#f0f9fa] rounded-[2rem] p-6 shadow-sm border border-[#35b6cf]/20 relative group flex flex-col justify-between h-full hover:shadow-md transition-shadow">
-
                         <div className="relative z-10 flex flex-col h-full justify-between">
                             <div>
                                 <div className="flex items-center gap-2 text-slate-500 mb-2">
@@ -201,10 +163,6 @@ export const DashboardPage: React.FC = () => {
                         </div>
                         <div>
                             <h3 className="text-3xl font-bold text-slate-800 tracking-tight">{companiesCount}</h3>
-                            <div className="flex items-center gap-1 mt-1 text-blue-500 font-bold text-sm">
-                                <Building size={16} />
-                                <span>Ativas</span>
-                            </div>
                         </div>
                     </div>
 
@@ -220,10 +178,6 @@ export const DashboardPage: React.FC = () => {
                             <h3 className="text-3xl font-bold text-slate-800 tracking-tight">
                                 {totalResponses >= 1000 ? `${(totalResponses / 1000).toFixed(1)}k` : totalResponses}
                             </h3>
-                            <div className="flex items-center gap-1 mt-1 text-emerald-500 font-bold text-sm">
-                                <CheckCircle size={16} />
-                                <span>Total acumulado</span>
-                            </div>
                         </div>
                     </div>
 
@@ -236,11 +190,7 @@ export const DashboardPage: React.FC = () => {
                             </div>
                         </div>
                         <div>
-                            <h3 className="text-3xl font-bold text-slate-800 tracking-tight">45</h3>
-                            <div className="flex items-center gap-1 mt-1 text-amber-500 font-bold text-sm">
-                                <Activity size={16} />
-                                <span>Requer atenção</span>
-                            </div>
+                            <h3 className="text-3xl font-bold text-slate-800 tracking-tight">{pendingResponses}</h3>
                         </div>
                     </div>
                 </div>
@@ -342,11 +292,11 @@ export const DashboardPage: React.FC = () => {
                                     </div>
                                 ))}
                             </div>
-
                         </div>
                     </div>
                 </div>
             </div>
+
             <PlanSelectionModal
                 isOpen={isPlanModalOpen}
                 onClose={() => setIsPlanModalOpen(false)}
@@ -358,6 +308,6 @@ export const DashboardPage: React.FC = () => {
                 onClose={() => setIsPaymentModalOpen(false)}
                 selectedPackage={selectedPackage}
             />
-        </DashboardLayout >
+        </DashboardLayout>
     );
 };
