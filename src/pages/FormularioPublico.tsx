@@ -252,6 +252,35 @@ export const FormularioPublico: React.FC = () => {
         if (slug) fetchForm();
     }, [slug]);
 
+    // Inactivity Timer Logic
+    useEffect(() => {
+        if (step === 'cover' || submitted) return;
+
+        const timeoutMinutes = Number(localStorage.getItem('gama-form-timer')) || 30;
+        const timeoutMs = timeoutMinutes * 60 * 1000;
+
+        let timer: any;
+
+        const resetTimer = () => {
+            clearTimeout(timer);
+            timer = setTimeout(() => {
+                alert('Sessão expirada por inatividade. O formulário será reiniciado.');
+                window.location.reload();
+            }, timeoutMs);
+        };
+
+        // Events to track activity
+        const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+        events.forEach(event => document.addEventListener(event, resetTimer));
+
+        resetTimer(); // Initialize timer
+
+        return () => {
+            clearTimeout(timer);
+            events.forEach(event => document.removeEventListener(event, resetTimer));
+        };
+    }, [step, submitted]);
+
     useEffect(() => {
         if (form?.title) document.title = form.title;
     }, [form]);

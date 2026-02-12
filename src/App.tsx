@@ -7,10 +7,10 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Formularios } from './pages/Formularios';
 import { ModelosPage } from './pages/ModelosPage';
 import { FormularioPublico } from './pages/FormularioPublico';
-import { CadastroPage } from './pages/CadastroPage';
 import { DashboardPage } from './pages/DashboardPage';
 
 import { LandingPage } from './pages/LandingPage';
+import { SettingsPage } from './pages/SettingsPage';
 
 function AppContent() {
   return (
@@ -38,9 +38,10 @@ function AppContent() {
             <ModelosPage />
           </ProtectedRoute>
         } />
-        <Route path="/cadastro" element={
+
+        <Route path="/settings" element={
           <ProtectedRoute>
-            <CadastroPage />
+            <SettingsPage />
           </ProtectedRoute>
         } />
 

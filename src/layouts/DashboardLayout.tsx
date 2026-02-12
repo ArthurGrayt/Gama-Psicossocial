@@ -1,5 +1,5 @@
 import React from 'react';
-import { Settings, LogOut, LayoutDashboard, PlusCircle, Building } from 'lucide-react';
+import { Settings, LogOut, LayoutDashboard, Building } from 'lucide-react';
 import { useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { FirstAccessModal } from '../components/modals/FirstAccessModal';
@@ -11,7 +11,6 @@ interface DashboardLayoutProps {
 
 const MENU_ITEMS = [
     { icon: <LayoutDashboard size={18} />, label: 'Dashboard', path: '/dashboard' },
-    { icon: <PlusCircle size={18} />, label: 'Cadastro', path: '/cadastro' },
     { icon: <Building size={18} />, label: 'Empresas', path: '/atividades' },
     { icon: <Settings size={18} />, label: 'Configurações', path: '/settings' },
 ];
@@ -32,7 +31,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
 
     // Helper to determine active state
     const isActive = (path: string) => {
-        // Generic match for other routes (exact or sub-path)
         if (location.pathname.startsWith(path)) return true;
         return false;
     };
@@ -60,7 +58,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
                                 className={`
                                     flex items-center gap-3 px-4 py-3.5 rounded-lg text-sm font-medium transition-all duration-200
                                     ${active
-                                        ? 'bg-[#0f978e] text-white shadow-md shadow-emerald-200/50' // Matching the screenshot's solid teal look
+                                        ? 'bg-[#0f978e] text-white shadow-md shadow-emerald-200/50'
                                         : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'}
                                 `}
                             >

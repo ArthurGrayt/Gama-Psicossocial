@@ -1,43 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '../layouts/DashboardLayout';
 import { Building, Wallet, ChevronRight, CheckCircle, Clock, ArrowUpRight, Activity, Calendar, Info, Bell } from 'lucide-react';
 import { BarChart, Bar, XAxis, Tooltip as RechartsTooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { PlanSelectionModal } from '../components/modals/PlanSelectionModal';
 import { PaymentModal } from '../components/modals/PaymentModal';
+import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../services/supabase';
 
-// Duplicated Mock Data for Dashboard Visualization
-const MOCK_COMPANIES = [
-    {
-        id: 1,
-        name: 'Gama Center',
-        cnpj: '12.345.678/0001-90',
-        total_collaborators: 150,
-        units: [
-            { id: 101, name: 'Matriz', collaborators: 45, sectors: ['TI', 'RH', 'Financeiro', 'Administrativo'] },
-            { id: 102, name: 'Filial SP', collaborators: 15, sectors: [] },
-            { id: 103, name: 'Filial RJ', collaborators: 90, sectors: ['Operacional', 'Vendas', 'Logística'] }
-        ]
-    },
-    {
-        id: 2,
-        name: 'Tech Solutions',
-        cnpj: '98.765.432/0001-10',
-        total_collaborators: 50,
-        units: [
-            { id: 201, name: 'Escritório Central', collaborators: 50, sectors: ['Dev', 'Product', 'Sales'] }
-        ]
-    },
-    {
-        id: 3,
-        name: 'Indústria Metalflex',
-        cnpj: '45.123.789/0001-44',
-        total_collaborators: 1200,
-        units: [
-            { id: 301, name: 'Planta Industrial A', collaborators: 800, sectors: ['Produção', 'Manutenção', 'PCP', 'Qualidade'] },
-            { id: 302, name: 'Logística Regional', collaborators: 400, sectors: ['Armazém', 'Frota', 'Expedição'] }
-        ]
-    }
-];
+
 
 // Mock Data for Risk Ranking (Lowest Adherence First)
 const MOCK_RISK_DATA = [
@@ -48,10 +18,12 @@ const MOCK_RISK_DATA = [
 ];
 
 export const DashboardPage: React.FC = () => {
+    const { user } = useAuth();
     const [activeFilter, setActiveFilter] = useState<'semanal' | 'quinzenal' | 'mensal'>('mensal');
     const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
     const [selectedPackage, setSelectedPackage] = useState<{ id: string; name: string; tokens: number; price: string } | null>(null);
+    const [companiesCount, setCompaniesCount] = useState<number>(0);
 
     const handlePlanSelect = (pkg: { id: string; name: string; tokens: number; price: string }) => {
         console.log('Pacote selecionado:', pkg);
@@ -59,6 +31,29 @@ export const DashboardPage: React.FC = () => {
         setIsPlanModalOpen(false);
         setIsPaymentModalOpen(true);
     };
+
+    useEffect(() => {
+        const fetchCompaniesCount = async () => {
+            if (!user) return;
+
+            try {
+                const { count, error } = await supabase
+                    .from('clientes')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('empresa_responsavel', user.id);
+
+                if (error) {
+                    console.error('Error fetching companies count:', error);
+                } else {
+                    setCompaniesCount(count || 0);
+                }
+            } catch (err) {
+                console.error('Exception fetching companies count:', err);
+            }
+        };
+
+        fetchCompaniesCount();
+    }, [user]);
 
     // Filtered Mock Data
     const CHART_DATA = {
@@ -198,7 +193,7 @@ export const DashboardPage: React.FC = () => {
                             </div>
                         </div>
                         <div>
-                            <h3 className="text-3xl font-bold text-slate-800 tracking-tight">{MOCK_COMPANIES.length}</h3>
+                            <h3 className="text-3xl font-bold text-slate-800 tracking-tight">{companiesCount}</h3>
                             <div className="flex items-center gap-1 mt-1 text-blue-500 font-bold text-sm">
                                 <Building size={16} />
                                 <span>Ativas</span>

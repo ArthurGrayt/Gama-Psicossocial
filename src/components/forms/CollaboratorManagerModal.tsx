@@ -21,6 +21,7 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
     const [refData, setRefData] = useState<{ sectors: any[], roles: any[] }>({ sectors: [], roles: [] });
     const [filterSector, setFilterSector] = useState('');
     const [filterRole, setFilterRole] = useState('');
+    const [filterUnit, setFilterUnit] = useState('');
 
     // New Colab State
     const [isAdding, setIsAdding] = useState(false);
@@ -86,7 +87,7 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
             // 2. Fetch Collaborators (All in these units)
             const { data: colabs } = await supabase
                 .from('colaboradores')
-                .select('id, nome, email, cargo, setor, unidade_id, cargo_id, cargos(nome)')
+                .select('*, cargos(nome)')
                 .in('unidade_id', unitIds)
                 .order('nome');
 
@@ -299,7 +300,9 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
 
         const matchesRole = filterRole ? (c.cargo === filterRole || c.cargo_nome === filterRole) : true;
 
-        return matchesSearch && matchesSector && matchesRole;
+        const matchesUnit = filterUnit ? (String(c.unidade_id) === filterUnit) : true;
+
+        return matchesSearch && matchesSector && matchesRole && matchesUnit;
     });
 
     // Derived lists for form
@@ -511,45 +514,60 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                         </div>
                     )}
 
-                    <div className="flex items-center gap-2 flex-1">
+                    <div className="flex items-center gap-2">
                         {/* Sector Filter */}
-                        <div className="relative min-w-[140px]">
+                        <div className="relative w-36">
                             <Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                             <select
-                                className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf] appearance-none"
+                                className="w-full pl-8 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf] appearance-none cursor-pointer"
                                 value={filterSector}
                                 onChange={(e) => setFilterSector(e.target.value)}
                             >
-                                <option value="">Todos os Setores</option>
+                                <option value="">Setores</option>
                                 {refData.sectors.map(s => (
-                                    <option key={s.id} value={s.nome}>{s.nome}</option> // Filtering by Name for list
+                                    <option key={s.id} value={s.nome}>{s.nome}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Unit Filter */}
+                        <div className="relative w-36">
+                            <Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <select
+                                className="w-full pl-8 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf] appearance-none cursor-pointer"
+                                value={filterUnit}
+                                onChange={(e) => setFilterUnit(e.target.value)}
+                            >
+                                <option value="">Unidades</option>
+                                {units.map(u => (
+                                    <option key={u.id} value={u.id}>{u.nome}</option>
                                 ))}
                             </select>
                         </div>
 
                         {/* Role Filter */}
-                        <div className="relative min-w-[140px]">
+                        <div className="relative w-36">
                             <Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                             <select
-                                className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf] appearance-none"
+                                className="w-full pl-8 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf] appearance-none cursor-pointer"
                                 value={filterRole}
                                 onChange={(e) => setFilterRole(e.target.value)}
                             >
-                                <option value="">Todos os Cargos</option>
+                                <option value="">Cargos</option>
                                 {refData.roles.map(r => (
-                                    <option key={r.id} value={r.nome}>{r.nome}</option> // Filtering by Name for list
+                                    <option key={r.id} value={r.nome}>{r.nome}</option>
                                 ))}
                             </select>
                         </div>
 
-                        <div className="relative flex-1">
+                        <div className="relative flex-1 min-w-[300px]">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                             <input
                                 type="text"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 placeholder="Buscar por nome ou email..."
-                                className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf]"
+                                className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf] shadow-sm"
                             />
                         </div>
                     </div>
@@ -566,7 +584,10 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                         <table className="w-full text-left border-collapse">
                             <thead className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                                 <tr className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                                    <th className="px-8 py-4 border-b border-slate-100">Colaborador</th>
+                                    <th className="px-6 py-4 border-b border-slate-100">Colaborador</th>
+                                    <th className="px-6 py-4 border-b border-slate-100">Cargo</th>
+                                    <th className="px-6 py-4 border-b border-slate-100">Setor</th>
+                                    <th className="px-6 py-4 border-b border-slate-100">Sexo</th>
                                     <th className="px-6 py-4 border-b border-slate-100">Unidade</th>
                                     <th className="px-6 py-4 border-b border-slate-100 text-center w-32">Participante</th>
                                 </tr>
@@ -576,16 +597,17 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                                     const isIncluded = invitedIds.has(String(colab.id));
                                     return (
                                         <tr key={colab.id} className="hover:bg-slate-50 transition-colors group">
-                                            <td className="px-8 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500">
-                                                        {colab.nome ? colab.nome.charAt(0).toUpperCase() : '?'}
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-bold text-slate-700">{colab.nome}</p>
-                                                        <p className="text-xs text-slate-400">{colab.email || 'Sem email'} • {colab.cargo_nome || 'Cargo não def.'}</p>
-                                                    </div>
-                                                </div>
+                                            <td className="px-6 py-4">
+                                                <p className="font-bold text-slate-700">{colab.nome}</p>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className="text-sm text-slate-600">{colab.cargo_nome || colab.cargo || '-'}</span>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className="text-sm text-slate-600">{colab.setor || '-'}</span>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className="text-sm text-slate-600">{colab.sexo || '-'}</span>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <span className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-md font-medium border border-slate-200">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building, Search, Filter, Trash2, Users, FileText, ChevronRight, Edit, X, LayoutGrid, List, LayoutTemplate, Settings, FilePlus, Copy, ExternalLink, Check, HelpCircle } from 'lucide-react';
+import { Building, Search, Filter, Trash2, Users, FileText, ChevronRight, Edit, X, LayoutGrid, List, LayoutTemplate, Settings, FilePlus, Copy, ExternalLink, Check, HelpCircle, Plus } from 'lucide-react';
 import { CompanyRegistrationModal } from './CompanyRegistrationModal';
 import { CollaboratorManagerModal } from './CollaboratorManagerModal';
 import { useAuth } from '../../contexts/AuthContext';
@@ -414,38 +414,68 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
     const handleUpdateCompany = async (formData: any) => {
         setIsLoading(true);
         try {
-            console.log('Updating company with data:', formData);
-            const companyId = formData.id || infoModalCompany?.id;
+            console.log('Saving company with data:', formData);
+            const isNew = infoModalCompany?.isNew;
+            let companyId = formData.id || infoModalCompany?.id;
+            let parentCompanyUuid = infoModalCompany?.cliente_uuid || formData.cliente_uuid;
 
-            if (!companyId) {
-                console.error('Company ID missing for update');
-                return;
+            if (isNew) {
+                // Generate a new UUID for the company
+                parentCompanyUuid = crypto.randomUUID();
+
+                const { data: newCompany, error: createError } = await supabase
+                    .from('clientes')
+                    .insert({
+                        cliente_uuid: parentCompanyUuid,
+                        empresa_responsavel: user?.id,
+                        nome_fantasia: formData.nomeFantasia,
+                        razao_social: formData.razaoSocial,
+                        cnpj: formData.cnpj,
+                        email: formData.email,
+                        telefone: formData.telefone,
+                        responsavel: formData.responsavel,
+                        endereco: {
+                            cep: formData.cep,
+                            rua: formData.rua,
+                            bairro: formData.bairro,
+                            cidade: formData.cidade,
+                            uf: formData.uf
+                        }
+                    })
+                    .select('id')
+                    .single();
+
+                if (createError) throw createError;
+                companyId = newCompany.id;
+            } else {
+                if (!companyId) {
+                    console.error('Company ID missing for update');
+                    return;
+                }
+
+                // 1. Update Basic Info
+                const { error: companyError } = await supabase
+                    .from('clientes')
+                    .update({
+                        nome_fantasia: formData.nomeFantasia,
+                        razao_social: formData.razaoSocial,
+                        cnpj: formData.cnpj,
+                        email: formData.email,
+                        telefone: formData.telefone,
+                        responsavel: formData.responsavel,
+                        // Fix: Supabase JS client automatically handles JSON objects for jsonb columns
+                        endereco: {
+                            cep: formData.cep,
+                            rua: formData.rua,
+                            bairro: formData.bairro,
+                            cidade: formData.cidade,
+                            uf: formData.uf
+                        }
+                    })
+                    .eq('id', companyId);
+
+                if (companyError) throw companyError;
             }
-
-            // 1. Update Basic Info
-            // Fix: Pass object directly to avoid double serialization if Supabase handles it, 
-            // or ensure it matches the column type (jsonb).
-            const { error: companyError } = await supabase
-                .from('clientes')
-                .update({
-                    nome_fantasia: formData.nomeFantasia,
-                    razao_social: formData.razaoSocial,
-                    cnpj: formData.cnpj,
-                    email: formData.email,
-                    telefone: formData.telefone,
-                    responsavel: formData.responsavel,
-                    // Fix: Supabase JS client automatically handles JSON objects for jsonb columns
-                    endereco: {
-                        cep: formData.cep,
-                        rua: formData.rua,
-                        bairro: formData.bairro,
-                        cidade: formData.cidade,
-                        uf: formData.uf
-                    }
-                })
-                .eq('id', companyId);
-
-            if (companyError) throw companyError;
 
             // 2. Sync Sectors
             const sectorIds: number[] = [];
@@ -549,7 +579,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
 
             for (const unit of currentUnits) {
                 // Fix: Threshold was too high (2T). Date.now() is ~1.73T. Lowered to 1T.
-                const isTempId = unit.id > 1000000000000;
+                const isTempId = typeof unit.id === 'string' || unit.id > 1000000000000;
                 const parentCompanyUuid = infoModalCompany?.cliente_uuid || formData.cliente_uuid;
 
                 if (!parentCompanyUuid && isTempId) {
@@ -683,36 +713,46 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                     <p className="text-slate-500 mt-1">Gerencie formulários e levantamentos</p>
                 </div>
 
-                <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-slate-200 shadow-sm w-full md:w-auto">
-                    <div className="relative flex-1 md:w-64">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                        <input
-                            type="text"
-                            placeholder="Buscar empresa ou CNPJ..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 bg-transparent text-sm outline-none placeholder:text-slate-400"
-                        />
-                    </div>
-                    <div className="w-px h-6 bg-slate-200 mx-1 hidden md:block"></div>
-                    <div className="flex items-center gap-1">
-                        <button className="p-2 text-slate-400 hover:text-[#35b6cf] hover:bg-slate-50 rounded-lg transition-all" title="Filtros">
-                            <Filter size={18} />
-                        </button>
+                <div className="flex items-center gap-3 w-full md:w-auto">
+                    <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-slate-200 shadow-sm flex-1 md:w-[480px] h-11">
+                        <div className="relative flex-1 md:w-[480px]">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                            <input
+                                type="text"
+                                placeholder="Buscar empresa ou CNPJ..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 bg-transparent text-sm outline-none placeholder:text-slate-400"
+                            />
+                        </div>
                         <div className="w-px h-6 bg-slate-200 mx-1 hidden md:block"></div>
-                        <button
-                            onClick={() => setViewMode('grid')}
-                            className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-slate-100 text-[#35b6cf]' : 'text-slate-400 hover:text-[#35b6cf]'}`}
-                        >
-                            <LayoutGrid size={18} />
-                        </button>
-                        <button
-                            onClick={() => setViewMode('list')}
-                            className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-slate-100 text-[#35b6cf]' : 'text-slate-400 hover:text-[#35b6cf]'}`}
-                        >
-                            <List size={18} />
-                        </button>
+                        <div className="flex items-center gap-1">
+                            <button className="p-2 text-slate-400 hover:text-[#35b6cf] hover:bg-slate-50 rounded-lg transition-all" title="Filtros">
+                                <Filter size={18} />
+                            </button>
+                            <div className="w-px h-6 bg-slate-200 mx-1 hidden md:block"></div>
+                            <button
+                                onClick={() => setViewMode('grid')}
+                                className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-slate-100 text-[#35b6cf]' : 'text-slate-400 hover:text-[#35b6cf]'}`}
+                            >
+                                <LayoutGrid size={18} />
+                            </button>
+                            <button
+                                onClick={() => setViewMode('list')}
+                                className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-slate-100 text-[#35b6cf]' : 'text-slate-400 hover:text-[#35b6cf]'}`}
+                            >
+                                <List size={18} />
+                            </button>
+                        </div>
                     </div>
+
+                    <button
+                        onClick={() => setInfoModalCompany({ isNew: true })}
+                        className="flex items-center justify-center gap-2 px-6 bg-[#35b6cf] text-white rounded-xl font-bold hover:bg-[#2ca3bc] transition-all shadow-lg shadow-[#35b6cf]/20 shrink-0 md:w-48 h-11"
+                    >
+                        <Plus size={18} />
+                        <span>Nova Empresa</span>
+                    </button>
                 </div>
             </div>
 
@@ -1012,7 +1052,8 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                 isOpen={!!infoModalCompany}
                 onClose={() => setInfoModalCompany(null)}
                 onSave={handleUpdateCompany}
-                initialData={infoModalCompany}
+                initialData={infoModalCompany?.isNew ? null : infoModalCompany}
+                isLoading={isLoading}
             />
 
             {/* FORM SUMMARY MODAL */}

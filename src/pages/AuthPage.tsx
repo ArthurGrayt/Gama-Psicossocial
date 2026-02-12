@@ -115,7 +115,7 @@ export const AuthPage: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 transition-colors duration-300">
             <div className="bg-white rounded-2xl shadow-xl border border-slate-100 w-full max-w-md overflow-hidden flex flex-col">
                 <div className="p-8 bg-white border-b border-slate-50">
                     <div className="text-center mb-8">
@@ -141,7 +141,7 @@ export const AuthPage: React.FC = () => {
                                         required={!isLogin}
                                         value={username}
                                         onChange={(e) => setUsername(e.target.value)}
-                                        className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#139690]/20 focus:border-[#139690] transition-all outline-none text-slate-800 font-medium"
+                                        className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#139690]/20 focus:border-[#139690] transition-all outline-none text-slate-800 font-medium placeholder:text-slate-400"
                                         placeholder="Seu nome"
                                     />
                                 </div>
@@ -157,7 +157,7 @@ export const AuthPage: React.FC = () => {
                                     required
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#35b6cf]/20 focus:border-[#35b6cf] transition-all outline-none text-slate-800 font-medium"
+                                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#35b6cf]/20 focus:border-[#35b6cf] transition-all outline-none text-slate-800 font-medium placeholder:text-slate-400"
                                     placeholder="seu@email.com"
                                 />
                             </div>
@@ -172,7 +172,7 @@ export const AuthPage: React.FC = () => {
                                     required
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#35b6cf]/20 focus:border-[#35b6cf] transition-all outline-none text-slate-800 font-medium"
+                                    className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#35b6cf]/20 focus:border-[#35b6cf] transition-all outline-none text-slate-800 font-medium placeholder:text-slate-400"
                                     placeholder="••••••••"
                                 />
                                 <button
