@@ -260,9 +260,19 @@ export const FormularioPublico: React.FC = () => {
             }
 
             // Força lógica correta baseada no tipo da pergunta
-            if (q.question_type === 'select' || q.question_type === 'short_text' || q.question_type === 'long_text') {
+            if (q.question_type === 'select' || q.question_type === 'short_text' || q.question_type === 'long_text' || q.question_type === 'choice') {
                 answerNumber = null;
                 answerText = String(rawValue);
+
+                // LOGICA DE SCORE PARA SELECT/CHOICE
+                // Se for select/choice, tentamos achar o indice da resposta nas 5 opções
+                if (q.question_type === 'select' || q.question_type === 'choice') {
+                    const opts = getOptions(q);
+                    const idx = opts.findIndex(opt => opt === rawValue);
+                    if (idx !== -1) {
+                        answerNumber = idx + 1; // 1-based index (Option 1 -> 1, Option 2 -> 2...)
+                    }
+                }
             }
 
             return {

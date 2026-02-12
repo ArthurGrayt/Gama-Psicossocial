@@ -1,10 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Building, Search, Filter, Trash2, Users, FileText, ChevronRight, Edit, X, LayoutGrid, List, LayoutTemplate, Settings, FilePlus, Copy, ExternalLink, Check, HelpCircle, Plus } from 'lucide-react';
 import { CompanyRegistrationModal } from './CompanyRegistrationModal';
 import { CollaboratorManagerModal } from './CollaboratorManagerModal';
 import { FormsListModal } from '../modals/FormsListModal';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
+
+// --- Form Dashboard: Main component for managing forms and companies ---
+import { useCompanies } from '../../hooks/useCompanies';
 
 // --- Form Dashboard: Main component for managing forms and companies ---
 interface FormDashboardProps {
@@ -35,10 +38,11 @@ const MOCK_QUESTIONS = [
 
 export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEditForm, onAnalyzeForm }) => {
     const { user } = useAuth();
+    const { companies, loading: isLoading, refetch, updateCompanyInCache } = useCompanies(user);
     const [searchTerm, setSearchTerm] = useState('');
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-    const [companies, setCompanies] = useState<any[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    // const [companies, setCompanies] = useState<any[]>([]); // REPLACED BY HOOK
+    // const [isLoading, setIsLoading] = useState(true); // REPLACED BY HOOK
 
     // Selection Modal State
     const [selectingFor, setSelectingFor] = useState<any>(null);
@@ -68,71 +72,18 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [successModalOpen, setSuccessModalOpen] = useState(false);
     const [selectedCollaborators, setSelectedCollaborators] = useState<Set<number>>(new Set());
+
     const [loadingDetailsFor, setLoadingDetailsFor] = useState<string | number | null>(null);
+    const [visibleCount, setVisibleCount] = useState(12); // Pagination limit
 
-    const generateSlug = (text: string) => {
-        return text
-            .toString()
-            .toLowerCase()
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .replace(/\s+/g, '-')
-            .replace(/[^\w\-]+/g, '')
-            .replace(/\-\-+/g, '-')
-            .replace(/^-+/, '')
-            .replace(/-+$/, '') + '-' + Date.now();
-    };
 
-    useEffect(() => {
-        if (user) {
-            fetchCompanies();
-        }
-    }, [user]);
 
-    const fetchCompanies = async () => {
-        setIsLoading(true);
-        try {
-            // OPTIMIZED: Use SQL View for direct counters
-            const { data: clientsData, error: clientsError } = await supabase
-                .from('vw_empresas_dashboard')
-                .select('*')
-                .eq('empresa_responsavel', user?.id)
-                .order('nome_fantasia');
-
-            if (clientsError) throw clientsError;
-
-            if (!clientsData || clientsData.length === 0) {
-                setCompanies([]);
-                setIsLoading(false);
-                return;
-            }
-
-            // Simple mapping - no nested logic needed
-            const liteCompanies = clientsData.map(client => ({
-                id: client.id,
-                cliente_uuid: client.cliente_uuid,
-                name: client.nome_fantasia || client.razao_social || 'Sem Nome',
-                cnpj: client.cnpj,
-                total_collaborators: client.total_colaboradores || 0,
-                // View returns pre-calculated count. We keep units empty initially.
-                units: [],
-                roles: [],
-                cargos: [],
-                collaborators: [],
-                setores: [],
-                detailsLoaded: false,
-                // Helper for UI display
-                total_units: client.total_unidades || 0
-            }));
-
-            console.log(`[VIEW LOAD] Loaded ${liteCompanies.length} companies from View.`);
-            setCompanies(liteCompanies);
-        } catch (error) {
-            console.error('Error fetching companies:', error);
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    // useEffect(() => {
+    //     if (user) {
+    //         fetchCompanies();
+    //     }
+    // }, [user]);
+    // REMOVED fetchCompanies
 
     const fetchCompanyDetails = async (company: any) => {
         if (company.detailsLoaded) return company;
@@ -263,7 +214,9 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
             };
 
             // Update local state so it stays loaded
-            setCompanies(prev => prev.map(c => c.id === company.id ? updatedCompany : c));
+            // Update local state so it stays loaded
+            // setCompanies(prev => prev.map(c => c.id === company.id ? updatedCompany : c));
+            updateCompanyInCache(updatedCompany);
 
             return updatedCompany;
 
@@ -409,7 +362,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
     const normalizeText = (text: string) => text.trim().toLowerCase();
 
     const handleUpdateCompany = async (formData: any) => {
-        setIsLoading(true);
+        // setIsLoading(true); // Managed by hook
         try {
             console.log('Saving company with data:', formData);
             const isNew = infoModalCompany?.isNew;
@@ -689,7 +642,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                 }
             }
 
-            await fetchCompanies();
+            await refetch();
             setInfoModalCompany(null);
             alert('Dados atualizados com sucesso!');
 
@@ -697,7 +650,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
             console.error('Error updating company:', error);
             alert('Erro ao atualizar dados. Verifique o console.');
         } finally {
-            setIsLoading(false);
+            // setIsLoading(false); // Managed by hook
         }
     };
 
@@ -791,87 +744,100 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                         Você ainda não possui empresas monitoradas ou a busca não retornou resultados.
                     </p>
                     <button
-                        onClick={() => fetchCompanies()}
+                        onClick={() => refetch()}
                         className="px-6 py-2.5 bg-[#35b6cf] text-white rounded-xl font-bold hover:bg-[#2ca3bc] transition-all shadow-lg shadow-[#35b6cf]/20"
                     >
                         Tentar novamente
                     </button>
                 </div>
             ) : viewMode === 'grid' ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {filteredCompanies.map((company) => (
-                        <div
-                            key={company.id}
-                            onClick={async () => {
-                                const full = await fetchCompanyDetails(company);
-                                onAnalyzeForm(full);
-                            }}
-                            className="group bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-[#35b6cf]/10 hover:border-[#35b6cf]/30 hover:-translate-y-1 transition-all duration-300 flex flex-col h-full overflow-hidden cursor-pointer relative"
-                        >
+                <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                        {filteredCompanies.slice(0, visibleCount).map((company) => (
+                            <div
+                                key={company.id}
+                                onClick={() => {
+                                    onAnalyzeForm(company);
+                                }}
+                                className="group bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-[#35b6cf]/10 hover:border-[#35b6cf]/30 hover:-translate-y-1 transition-all duration-300 flex flex-col h-full overflow-hidden cursor-pointer relative"
+                            >
 
-                            {/* Card Body */}
-                            <div className="p-6 flex-1 flex flex-col">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="p-3 bg-[#35b6cf]/10 text-[#35b6cf] rounded-xl group-hover:bg-[#35b6cf] group-hover:text-white transition-colors duration-300 shadow-sm">
-                                        <Building size={24} />
+                                {/* Card Body */}
+                                <div className="p-6 flex-1 flex flex-col">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className="p-3 bg-[#35b6cf]/10 text-[#35b6cf] rounded-xl group-hover:bg-[#35b6cf] group-hover:text-white transition-colors duration-300 shadow-sm">
+                                            <Building size={24} />
+                                        </div>
+                                        <div className="px-2.5 py-1 bg-slate-50 text-slate-500 rounded-lg text-xs font-bold border border-slate-100 flex items-center gap-2">
+                                            {loadingDetailsFor === company.id && <div className="w-3 h-3 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />}
+                                            {(company.total_units !== undefined ? company.total_units : company.units?.length || 0)} {(company.total_units !== undefined ? company.total_units : company.units?.length) === 1 ? 'Unidade' : 'Unidades'}
+                                        </div>
                                     </div>
-                                    <div className="px-2.5 py-1 bg-slate-50 text-slate-500 rounded-lg text-xs font-bold border border-slate-100 flex items-center gap-2">
-                                        {loadingDetailsFor === company.id && <div className="w-3 h-3 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />}
-                                        {(company.total_units !== undefined ? company.total_units : company.units?.length || 0)} {(company.total_units !== undefined ? company.total_units : company.units?.length) === 1 ? 'Unidade' : 'Unidades'}
+
+                                    <h3 className="text-lg font-bold text-slate-800 group-hover:text-[#35b6cf] transition-colors mb-2">
+                                        {company.name}
+                                    </h3>
+
+                                    <div className="space-y-3 mt-4">
+                                        <div className="flex items-center gap-2 text-sm text-slate-500">
+                                            <FileText size={16} className="text-slate-300" />
+                                            <span>CNPJ: <span className="font-medium text-slate-700">{company.cnpj}</span></span>
+                                        </div>
+                                        <div className="flex items-center gap-2 text-sm text-slate-500">
+                                            <Users size={16} className="text-slate-300" />
+                                            <span>Colaboradores: <span className="font-medium text-slate-700">{company.total_collaborators}</span></span>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <h3 className="text-lg font-bold text-slate-800 group-hover:text-[#35b6cf] transition-colors mb-2">
-                                    {company.name}
-                                </h3>
+                                {/* Card Footer Actions */}
+                                <div className="px-6 py-4 bg-slate-50/50 border-t border-slate-50 flex items-center justify-end gap-x-1 mt-auto">
+                                    <button
+                                        onClick={(e) => openInfoModal(e, company)}
+                                        className="p-2 text-slate-400 hover:text-[#35b6cf] hover:bg-white rounded-lg transition-all"
+                                        title="Estrutura da empresa"
+                                    >
+                                        <Settings size={18} />
+                                    </button>
 
-                                <div className="space-y-3 mt-4">
-                                    <div className="flex items-center gap-2 text-sm text-slate-500">
-                                        <FileText size={16} className="text-slate-300" />
-                                        <span>CNPJ: <span className="font-medium text-slate-700">{company.cnpj}</span></span>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-sm text-slate-500">
-                                        <Users size={16} className="text-slate-300" />
-                                        <span>Colaboradores: <span className="font-medium text-slate-700">{company.total_collaborators}</span></span>
-                                    </div>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleGerarFormulario(company);
+                                        }}
+                                        className="p-2 text-slate-400 hover:text-[#35b6cf] hover:bg-white rounded-lg transition-all"
+                                        title="Formulários"
+                                    >
+                                        <FileText size={18} />
+                                    </button>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setManagingCompany(company);
+                                            setShowCollaboratorManager(true);
+                                        }}
+                                        className="p-2 text-slate-400 hover:text-[#35b6cf] hover:bg-white rounded-lg transition-all"
+                                        title="Colaboradores"
+                                    >
+                                        <Users size={18} />
+                                    </button>
                                 </div>
                             </div>
+                        ))}
+                    </div>
 
-                            {/* Card Footer Actions */}
-                            <div className="px-6 py-4 bg-slate-50/50 border-t border-slate-50 flex items-center justify-end gap-x-1 mt-auto">
-                                <button
-                                    onClick={(e) => openInfoModal(e, company)}
-                                    className="p-2 text-slate-400 hover:text-[#35b6cf] hover:bg-white rounded-lg transition-all"
-                                    title="Estrutura da empresa"
-                                >
-                                    <Settings size={18} />
-                                </button>
-
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleGerarFormulario(company);
-                                    }}
-                                    className="p-2 text-slate-400 hover:text-[#35b6cf] hover:bg-white rounded-lg transition-all"
-                                    title="Formulários"
-                                >
-                                    <FileText size={18} />
-                                </button>
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setManagingCompany(company);
-                                        setShowCollaboratorManager(true);
-                                    }}
-                                    className="p-2 text-slate-400 hover:text-[#35b6cf] hover:bg-white rounded-lg transition-all"
-                                    title="Colaboradores"
-                                >
-                                    <Users size={18} />
-                                </button>
-                            </div>
+                    {filteredCompanies.length > visibleCount && (
+                        <div className="flex justify-center mt-8">
+                            <button
+                                onClick={() => setVisibleCount(prev => prev + 12)}
+                                className="px-6 py-3 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl shadow-sm hover:bg-slate-50 transition-all flex items-center gap-2"
+                            >
+                                <Plus size={18} />
+                                Carregar Mais Empresas
+                            </button>
                         </div>
-                    ))}
-                </div>
+                    )}
+                </>
             ) : (
                 <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
                     <div className="overflow-x-auto">
@@ -953,98 +919,100 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
 
 
             {/* Selection Modal Overlay */}
-            {selectingFor && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
-                    <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-slate-100 overflow-hidden animate-in zoom-in-95 duration-300">
-                        {/* Modal Header */}
-                        <div className="p-6 border-b border-slate-50 flex items-center justify-between bg-white sticky top-0">
-                            <div>
-                                <h2 className="text-xl font-bold text-slate-800">Gerar Formulário</h2>
-                                <p className="text-sm text-slate-500 mt-1">{selectingFor.name}</p>
-                            </div>
-                            <button
-                                onClick={() => setSelectingFor(null)}
-                                className="p-2 hover:bg-slate-50 rounded-full transition-colors"
-                            >
-                                <X size={20} className="text-slate-400" />
-                            </button>
-                        </div>
-
-                        {/* Modal Content */}
-                        <div className="p-6">
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <div className="w-8 h-8 rounded-lg bg-[#35b6cf]/10 flex items-center justify-center text-[#35b6cf]">
-                                        <Building size={16} />
-                                    </div>
-                                    <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Escolha a Unidade e Setor</label>
+            {
+                selectingFor && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
+                        <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-slate-100 overflow-hidden animate-in zoom-in-95 duration-300">
+                            {/* Modal Header */}
+                            <div className="p-6 border-b border-slate-50 flex items-center justify-between bg-white sticky top-0">
+                                <div>
+                                    <h2 className="text-xl font-bold text-slate-800">Gerar Formulário</h2>
+                                    <p className="text-sm text-slate-500 mt-1">{selectingFor.name}</p>
                                 </div>
-                                <div className="grid grid-cols-1 gap-2 max-h-[60vh] overflow-y-auto pr-2">
-                                    {selectingFor.units.map((unit: any) => {
-                                        const isExpanded = selectedUnit?.id === unit.id;
-                                        return (
-                                            <div key={unit.id} className={`rounded-2xl border transition-all duration-300 overflow-hidden ${isExpanded ? 'border-[#35b6cf] bg-[#35b6cf]/5 shadow-md' : 'border-slate-100 hover:border-[#35b6cf]/30'}`}>
-                                                <button
-                                                    onClick={() => setSelectedUnit(isExpanded ? null : unit)}
-                                                    className="w-full flex items-center justify-between p-4 text-left group"
-                                                >
-                                                    <div>
-                                                        <span className={`font-bold transition-colors ${isExpanded ? 'text-[#35b6cf]' : 'text-slate-700 group-hover:text-[#35b6cf]'}`}>
-                                                            {unit.name}
-                                                        </span>
-                                                        <div className="flex items-center gap-2 mt-1 text-xs text-slate-400">
-                                                            <Users size={12} />
-                                                            {unit.collaborators} colaboradores
-                                                        </div>
-                                                    </div>
-                                                    <ChevronRight size={18} className={`text-slate-300 transition-all duration-300 ${isExpanded ? 'rotate-90 text-[#35b6cf]' : 'group-hover:text-[#35b6cf]'}`} />
-                                                </button>
+                                <button
+                                    onClick={() => setSelectingFor(null)}
+                                    className="p-2 hover:bg-slate-50 rounded-full transition-colors"
+                                >
+                                    <X size={20} className="text-slate-400" />
+                                </button>
+                            </div>
 
-                                                {/* Expanded Content (Sectors) */}
-                                                <div className={`grid transition-all duration-300 ease-in-out ${isExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
-                                                    <div className="overflow-hidden">
-                                                        <div className="p-3 pt-0 space-y-2 border-t border-[#35b6cf]/10 mx-3 mt-1 mb-3">
-                                                            <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mt-3 mb-2 px-1 flex items-center gap-2">
-                                                                <LayoutTemplate size={12} />
-                                                                Selecione o Setor
+                            {/* Modal Content */}
+                            <div className="p-6">
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <div className="w-8 h-8 rounded-lg bg-[#35b6cf]/10 flex items-center justify-center text-[#35b6cf]">
+                                            <Building size={16} />
+                                        </div>
+                                        <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Escolha a Unidade e Setor</label>
+                                    </div>
+                                    <div className="grid grid-cols-1 gap-2 max-h-[60vh] overflow-y-auto pr-2">
+                                        {selectingFor.units.map((unit: any) => {
+                                            const isExpanded = selectedUnit?.id === unit.id;
+                                            return (
+                                                <div key={unit.id} className={`rounded-2xl border transition-all duration-300 overflow-hidden ${isExpanded ? 'border-[#35b6cf] bg-[#35b6cf]/5 shadow-md' : 'border-slate-100 hover:border-[#35b6cf]/30'}`}>
+                                                    <button
+                                                        onClick={() => setSelectedUnit(isExpanded ? null : unit)}
+                                                        className="w-full flex items-center justify-between p-4 text-left group"
+                                                    >
+                                                        <div>
+                                                            <span className={`font-bold transition-colors ${isExpanded ? 'text-[#35b6cf]' : 'text-slate-700 group-hover:text-[#35b6cf]'}`}>
+                                                                {unit.name}
+                                                            </span>
+                                                            <div className="flex items-center gap-2 mt-1 text-xs text-slate-400">
+                                                                <Users size={12} />
+                                                                {unit.collaborators} colaboradores
                                                             </div>
+                                                        </div>
+                                                        <ChevronRight size={18} className={`text-slate-300 transition-all duration-300 ${isExpanded ? 'rotate-90 text-[#35b6cf]' : 'group-hover:text-[#35b6cf]'}`} />
+                                                    </button>
 
-                                                            {/* General Option */}
-                                                            <button
-                                                                onClick={() => handleFinishSelection(selectingFor, unit, 'Geral', null)}
-                                                                className="w-full flex items-center justify-between p-3 rounded-xl bg-white/60 hover:bg-white border border-transparent hover:border-[#35b6cf]/30 transition-all text-left group/sector"
-                                                            >
-                                                                <span className="text-sm font-medium text-slate-600 group-hover/sector:text-[#35b6cf]">Geral / Todos os setores</span>
-                                                                <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 group-hover/sector:bg-[#35b6cf] group-hover/sector:text-white transition-all">
-                                                                    <ChevronRight size={14} />
+                                                    {/* Expanded Content (Sectors) */}
+                                                    <div className={`grid transition-all duration-300 ease-in-out ${isExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+                                                        <div className="overflow-hidden">
+                                                            <div className="p-3 pt-0 space-y-2 border-t border-[#35b6cf]/10 mx-3 mt-1 mb-3">
+                                                                <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mt-3 mb-2 px-1 flex items-center gap-2">
+                                                                    <LayoutTemplate size={12} />
+                                                                    Selecione o Setor
                                                                 </div>
-                                                            </button>
 
-                                                            {/* Actual Sectors */}
-                                                            {unit.sectors.map((sector: any) => (
+                                                                {/* General Option */}
                                                                 <button
-                                                                    key={sector.id}
-                                                                    onClick={() => handleFinishSelection(selectingFor, unit, sector.name, sector.id)}
+                                                                    onClick={() => handleFinishSelection(selectingFor, unit, 'Geral', null)}
                                                                     className="w-full flex items-center justify-between p-3 rounded-xl bg-white/60 hover:bg-white border border-transparent hover:border-[#35b6cf]/30 transition-all text-left group/sector"
                                                                 >
-                                                                    <span className="text-sm font-bold text-slate-700 group-hover/sector:text-[#35b6cf]">{sector.name}</span>
+                                                                    <span className="text-sm font-medium text-slate-600 group-hover/sector:text-[#35b6cf]">Geral / Todos os setores</span>
                                                                     <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 group-hover/sector:bg-[#35b6cf] group-hover/sector:text-white transition-all">
                                                                         <ChevronRight size={14} />
                                                                     </div>
                                                                 </button>
-                                                            ))}
+
+                                                                {/* Actual Sectors */}
+                                                                {unit.sectors.map((sector: any) => (
+                                                                    <button
+                                                                        key={sector.id}
+                                                                        onClick={() => handleFinishSelection(selectingFor, unit, sector.name, sector.id)}
+                                                                        className="w-full flex items-center justify-between p-3 rounded-xl bg-white/60 hover:bg-white border border-transparent hover:border-[#35b6cf]/30 transition-all text-left group/sector"
+                                                                    >
+                                                                        <span className="text-sm font-bold text-slate-700 group-hover/sector:text-[#35b6cf]">{sector.name}</span>
+                                                                        <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 group-hover/sector:bg-[#35b6cf] group-hover/sector:text-white transition-all">
+                                                                            <ChevronRight size={14} />
+                                                                        </div>
+                                                                    </button>
+                                                                ))}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        );
-                                    })}
+                                            );
+                                        })}
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* INFO MODAL */}
             {/* EDITED MODAL REPLACEMENT */}
@@ -1057,439 +1025,443 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
             />
 
             {/* FORM SUMMARY MODAL */}
-            {summaryModalOpen && summaryData && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
-                    <div className={`bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden animate-in zoom-in-95 duration-300 flex transition-all duration-500 ease-in-out h-[40rem] ${expandedView !== 'none' ? 'w-[75rem] max-w-full' : 'w-full max-w-lg'}`}>
+            {
+                summaryModalOpen && summaryData && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
+                        <div className={`bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden animate-in zoom-in-95 duration-300 flex transition-all duration-500 ease-in-out h-[40rem] ${expandedView !== 'none' ? 'w-[75rem] max-w-full' : 'w-full max-w-lg'}`}>
 
-                        {/* LEFT PANEL - SUMMARY */}
-                        <div className={`flex flex-col border-r border-slate-100 transition-all duration-500 ${expandedView !== 'none' ? 'w-[28rem] shrink-0' : 'w-full'}`}>
-                            <div className="px-6 py-4 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
-                                <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                                    <FileText size={20} className="text-[#35b6cf]" />
-                                    Resumo do Formulário
-                                </h3>
-                                <button onClick={() => setSummaryModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100">
-                                    <X size={20} />
-                                </button>
-                            </div>
-
-                            <div className="flex-1 overflow-auto p-6 space-y-6">
-                                {/* Header Info */}
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center font-bold text-lg">
-                                        {summaryData.company.name.charAt(0)}
-                                    </div>
-                                    <div>
-                                        <h4 className="font-bold text-slate-800 text-lg leading-tight">{summaryData.company.name}</h4>
-                                        <div className="flex items-center gap-2 text-sm text-slate-500 mt-1">
-                                            <Building size={14} />
-                                            <span>{summaryData.unit.name}</span>
-                                            {summaryData.sector && (
-                                                <>
-                                                    <span className="w-1 h-1 rounded-full bg-slate-300" />
-                                                    <span>{summaryData.sector}</span>
-                                                </>
-                                            )}
-                                        </div>
-                                    </div>
+                            {/* LEFT PANEL - SUMMARY */}
+                            <div className={`flex flex-col border-r border-slate-100 transition-all duration-500 ${expandedView !== 'none' ? 'w-[28rem] shrink-0' : 'w-full'}`}>
+                                <div className="px-6 py-4 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
+                                    <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                        <FileText size={20} className="text-[#35b6cf]" />
+                                        Resumo do Formulário
+                                    </h3>
+                                    <button onClick={() => setSummaryModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100">
+                                        <X size={20} />
+                                    </button>
                                 </div>
 
-                                {/* KPIs - Clickable */}
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div
-                                        onClick={() => setExpandedView(prev => prev === 'collaborators' ? 'none' : 'collaborators')}
-                                        className={`p-4 rounded-xl border transition-all cursor-pointer ${expandedView === 'collaborators' ? 'bg-[#35b6cf]/10 border-[#35b6cf] ring-2 ring-[#35b6cf]/20' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}
-                                    >
-                                        <div className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Colaboradores</div>
-                                        <div className="flex items-center gap-2">
-                                            <Users size={20} className="text-[#35b6cf]" />
-                                            <span className="text-2xl font-bold text-slate-700">{selectedCollaborators.size}</span>
+                                <div className="flex-1 overflow-auto p-6 space-y-6">
+                                    {/* Header Info */}
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center font-bold text-lg">
+                                            {summaryData.company.name.charAt(0)}
                                         </div>
-                                        <div className="text-[10px] text-slate-400 mt-2 flex items-center gap-1">
-                                            {selectedCollaborators.size < summaryData.company.roles.length ? 'Ajustar seleção' : 'Ver lista'} <ChevronRight size={10} />
-                                        </div>
-                                    </div>
-                                    <div
-                                        onClick={() => setExpandedView(prev => prev === 'questions' ? 'none' : 'questions')}
-                                        className={`p-4 rounded-xl border transition-all cursor-pointer ${expandedView === 'questions' ? 'bg-[#35b6cf]/10 border-[#35b6cf] ring-2 ring-[#35b6cf]/20' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}
-                                    >
-                                        <div className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Perguntas</div>
-                                        <div className="flex items-center gap-2">
-                                            <List size={20} className="text-[#35b6cf]" />
-                                            <span className="text-2xl font-bold text-slate-700">{summaryData.kpiQuestions}</span>
-                                        </div>
-                                        <div className="text-[10px] text-slate-400 mt-2 flex items-center gap-1">
-                                            Ver perguntas <ChevronRight size={10} />
+                                        <div>
+                                            <h4 className="font-bold text-slate-800 text-lg leading-tight">{summaryData.company.name}</h4>
+                                            <div className="flex items-center gap-2 text-sm text-slate-500 mt-1">
+                                                <Building size={14} />
+                                                <span>{summaryData.unit.name}</span>
+                                                {summaryData.sector && (
+                                                    <>
+                                                        <span className="w-1 h-1 rounded-full bg-slate-300" />
+                                                        <span>{summaryData.sector}</span>
+                                                    </>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                {/* Form Details */}
-                                <div className="space-y-3">
-                                    <div>
-                                        <div className="flex items-center justify-between mb-1">
-                                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Título do Formulário</label>
-                                            <button
-                                                onClick={() => setIsEditingTitle(!isEditingTitle)}
-                                                className="p-1 text-[#35b6cf] hover:bg-[#35b6cf]/10 rounded-md transition-colors"
-                                                title={isEditingTitle ? "Salvar Título" : "Editar Título"}
-                                            >
-                                                {isEditingTitle ? <Check size={14} /> : <Edit size={14} />}
-                                            </button>
+                                    {/* KPIs - Clickable */}
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div
+                                            onClick={() => setExpandedView(prev => prev === 'collaborators' ? 'none' : 'collaborators')}
+                                            className={`p-4 rounded-xl border transition-all cursor-pointer ${expandedView === 'collaborators' ? 'bg-[#35b6cf]/10 border-[#35b6cf] ring-2 ring-[#35b6cf]/20' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}
+                                        >
+                                            <div className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Colaboradores</div>
+                                            <div className="flex items-center gap-2">
+                                                <Users size={20} className="text-[#35b6cf]" />
+                                                <span className="text-2xl font-bold text-slate-700">{selectedCollaborators.size}</span>
+                                            </div>
+                                            <div className="text-[10px] text-slate-400 mt-2 flex items-center gap-1">
+                                                {selectedCollaborators.size < summaryData.company.roles.length ? 'Ajustar seleção' : 'Ver lista'} <ChevronRight size={10} />
+                                            </div>
                                         </div>
-                                        {isEditingTitle ? (
-                                            <input
-                                                type="text"
-                                                value={summaryData.formTitle}
-                                                onChange={(e) => setSummaryData({ ...summaryData, formTitle: e.target.value })}
-                                                className="w-full px-3 py-2 bg-white border border-[#35b6cf] rounded-lg text-sm font-bold text-slate-800 outline-none shadow-sm shadow-[#35b6cf]/10"
-                                                autoFocus
-                                                onKeyDown={(e) => {
-                                                    if (e.key === 'Enter') setIsEditingTitle(false);
-                                                }}
-                                            />
-                                        ) : (
-                                            <p className="font-bold text-slate-800 mt-1">{summaryData.formTitle}</p>
-                                        )}
+                                        <div
+                                            onClick={() => setExpandedView(prev => prev === 'questions' ? 'none' : 'questions')}
+                                            className={`p-4 rounded-xl border transition-all cursor-pointer ${expandedView === 'questions' ? 'bg-[#35b6cf]/10 border-[#35b6cf] ring-2 ring-[#35b6cf]/20' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}
+                                        >
+                                            <div className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Perguntas</div>
+                                            <div className="flex items-center gap-2">
+                                                <List size={20} className="text-[#35b6cf]" />
+                                                <span className="text-2xl font-bold text-slate-700">{summaryData.kpiQuestions}</span>
+                                            </div>
+                                            <div className="text-[10px] text-slate-400 mt-2 flex items-center gap-1">
+                                                Ver perguntas <ChevronRight size={10} />
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <div className="flex items-center justify-between">
-                                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Descrição</label>
-                                            <button
-                                                onClick={() => setExpandedView(prev => prev === 'description' ? 'none' : 'description')}
-                                                className="text-[10px] font-bold text-[#35b6cf] hover:underline flex items-center gap-0.5"
-                                            >
-                                                {expandedView === 'description' ? 'Ocultar' : 'Ver mais'} <ChevronRight size={10} className={expandedView === 'description' ? 'rotate-180' : ''} />
-                                            </button>
-                                        </div>
-                                        <p className="text-sm text-slate-500 mt-1 leading-relaxed line-clamp-2">
-                                            {summaryData.formDesc}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
 
-                            <div className="px-6 pt-6 pb-16 border-t border-slate-50 bg-slate-50/30 flex justify-end gap-3">
-                                <button
-                                    onClick={() => setSummaryModalOpen(false)}
-                                    className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition-colors text-sm"
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    onClick={confirmCreateForm}
-                                    className="px-6 py-2.5 rounded-xl bg-[#35b6cf] text-white font-semibold hover:bg-[#2ca3bc] shadow-lg shadow-[#35b6cf]/20 transition-all text-sm flex items-center gap-2"
-                                >
-                                    <Check size={18} />
-                                    Confirmar e Gerar
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* RIGHT PANEL - EXPANDED CONTENT */}
-                        <div className={`flex flex-col bg-slate-50/50 transition-all duration-500 overflow-hidden ${expandedView !== 'none' ? 'flex-1 opacity-100' : 'w-0 opacity-0'}`}>
-                            {expandedView === 'collaborators' && (
-                                <div className="h-full flex flex-col min-w-[30rem]">
-                                    <div className="px-6 py-4 border-b border-slate-100 bg-white">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                                                <Users size={18} className="text-[#35b6cf]" />
-                                                Colaboradores Selecionados
-                                            </h3>
-                                            <span className="text-xs font-semibold bg-slate-100 px-2 py-1 rounded-md text-slate-500">
-                                                {summaryData.company.units.flatMap((u: any) => u.collaborators).length || 0} Total
-                                            </span>
-                                        </div>
-                                        <div className="flex flex-col md:flex-row gap-4">
-                                            <div className="relative flex-1">
-                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                                    {/* Form Details */}
+                                    <div className="space-y-3">
+                                        <div>
+                                            <div className="flex items-center justify-between mb-1">
+                                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Título do Formulário</label>
+                                                <button
+                                                    onClick={() => setIsEditingTitle(!isEditingTitle)}
+                                                    className="p-1 text-[#35b6cf] hover:bg-[#35b6cf]/10 rounded-md transition-colors"
+                                                    title={isEditingTitle ? "Salvar Título" : "Editar Título"}
+                                                >
+                                                    {isEditingTitle ? <Check size={14} /> : <Edit size={14} />}
+                                                </button>
+                                            </div>
+                                            {isEditingTitle ? (
                                                 <input
                                                     type="text"
-                                                    placeholder="Buscar colaborador por nome, cargo ou setor..."
-                                                    value={collaboratorSearch}
-                                                    onChange={(e) => setCollaboratorSearch(e.target.value)}
-                                                    className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf]"
+                                                    value={summaryData.formTitle}
+                                                    onChange={(e) => setSummaryData({ ...summaryData, formTitle: e.target.value })}
+                                                    className="w-full px-3 py-2 bg-white border border-[#35b6cf] rounded-lg text-sm font-bold text-slate-800 outline-none shadow-sm shadow-[#35b6cf]/10"
+                                                    autoFocus
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') setIsEditingTitle(false);
+                                                    }}
                                                 />
-                                            </div>
-                                            <div className="flex items-center gap-2 shrink-0">
-                                                <button
-                                                    onClick={() => toggleAllCollaborators(true)}
-                                                    className="px-3 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 transition-colors"
-                                                >
-                                                    Marcar Todos
-                                                </button>
-                                                <button
-                                                    onClick={() => toggleAllCollaborators(false)}
-                                                    className="px-3 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 transition-colors"
-                                                >
-                                                    Desmarcar Todos
-                                                </button>
-                                            </div>
+                                            ) : (
+                                                <p className="font-bold text-slate-800 mt-1">{summaryData.formTitle}</p>
+                                            )}
                                         </div>
-                                        <div className="mt-4 flex items-center justify-between">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                                Colaboradores Selecionados: <span className="text-[#35b6cf]">{selectedCollaborators.size}</span> de {summaryData.company.roles.length}
+                                        <div>
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Descrição</label>
+                                                <button
+                                                    onClick={() => setExpandedView(prev => prev === 'description' ? 'none' : 'description')}
+                                                    className="text-[10px] font-bold text-[#35b6cf] hover:underline flex items-center gap-0.5"
+                                                >
+                                                    {expandedView === 'description' ? 'Ocultar' : 'Ver mais'} <ChevronRight size={10} className={expandedView === 'description' ? 'rotate-180' : ''} />
+                                                </button>
+                                            </div>
+                                            <p className="text-sm text-slate-500 mt-1 leading-relaxed line-clamp-2">
+                                                {summaryData.formDesc}
                                             </p>
                                         </div>
                                     </div>
-                                    <div className="p-6 overflow-auto bg-slate-50/50 h-full">
-                                        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                                            <table className="w-full text-left text-sm">
-                                                <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 font-semibold">
-                                                    <tr>
-                                                        <th className="px-4 py-3 w-10">
-                                                            <input
-                                                                type="checkbox"
-                                                                className="rounded border-slate-300 text-[#35b6cf] focus:ring-[#35b6cf]"
-                                                                checked={selectedCollaborators.size === summaryData.company.roles.length}
-                                                                onChange={() => toggleAllCollaborators()}
-                                                            />
-                                                        </th>
-                                                        <th className="px-4 py-3">Nome</th>
-                                                        <th className="px-4 py-3">Sexo</th>
-                                                        <th className="px-4 py-3">Email</th>
-                                                        <th className="px-4 py-3">Cargo</th>
-                                                        <th className="px-4 py-3">Setor</th>
-                                                        <th className="px-4 py-3">Admissão</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-slate-100">
-                                                    {(summaryData.company.collaborators || []).map((colab: any, idx: number) => {
-                                                        const name = colab.nome || `Colaborador ${idx + 1}`;
-                                                        const colabSector = colab.setor || 'Geral';
-                                                        const email = colab.email || '-';
-                                                        const sexo = colab.sexo || 'M';
-
-                                                        // Filter Logic
-                                                        if (collaboratorSearch &&
-                                                            !name.toLowerCase().includes(collaboratorSearch.toLowerCase()) &&
-                                                            !(colab.cargo || '').toLowerCase().includes(collaboratorSearch.toLowerCase()) &&
-                                                            !colabSector.toLowerCase().includes(collaboratorSearch.toLowerCase())
-                                                        ) {
-                                                            return null;
-                                                        }
-
-                                                        const isSelected = selectedCollaborators.has(idx);
-
-                                                        return (
-                                                            <tr key={colab.id || idx} className={`hover:bg-slate-50 transition-colors ${!isSelected ? 'opacity-60 bg-slate-50/30' : ''}`}>
-                                                                <td className="px-4 py-3">
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        className="rounded border-slate-300 text-[#35b6cf] focus:ring-[#35b6cf]"
-                                                                        checked={isSelected}
-                                                                        onChange={() => toggleCollaborator(idx)}
-                                                                    />
-                                                                </td>
-                                                                <td className="px-4 py-3 text-slate-800 font-medium">{name}</td>
-                                                                <td className="px-4 py-3">
-                                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${sexo === 'M' ? 'bg-blue-50 text-blue-600' : 'bg-pink-50 text-pink-600'}`}>
-                                                                        {sexo}
-                                                                    </span>
-                                                                </td>
-                                                                <td className="px-4 py-3 text-slate-500 text-xs">{email}</td>
-                                                                <td className="px-4 py-3 text-slate-500">{colab.cargo || '-'}</td>
-                                                                <td className="px-4 py-3 text-slate-500">
-                                                                    <span className="inline-block px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-600">
-                                                                        {colabSector}
-                                                                    </span>
-                                                                </td>
-                                                                <td className="px-4 py-3 text-slate-500 text-xs">{colab.data_admissao ? new Date(colab.data_admissao).toLocaleDateString() : '-'}</td>
-                                                            </tr>
-                                                        );
-                                                    })}
-                                                </tbody>
-                                            </table>
-                                            {/* Empty State for Search */}
-                                            {summaryData.company.roles.filter((role: string, idx: number) => {
-                                                const name = `Colaborador ${idx + 1}`;
-                                                const sector = summaryData.company.units[0]?.sectors[idx % summaryData.company.units[0]?.sectors.length] || 'Geral';
-                                                return !collaboratorSearch ||
-                                                    name.toLowerCase().includes(collaboratorSearch.toLowerCase()) ||
-                                                    role.toLowerCase().includes(collaboratorSearch.toLowerCase()) ||
-                                                    sector.toLowerCase().includes(collaboratorSearch.toLowerCase());
-                                            }).length === 0 && (
-                                                    <div className="p-8 text-center text-slate-400 text-sm">
-                                                        Nenhum colaborador encontrado.
-                                                    </div>
-                                                )}
-                                        </div>
-                                    </div>
                                 </div>
-                            )}
 
-                            {expandedView === 'questions' && (
-                                <div className="h-full flex flex-col min-w-[30rem]">
-                                    <div className="px-6 py-4 border-b border-slate-100 bg-white">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                                                <HelpCircle size={18} className="text-[#35b6cf]" />
-                                                Perguntas do Formulário
-                                            </h3>
-                                            <span className="text-xs font-semibold bg-slate-100 px-2 py-1 rounded-md text-slate-500">
-                                                {filteredQuestions.length}
-                                            </span>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <div className="relative flex-1">
-                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                                                <input
-                                                    type="text"
-                                                    placeholder="Buscar pergunta..."
-                                                    value={questionSearch}
-                                                    onChange={(e) => setQuestionSearch(e.target.value)}
-                                                    className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf]"
-                                                />
+                                <div className="px-6 pt-6 pb-16 border-t border-slate-50 bg-slate-50/30 flex justify-end gap-3">
+                                    <button
+                                        onClick={() => setSummaryModalOpen(false)}
+                                        className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition-colors text-sm"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        onClick={confirmCreateForm}
+                                        className="px-6 py-2.5 rounded-xl bg-[#35b6cf] text-white font-semibold hover:bg-[#2ca3bc] shadow-lg shadow-[#35b6cf]/20 transition-all text-sm flex items-center gap-2"
+                                    >
+                                        <Check size={18} />
+                                        Confirmar e Gerar
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* RIGHT PANEL - EXPANDED CONTENT */}
+                            <div className={`flex flex-col bg-slate-50/50 transition-all duration-500 overflow-hidden ${expandedView !== 'none' ? 'flex-1 opacity-100' : 'w-0 opacity-0'}`}>
+                                {expandedView === 'collaborators' && (
+                                    <div className="h-full flex flex-col min-w-[30rem]">
+                                        <div className="px-6 py-4 border-b border-slate-100 bg-white">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                                    <Users size={18} className="text-[#35b6cf]" />
+                                                    Colaboradores Selecionados
+                                                </h3>
+                                                <span className="text-xs font-semibold bg-slate-100 px-2 py-1 rounded-md text-slate-500">
+                                                    {summaryData.company.units.flatMap((u: any) => u.collaborators).length || 0} Total
+                                                </span>
                                             </div>
-                                            <select
-                                                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf] text-slate-600"
-                                                value={questionFilter}
-                                                onChange={(e) => setQuestionFilter(e.target.value)}
-                                            >
-                                                <option value="">Todas Dimensões</option>
-                                                {questionsDimensions.map(d => (
-                                                    <option key={d} value={d}>{d}</option>
-                                                ))}
-                                            </select>
+                                            <div className="flex flex-col md:flex-row gap-4">
+                                                <div className="relative flex-1">
+                                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Buscar colaborador por nome, cargo ou setor..."
+                                                        value={collaboratorSearch}
+                                                        onChange={(e) => setCollaboratorSearch(e.target.value)}
+                                                        className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf]"
+                                                    />
+                                                </div>
+                                                <div className="flex items-center gap-2 shrink-0">
+                                                    <button
+                                                        onClick={() => toggleAllCollaborators(true)}
+                                                        className="px-3 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 transition-colors"
+                                                    >
+                                                        Marcar Todos
+                                                    </button>
+                                                    <button
+                                                        onClick={() => toggleAllCollaborators(false)}
+                                                        className="px-3 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 transition-colors"
+                                                    >
+                                                        Desmarcar Todos
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div className="mt-4 flex items-center justify-between">
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                                    Colaboradores Selecionados: <span className="text-[#35b6cf]">{selectedCollaborators.size}</span> de {summaryData.company.roles.length}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="p-6 overflow-auto bg-slate-50/50 h-full">
+                                            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                                                <table className="w-full text-left text-sm">
+                                                    <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 font-semibold">
+                                                        <tr>
+                                                            <th className="px-4 py-3 w-10">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    className="rounded border-slate-300 text-[#35b6cf] focus:ring-[#35b6cf]"
+                                                                    checked={selectedCollaborators.size === summaryData.company.roles.length}
+                                                                    onChange={() => toggleAllCollaborators()}
+                                                                />
+                                                            </th>
+                                                            <th className="px-4 py-3">Nome</th>
+                                                            <th className="px-4 py-3">Sexo</th>
+                                                            <th className="px-4 py-3">Email</th>
+                                                            <th className="px-4 py-3">Cargo</th>
+                                                            <th className="px-4 py-3">Setor</th>
+                                                            <th className="px-4 py-3">Admissão</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-100">
+                                                        {(summaryData.company.collaborators || []).map((colab: any, idx: number) => {
+                                                            const name = colab.nome || `Colaborador ${idx + 1}`;
+                                                            const colabSector = colab.setor || 'Geral';
+                                                            const email = colab.email || '-';
+                                                            const sexo = colab.sexo || 'M';
+
+                                                            // Filter Logic
+                                                            if (collaboratorSearch &&
+                                                                !name.toLowerCase().includes(collaboratorSearch.toLowerCase()) &&
+                                                                !(colab.cargo || '').toLowerCase().includes(collaboratorSearch.toLowerCase()) &&
+                                                                !colabSector.toLowerCase().includes(collaboratorSearch.toLowerCase())
+                                                            ) {
+                                                                return null;
+                                                            }
+
+                                                            const isSelected = selectedCollaborators.has(idx);
+
+                                                            return (
+                                                                <tr key={colab.id || idx} className={`hover:bg-slate-50 transition-colors ${!isSelected ? 'opacity-60 bg-slate-50/30' : ''}`}>
+                                                                    <td className="px-4 py-3">
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            className="rounded border-slate-300 text-[#35b6cf] focus:ring-[#35b6cf]"
+                                                                            checked={isSelected}
+                                                                            onChange={() => toggleCollaborator(idx)}
+                                                                        />
+                                                                    </td>
+                                                                    <td className="px-4 py-3 text-slate-800 font-medium">{name}</td>
+                                                                    <td className="px-4 py-3">
+                                                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${sexo === 'M' ? 'bg-blue-50 text-blue-600' : 'bg-pink-50 text-pink-600'}`}>
+                                                                            {sexo}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td className="px-4 py-3 text-slate-500 text-xs">{email}</td>
+                                                                    <td className="px-4 py-3 text-slate-500">{colab.cargo || '-'}</td>
+                                                                    <td className="px-4 py-3 text-slate-500">
+                                                                        <span className="inline-block px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-600">
+                                                                            {colabSector}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td className="px-4 py-3 text-slate-500 text-xs">{colab.data_admissao ? new Date(colab.data_admissao).toLocaleDateString() : '-'}</td>
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </table>
+                                                {/* Empty State for Search */}
+                                                {summaryData.company.roles.filter((role: string, idx: number) => {
+                                                    const name = `Colaborador ${idx + 1}`;
+                                                    const sector = summaryData.company.units[0]?.sectors[idx % summaryData.company.units[0]?.sectors.length] || 'Geral';
+                                                    return !collaboratorSearch ||
+                                                        name.toLowerCase().includes(collaboratorSearch.toLowerCase()) ||
+                                                        role.toLowerCase().includes(collaboratorSearch.toLowerCase()) ||
+                                                        sector.toLowerCase().includes(collaboratorSearch.toLowerCase());
+                                                }).length === 0 && (
+                                                        <div className="p-8 text-center text-slate-400 text-sm">
+                                                            Nenhum colaborador encontrado.
+                                                        </div>
+                                                    )}
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="p-6 overflow-auto bg-slate-50/50 h-full">
-                                        <div className="space-y-3">
-                                            {filteredQuestions.map((q) => (
-                                                <div key={q.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-start gap-3 hover:border-[#35b6cf]/50 transition-colors">
-                                                    <div className="mt-1 w-6 h-6 rounded-full bg-[#35b6cf]/10 text-[#35b6cf] flex items-center justify-center text-xs font-bold shrink-0">
-                                                        {q.id}
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-slate-800 font-medium text-sm">{q.text}</p>
-                                                        <div className="mt-2 flex items-center gap-2">
-                                                            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider bg-slate-50 px-2 py-1 rounded">
-                                                                {q.dimension}
-                                                            </span>
+                                )}
+
+                                {expandedView === 'questions' && (
+                                    <div className="h-full flex flex-col min-w-[30rem]">
+                                        <div className="px-6 py-4 border-b border-slate-100 bg-white">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                                    <HelpCircle size={18} className="text-[#35b6cf]" />
+                                                    Perguntas do Formulário
+                                                </h3>
+                                                <span className="text-xs font-semibold bg-slate-100 px-2 py-1 rounded-md text-slate-500">
+                                                    {filteredQuestions.length}
+                                                </span>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <div className="relative flex-1">
+                                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Buscar pergunta..."
+                                                        value={questionSearch}
+                                                        onChange={(e) => setQuestionSearch(e.target.value)}
+                                                        className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf]"
+                                                    />
+                                                </div>
+                                                <select
+                                                    className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf] text-slate-600"
+                                                    value={questionFilter}
+                                                    onChange={(e) => setQuestionFilter(e.target.value)}
+                                                >
+                                                    <option value="">Todas Dimensões</option>
+                                                    {questionsDimensions.map(d => (
+                                                        <option key={d} value={d}>{d}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div className="p-6 overflow-auto bg-slate-50/50 h-full">
+                                            <div className="space-y-3">
+                                                {filteredQuestions.map((q) => (
+                                                    <div key={q.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-start gap-3 hover:border-[#35b6cf]/50 transition-colors">
+                                                        <div className="mt-1 w-6 h-6 rounded-full bg-[#35b6cf]/10 text-[#35b6cf] flex items-center justify-center text-xs font-bold shrink-0">
+                                                            {q.id}
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-slate-800 font-medium text-sm">{q.text}</p>
+                                                            <div className="mt-2 flex items-center gap-2">
+                                                                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider bg-slate-50 px-2 py-1 rounded">
+                                                                    {q.dimension}
+                                                                </span>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            ))}
-                                            {filteredQuestions.length === 0 && (
-                                                <p className="text-center text-slate-400 py-8 text-sm">Nenhuma pergunta encontrada.</p>
-                                            )}
+                                                ))}
+                                                {filteredQuestions.length === 0 && (
+                                                    <p className="text-center text-slate-400 py-8 text-sm">Nenhuma pergunta encontrada.</p>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            )}
+                                )}
 
-                            {expandedView === 'description' && (
-                                <div className="h-full flex flex-col min-w-[30rem]">
-                                    <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-white text-[#35b6cf]">
-                                        <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                                            <FileText size={18} />
-                                            Descrição Completa
-                                        </h3>
-                                        <button
-                                            onClick={() => setExpandedView('none')}
-                                            className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-400"
-                                        >
-                                            <X size={18} />
-                                        </button>
-                                    </div>
-                                    <div className="p-8 overflow-auto bg-white h-full">
-                                        <div className="max-w-2xl mx-auto">
-                                            <div className="flex items-center gap-3 mb-6 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                                <div className="w-10 h-10 rounded-xl bg-[#35b6cf]/10 text-[#35b6cf] flex items-center justify-center">
-                                                    <LayoutTemplate size={20} />
+                                {expandedView === 'description' && (
+                                    <div className="h-full flex flex-col min-w-[30rem]">
+                                        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-white text-[#35b6cf]">
+                                            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                                <FileText size={18} />
+                                                Descrição Completa
+                                            </h3>
+                                            <button
+                                                onClick={() => setExpandedView('none')}
+                                                className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-400"
+                                            >
+                                                <X size={18} />
+                                            </button>
+                                        </div>
+                                        <div className="p-8 overflow-auto bg-white h-full">
+                                            <div className="max-w-2xl mx-auto">
+                                                <div className="flex items-center gap-3 mb-6 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                                    <div className="w-10 h-10 rounded-xl bg-[#35b6cf]/10 text-[#35b6cf] flex items-center justify-center">
+                                                        <LayoutTemplate size={20} />
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="font-bold text-slate-800">{summaryData.formTitle}</h4>
+                                                        <p className="text-xs text-slate-400">Publicado em {new Date().toLocaleDateString()}</p>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <h4 className="font-bold text-slate-800">{summaryData.formTitle}</h4>
-                                                    <p className="text-xs text-slate-400">Publicado em {new Date().toLocaleDateString()}</p>
+
+                                                <div className="prose prose-slate max-w-none">
+                                                    <div className="text-slate-600 leading-relaxed whitespace-pre-wrap text-base">
+                                                        {summaryData.formDesc}
+                                                    </div>
                                                 </div>
+
+
                                             </div>
-
-                                            <div className="prose prose-slate max-w-none">
-                                                <div className="text-slate-600 leading-relaxed whitespace-pre-wrap text-base">
-                                                    {summaryData.formDesc}
-                                                </div>
-                                            </div>
-
-
                                         </div>
                                     </div>
-                                </div>
-                            )}
+                                )}
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Success Modal */}
-            {successModalOpen && summaryData && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-                    <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-300">
-                        <div className="relative p-12 text-center">
-                            {/* Decorative elements */}
-                            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-[#35b6cf] to-indigo-500"></div>
+            {
+                successModalOpen && summaryData && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+                        <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-300">
+                            <div className="relative p-12 text-center">
+                                {/* Decorative elements */}
+                                <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-[#35b6cf] to-indigo-500"></div>
 
-                            {/* Icon Success */}
-                            <div className="mb-8 relative inline-block">
-                                <div className="w-24 h-24 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500 animate-bounce group">
-                                    <Check size={48} strokeWidth={3} />
-                                </div>
-                                <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-[#35b6cf] text-white flex items-center justify-center shadow-lg">
-                                    <FilePlus size={16} />
-                                </div>
-                            </div>
-
-                            <h3 className="text-3xl font-black text-slate-800 mb-2">Formulário Gerado!</h3>
-                            <p className="text-slate-500 mb-10 px-4">
-                                O levantamento para <span className="font-bold text-slate-700">{summaryData.unit.name}</span> foi criado com sucesso e já está pronto para receber respostas.
-                            </p>
-
-                            <div className="space-y-4">
-                                <div className="p-1 px-1.5 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-3">
-                                    <div className="flex-1 min-w-0 px-3 overflow-hidden">
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-left mb-0.5 ml-1">Link de Acesso</p>
-                                        <p className="text-sm font-mono text-slate-600 truncate text-left ml-1">
-                                            {summaryData.publicLink}
-                                        </p>
+                                {/* Icon Success */}
+                                <div className="mb-8 relative inline-block">
+                                    <div className="w-24 h-24 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500 animate-bounce group">
+                                        <Check size={48} strokeWidth={3} />
                                     </div>
-                                    <button
-                                        onClick={() => {
-                                            navigator.clipboard.writeText(summaryData.publicLink);
-                                            // Optional: add a temporary tooltip or change icon to Check
-                                        }}
-                                        className="p-4 bg-white border border-slate-200 text-slate-500 hover:text-[#35b6cf] hover:border-[#35b6cf] rounded-xl transition-all shadow-sm hover:shadow-md"
-                                        title="Copiar Link"
-                                    >
-                                        <Copy size={20} />
-                                    </button>
+                                    <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-[#35b6cf] text-white flex items-center justify-center shadow-lg">
+                                        <FilePlus size={16} />
+                                    </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-3 mt-4">
-                                    <button
-                                        onClick={() => window.open(summaryData.publicLink, '_blank')}
-                                        className="flex items-center justify-center gap-3 py-4 bg-slate-800 text-white rounded-2xl font-bold hover:bg-slate-700 transition-all shadow-xl shadow-slate-200"
-                                    >
-                                        <ExternalLink size={18} />
-                                        Abrir Link
-                                    </button>
-                                    <button
-                                        onClick={() => {
-                                            setSuccessModalOpen(false);
-                                            setSummaryData(null);
-                                        }}
-                                        className="py-4 bg-white border-2 border-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-50 transition-all"
-                                    >
-                                        Concluir
-                                    </button>
+                                <h3 className="text-3xl font-black text-slate-800 mb-2">Formulário Gerado!</h3>
+                                <p className="text-slate-500 mb-10 px-4">
+                                    O levantamento para <span className="font-bold text-slate-700">{summaryData.unit.name}</span> foi criado com sucesso e já está pronto para receber respostas.
+                                </p>
+
+                                <div className="space-y-4">
+                                    <div className="p-1 px-1.5 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-3">
+                                        <div className="flex-1 min-w-0 px-3 overflow-hidden">
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-left mb-0.5 ml-1">Link de Acesso</p>
+                                            <p className="text-sm font-mono text-slate-600 truncate text-left ml-1">
+                                                {summaryData.publicLink}
+                                            </p>
+                                        </div>
+                                        <button
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(summaryData.publicLink);
+                                                // Optional: add a temporary tooltip or change icon to Check
+                                            }}
+                                            className="p-4 bg-white border border-slate-200 text-slate-500 hover:text-[#35b6cf] hover:border-[#35b6cf] rounded-xl transition-all shadow-sm hover:shadow-md"
+                                            title="Copiar Link"
+                                        >
+                                            <Copy size={20} />
+                                        </button>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3 mt-4">
+                                        <button
+                                            onClick={() => window.open(summaryData.publicLink, '_blank')}
+                                            className="flex items-center justify-center gap-3 py-4 bg-slate-800 text-white rounded-2xl font-bold hover:bg-slate-700 transition-all shadow-xl shadow-slate-200"
+                                        >
+                                            <ExternalLink size={18} />
+                                            Abrir Link
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setSuccessModalOpen(false);
+                                                setSummaryData(null);
+                                            }}
+                                            className="py-4 bg-white border-2 border-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-50 transition-all"
+                                        >
+                                            Concluir
+                                        </button>
+                                    </div>
                                 </div>
+
+                                <p className="mt-8 text-xs text-slate-400 font-medium italic">
+                                    Você pode acessar este link a qualquer momento na aba de Relatórios.
+                                </p>
                             </div>
-
-                            <p className="mt-8 text-xs text-slate-400 font-medium italic">
-                                Você pode acessar este link a qualquer momento na aba de Relatórios.
-                            </p>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Collaborator Manager Modal */}
             <CollaboratorManagerModal
@@ -1497,7 +1469,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                 onClose={() => {
                     setShowCollaboratorManager(false);
                     setManagingCompany(null);
-                    fetchCompanies(); // Refresh counts
+                    refetch(); // Refresh counts
                 }}
                 company={managingCompany}
                 companies={companies} // Pass all companies for global selection
@@ -1513,6 +1485,6 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                 company={selectedCompanyForForms}
                 onCreateNew={handleCreateNewForm}
             />
-        </div>
+        </div >
     );
 };

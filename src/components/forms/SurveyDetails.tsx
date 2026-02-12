@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../services/supabase';
-import { ArrowLeft, Copy, Search, FileText, X, TrendingUp, TrendingDown } from 'lucide-react';
-import { ResponsiveContainer, PieChart, Pie, Cell, Sector } from 'recharts';
+import { ArrowLeft, Copy, Search, FileText, X } from 'lucide-react';
 import { SegmentedControl } from '../ui/SegmentedControl';
 import type { Form } from '../../types';
+import { DimensionAnalysisSection } from './DimensionAnalysisSection';
 
 interface SurveyDetailsProps {
     form: Form;
@@ -12,15 +12,7 @@ interface SurveyDetailsProps {
 
 // RADIAL_DATA and QUESTIONS_LIST would ideally be fetched based on the form type (HSE vs others)
 // For now keeping them as UI demonstration while focusing on Collaborator/Sector data as requested.
-const RADIAL_DATA = [
-    { name: 'Demandas', value: 3.2, fill: '#f43f5e' }, // Rose-500
-    { name: 'Relacionamentos', value: 2.2, fill: '#f43f5e' },
-    { name: 'Controle', value: 2.6, fill: '#6366f1' }, // Indigo-500
-    { name: 'Apoio da Chefia', value: 2.3, fill: '#6366f1' },
-    { name: 'Apoio dos Colegas', value: 2.6, fill: '#6366f1' },
-    { name: 'Cargo', value: 1.7, fill: '#6366f1' },
-    { name: 'Comunicação', value: 1.9, fill: '#6366f1' },
-];
+
 
 const QUESTIONS_LIST = [
     { id: 1, text: "O meu trabalho exige que eu trabalhe muito rápido.", category: "Demanda" },
@@ -36,7 +28,7 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
     const [selectedUnit, setSelectedUnit] = useState<string>('');
     const [units, setUnits] = useState<{ id: number, nome: string }[]>([]);
     const [selectedParticipant, setSelectedParticipant] = useState<any | null>(null);
-    const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+
 
     // REAL DATA STATE
     const [sectors, setSectors] = useState<{ id: number, nome: string }[]>([]);
@@ -44,6 +36,7 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
     const [totalColabs, setTotalColabs] = useState(0);
     const [totalResponses, setTotalResponses] = useState(0);
     const [recentResponses, setRecentResponses] = useState<any[]>([]);
+    const [formIds, setFormIds] = useState<number[]>([]);
 
     // --- PARTICIPATION MODAL STATE ---
     const [showParticipationModal, setShowParticipationModal] = useState(false);
@@ -124,67 +117,72 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
         setLoading(true);
         try {
             const isCompanyLevel = !(form as any).slug;
+            const targetCompanyUuid = (form as any).cliente_uuid;
 
-            // 0. Fetch Units if Company Level
-            if (isCompanyLevel && (form as any).cliente_uuid) {
-                const { data: unitsData } = await supabase
-                    .from('unidades')
-                    .select('id, nome')
-                    .eq('empresa_mae', (form as any).cliente_uuid);
-                setUnits(unitsData || []);
+            // Strict Check: If company level, we MUST have a client UUID to filter by.
+            if (isCompanyLevel && !targetCompanyUuid) {
+                console.error("Missing client UUID for company level form.");
+                setLoading(false);
+                return;
             }
 
-            // 1. Sectors are now handled by fetchSectors/useEffect
-            // triggers on mount because form.id triggers fetchSectors via dependency or we call it here?
-            // Actually useEffect [selectedUnit, form.id] will run on mount.
+            // Parallel Fetching Groups
+            const promises: any[] = [];
 
-            // 2. Resolve Form IDs (if form.id is actually a company ID)
-            let formIds: number[] = [];
-            // Check if form object looks like a company (has cliente_uuid or name but is used in company context)
-
-
-            if (isCompanyLevel) {
-                // Since forms table doesn't have direct company link, we find forms via answers from company collaborators
-                const { data: companyUnits } = await supabase
-                    .from('unidades')
-                    .select('id')
-                    .eq('empresa_mae', (form as any).cliente_uuid);
-
-                const unitIds = (companyUnits || []).map(u => u.id);
-
-                if (unitIds.length > 0) {
-
-                    // Get all collaborators to find form answers
-                    const { data: collaborators } = await supabase
-                        .from('colaboradores')
-                        .select('id')
-                        .in('unidade_id', unitIds);
-
-                    const collaboratorIds = (collaborators || []).map((c: any) => c.id);
-
-                    if (collaboratorIds.length > 0) {
-                        const { data: answers } = await supabase
-                            .from('form_answers')
-                            .select('form_id')
-                            .in('respondedor', collaboratorIds);
-
-                        const uniqueFormIds = Array.from(new Set((answers || []).map(a => a.form_id)));
-                        formIds = uniqueFormIds;
-                    }
-                }
-            } else {
-                formIds = [form.id];
-            }
-
-            // 3. Fetch Questions (Global list for all forms)
-            const { data: qs } = await supabase
+            // 1. Fetch Questions (Independent)
+            const questionsPromise = supabase
                 .from('form_questions')
                 .select('*')
-                .order('question_order');
-            setQuestions(qs || []);
+                .order('question_order')
+                .then(({ data }) => setQuestions(data || []));
+            promises.push(questionsPromise);
 
-            // 4. Fetch Recent Responses across all formIds
-            if (formIds.length > 0) {
+            // 2. Fetch Units (Filtered by Company)
+            let unitsPromise = Promise.resolve();
+            if (isCompanyLevel && targetCompanyUuid) {
+                unitsPromise = supabase
+                    .from('unidades')
+                    .select('id, nome')
+                    .eq('empresa_mae', targetCompanyUuid) // STRICT FILTER
+                    .then(({ data }) => setUnits(data || [])) as any;
+            }
+            promises.push(unitsPromise);
+
+            // 3. Resolve Form IDs & Fetch Recent Responses (Optimized)
+            const responsesPromise = (async () => {
+                let localFormIds: number[] = [];
+
+                if (isCompanyLevel && targetCompanyUuid) {
+                    // Optimized: Fetch form_ids directly linked to units of this company
+                    // This replaces the "Units -> Colabs -> Answers" waterfall
+                    const { data: answers } = await supabase
+                        .from('form_answers')
+                        .select(`
+                            form_id,
+                            colaboradores!inner (
+                                unidade_id,
+                                unidades!inner (
+                                    id,
+                                    empresa_mae
+                                )
+                            )
+                        `)
+                        .eq('colaboradores.unidades.empresa_mae', targetCompanyUuid); // STRICT FILTER via Join
+
+                    localFormIds = Array.from(new Set((answers || []).map((a: any) => a.form_id)));
+                } else {
+                    localFormIds = [form.id];
+                }
+
+                // Update state for Radar Chart
+                if (localFormIds.length > 0) {
+                    setFormIds(localFormIds);
+                } else {
+                    setRecentResponses([]);
+                    return;
+                }
+
+                // Fetch Recent Responses (Limit 50 & Filtered)
                 const { data: recentData } = await supabase
                     .from('form_answers')
                     .select(`
@@ -193,10 +191,11 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
                         respondedor,
                         colaboradores (nome, id)
                     `)
-                    .in('form_id', formIds)
-                    .order('created_at', { ascending: false });
+                    .in('form_id', localFormIds)
+                    .order('created_at', { ascending: false })
+                    .limit(50); // Performance Fix: Limit History
 
-                const mappedRecent = [];
+                const mappedRecent: any[] = [];
                 const seenResponders = new Set();
                 for (const r of (recentData || [])) {
                     if (!seenResponders.has(r.respondedor)) {
@@ -210,7 +209,10 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
                     }
                 }
                 setRecentResponses(mappedRecent);
-            }
+            })();
+            promises.push(responsesPromise);
+
+            await Promise.all(promises);
 
         } catch (error) {
             console.error('Error fetching initial data:', error);
@@ -225,28 +227,26 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
             const isCompanyLevel = !(form as any).slug;
             const sectorId = selectedSector ? sectors.find(s => s.nome === selectedSector)?.id : null;
 
-            // 2. Resolve Form IDs
+            // 2. Resolve Form IDs (Optimized)
             let formIds: number[] = [];
-            if (isCompanyLevel) {
-                const { data: companyUnits } = await supabase
-                    .from('unidades')
-                    .select('id')
-                    .eq('empresa_mae', (form as any).cliente_uuid);
-                const unitIds = (companyUnits || []).map(u => u.id);
-                if (unitIds.length > 0) {
-                    const { data: collaborators } = await supabase
-                        .from('colaboradores')
-                        .select('id')
-                        .in('unidade_id', unitIds);
-                    const collaboratorIds = (collaborators || []).map(c => c.id);
-                    if (collaboratorIds.length > 0) {
-                        const { data: answers } = await supabase
-                            .from('form_answers')
-                            .select('form_id')
-                            .in('respondedor', collaboratorIds);
-                        formIds = Array.from(new Set((answers || []).map(a => a.form_id)));
-                    }
-                }
+            const targetCompanyUuid = (form as any).cliente_uuid;
+
+            if (isCompanyLevel && targetCompanyUuid) {
+                const { data: answers } = await supabase
+                    .from('form_answers')
+                    .select(`
+                        form_id,
+                        colaboradores!inner (
+                            unidade_id,
+                            unidades!inner (
+                                id,
+                                empresa_mae
+                            )
+                        )
+                    `)
+                    .eq('colaboradores.unidades.empresa_mae', targetCompanyUuid);
+
+                formIds = Array.from(new Set((answers || []).map((a: any) => a.form_id)));
             } else {
                 formIds = [form.id];
             }
@@ -346,43 +346,7 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
     }, [selectedSector, selectedUnit, sectors]);
 
     // Custom shape function defined inside to access hoveredIndex
-    const renderCustomPolarSector = (props: any) => {
-        const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, value, index } = props;
-        const maxValue = 4;
-        // Calculate radius based on value (0 to 4) relative to the available radius space
-        const r = innerRadius + (outerRadius - innerRadius) * (Math.min(value, maxValue) / maxValue);
 
-        const isHovered = index === hoveredIndex;
-
-        return (
-            <g>
-                <Sector
-                    cx={cx}
-                    cy={cy}
-                    innerRadius={innerRadius}
-                    outerRadius={r}
-                    startAngle={startAngle}
-                    endAngle={endAngle}
-                    fill={fill}
-                    stroke={isHovered ? "#fff" : "none"}
-                    strokeWidth={2}
-                    style={{ filter: isHovered ? 'brightness(1.1)' : 'none', transition: 'all 0.3s ease' }}
-                />
-                {isHovered && (
-                    <text
-                        x={cx + (innerRadius + (r - innerRadius) * 0.55) * Math.cos(-((startAngle + endAngle) / 2) * Math.PI / 180)}
-                        y={cy + (innerRadius + (r - innerRadius) * 0.55) * Math.sin(-((startAngle + endAngle) / 2) * Math.PI / 180)}
-                        textAnchor="middle"
-                        dominantBaseline="central"
-                        fill="#fff"
-                        className="text-base font-bold drop-shadow-md pointer-events-none"
-                    >
-                        {value.toFixed(1)}
-                    </text>
-                )}
-            </g>
-        );
-    };
 
     const fetchParticipationDetails = async () => {
         setModalLoading(true);
@@ -700,388 +664,209 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
 
                 {/* --- TAB B: ANÁLISE INTERPRETATIVA --- */}
                 {activeTab === 'analysis' && (
-                    <div className="max-w-[1600px] mx-auto">
-                        <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 items-start">
-
-                            {/* LEFT COLUMN: DIRECT RISK CARD */}
-                            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-full">
-                                <div className="flex items-center gap-4 mb-6 border-b border-slate-100 pb-4">
-                                    <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-500">
-                                        <TrendingUp size={20} />
-                                    </div>
-                                    <div>
-                                        <h3 className="font-bold text-slate-800 text-sm">Risco Direto</h3>
-                                        <p className="text-xs text-slate-500 mt-0.5">Demandas & Relacionamentos</p>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between text-xs text-slate-400 font-medium uppercase tracking-wider mb-2">
-                                        <span>Dimensão</span>
-                                        <span>Média</span>
-                                    </div>
-                                    {RADIAL_DATA.filter(d => d.fill === '#f43f5e').map((item, idx) => (
-                                        <div key={idx} className="flex items-center justify-between group">
-                                            <span className="font-medium text-slate-600 text-sm group-hover:text-slate-900 transition-colors pl-2 border-l-2 border-slate-100 group-hover:border-rose-400 pl-3">
-                                                {item.name}
-                                            </span>
-                                            <span className={`text-xs px-3 py-1 rounded-full font-bold w-16 text-center ${item.value >= 3 ? 'bg-red-50 text-red-600' :
-                                                item.value >= 2 ? 'bg-orange-50 text-orange-600' :
-                                                    'bg-emerald-50 text-emerald-600'
-                                                }`}>
-                                                {item.value}
-                                            </span>
-                                        </div>
-                                    ))}
-
-                                    {/* Legend Restored */}
-                                    <div className="pt-4 mt-2 border-t border-slate-100">
-                                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Legenda de Risco</h4>
-                                        <div className="space-y-2">
-                                            {[
-                                                { range: '3.0 - 4.0', label: 'Alto', color: 'bg-red-50 text-red-600 border border-red-100' },
-                                                { range: '2.0 - 2.9', label: 'Moderado', color: 'bg-orange-50 text-orange-600 border border-orange-100' },
-                                                { range: '1.0 - 1.9', label: 'Médio', color: 'bg-blue-50 text-blue-600 border border-blue-100' },
-                                                { range: '0.0 - 0.9', label: 'Baixo', color: 'bg-emerald-50 text-emerald-600 border border-emerald-100' },
-                                            ].map((item, idx) => (
-                                                <div key={idx} className="flex items-center justify-between">
-                                                    <span className="text-xs text-slate-500 font-medium">{item.range}</span>
-                                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold w-20 text-center ${item.color}`}>
-                                                        {item.label}
-                                                    </span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-                                <p className="border-t border-slate-100 mt-6 pt-4 text-xs text-slate-400 italic text-center">
-                                    Quanto <strong>maior</strong> a média, <strong>maior</strong> o risco.
-                                </p>
-                            </div>
-
-                            {/* CENTER COLUMN: POLAR AREA CHART (2 COLS) */}
-                            <div className="xl:col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm min-h-[500px] flex flex-col justify-center relative">
-                                <h3 className="font-bold text-lg text-slate-800 mb-6 text-center">Dimensões Psicossociais</h3>
-                                <div className="w-full h-[400px] flex justify-center items-center relative">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <PieChart>
-                                            <Pie
-                                                data={RADIAL_DATA}
-                                                dataKey="value"
-                                                cx="50%"
-                                                cy="50%"
-                                                innerRadius={30}
-                                                outerRadius={150}
-                                                shape={renderCustomPolarSector}
-                                                onMouseEnter={(_, index) => setHoveredIndex(index)}
-                                                onMouseLeave={() => setHoveredIndex(null)}
-                                                isAnimationActive={false}
-                                                label={({ cx, cy, midAngle, innerRadius, outerRadius, value, index }) => {
-                                                    const RADIAN = Math.PI / 180;
-                                                    // Ensure midAngle is valid
-                                                    const angle = -(midAngle || 0) * RADIAN;
-
-                                                    // Position for the label text (closer to chart)
-                                                    const radius = outerRadius * 1.15;
-                                                    const x = cx + radius * Math.cos(angle);
-                                                    const y = cy + radius * Math.sin(angle);
-
-                                                    // Position for the start of the line (at the edge of the specific bar)
-                                                    const maxValue = 4;
-                                                    // Re-calculate the bar's outer edge for this specific value
-                                                    const barRadius = innerRadius + (outerRadius - innerRadius) * (Math.min(value, maxValue) / maxValue);
-
-                                                    const startRadius = barRadius;
-                                                    const startX = cx + startRadius * Math.cos(angle);
-                                                    const startY = cy + startRadius * Math.sin(angle);
-
-                                                    // Mid-point for polyline (optional knee)
-                                                    const midRadius = outerRadius * 1.08;
-                                                    const midX = cx + midRadius * Math.cos(angle);
-                                                    const midY = cy + midRadius * Math.sin(angle);
-
-                                                    return (
-                                                        <g>
-                                                            <path
-                                                                d={`M${startX},${startY} L${midX},${midY} L${x},${y}`}
-                                                                stroke="#cbd5e1"
-                                                                fill="none"
-                                                            />
-                                                            <text
-                                                                x={x}
-                                                                y={y}
-                                                                fill="#64748b"
-                                                                textAnchor={x > cx ? 'start' : 'end'}
-                                                                dominantBaseline="central"
-                                                                className="text-[11px] font-semibold"
-                                                            >
-                                                                {RADIAL_DATA[index].name}
-                                                            </text>
-                                                        </g>
-                                                    );
-                                                }}
-                                                labelLine={false}
-                                            >
-                                                {RADIAL_DATA.map((entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                                                ))}
-                                            </Pie>
-                                        </PieChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            </div>
-
-                            {/* RIGHT COLUMN: INVERSE RISK CARD */}
-                            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-full">
-                                <div className="flex items-center gap-4 mb-6 border-b border-slate-100 pb-4">
-                                    <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-500">
-                                        <TrendingDown size={20} />
-                                    </div>
-                                    <div>
-                                        <h3 className="font-bold text-slate-800 text-sm">Risco Inverso</h3>
-                                        <p className="text-xs text-slate-500 mt-0.5">Controle, Apoio, Cargo, etc.</p>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between text-xs text-slate-400 font-medium uppercase tracking-wider mb-2">
-                                        <span>Dimensão</span>
-                                        <span>Média</span>
-                                    </div>
-                                    {RADIAL_DATA.filter(d => d.fill === '#6366f1').map((item, idx) => (
-                                        <div key={idx} className="flex items-center justify-between group">
-                                            <span className="font-medium text-slate-600 text-sm group-hover:text-slate-900 transition-colors pl-2 border-l-2 border-slate-100 group-hover:border-indigo-400 pl-3">
-                                                {item.name}
-                                            </span>
-                                            <span className={`text-xs px-3 py-1 rounded-full font-bold w-16 text-center ${item.value <= 2 ? 'bg-red-50 text-red-600' :
-                                                item.value <= 3 ? 'bg-orange-50 text-orange-600' :
-                                                    'bg-emerald-50 text-emerald-600'
-                                                }`}>
-                                                {item.value}
-                                            </span>
-                                        </div>
-                                    ))}
-
-                                    {/* Legend Restored */}
-                                    <div className="pt-4 mt-2 border-t border-slate-100">
-                                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Legenda de Risco</h4>
-                                        <div className="space-y-2">
-                                            {[
-                                                { range: '0.0 - 0.9', label: 'Alto', color: 'bg-red-50 text-red-600 border border-red-100' },
-                                                { range: '1.0 - 1.9', label: 'Moderado', color: 'bg-orange-50 text-orange-600 border border-orange-100' },
-                                                { range: '2.0 - 2.9', label: 'Médio', color: 'bg-blue-50 text-blue-600 border border-blue-100' },
-                                                { range: '3.0 - 4.0', label: 'Baixo', color: 'bg-emerald-50 text-emerald-600 border border-emerald-100' },
-                                            ].map((item, idx) => (
-                                                <div key={idx} className="flex items-center justify-between">
-                                                    <span className="text-xs text-slate-500 font-medium">{item.range}</span>
-                                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold w-20 text-center ${item.color}`}>
-                                                        {item.label}
-                                                    </span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-                                <p className="border-t border-slate-100 mt-6 pt-4 text-xs text-slate-400 italic text-center">
-                                    Quanto <strong>menor</strong> a média, <strong>maior</strong> o risco.
-                                </p>
-                            </div>
-
-                        </div>
-                    </div>
+                    <DimensionAnalysisSection
+                        unidadeId={selectedUnit ? Number(selectedUnit) : (form.unidade_id || null)}
+                        setorId={selectedSector ? sectors.find(s => s.nome === selectedSector)?.id || null : null}
+                        formIds={formIds}
+                    />
                 )}
 
 
-            </div>
+
+            </div >
 
             {/* RESPONSE MODAL */}
-            {selectedParticipant && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col m-4 animate-in zoom-in-95 duration-200">
-                        {/* Header */}
-                        <div className="flex items-start justify-between p-6 border-b border-slate-100">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-full bg-[#35b6cf]/10 flex items-center justify-center text-[#35b6cf] font-bold text-lg">
-                                    {selectedParticipant.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
-                                </div>
-                                <div>
-                                    <h3 className="font-bold text-lg text-slate-800">{selectedParticipant.name}</h3>
-                                    <div className="flex items-center gap-2 text-sm text-slate-500">
-                                        <span>{selectedParticipant.sector}</span>
-                                        <span>•</span>
-                                        <span>{selectedParticipant.submitted_at}</span>
+            {
+                selectedParticipant && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col m-4 animate-in zoom-in-95 duration-200">
+                            {/* Header */}
+                            <div className="flex items-start justify-between p-6 border-b border-slate-100">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-full bg-[#35b6cf]/10 flex items-center justify-center text-[#35b6cf] font-bold text-lg">
+                                        {selectedParticipant.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
                                     </div>
-                                </div>
-                            </div>
-                            <button
-                                onClick={() => setSelectedParticipant(null)}
-                                className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
-                            >
-                                <X size={20} />
-                            </button>
-                        </div>
-
-                        {/* Content */}
-                        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                            {QUESTIONS_LIST.map((q, idx) => (
-                                <div key={q.id} className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                                    <div className="flex justify-between items-start mb-2">
-                                        <span className="text-xs font-bold text-[#35b6cf] uppercase tracking-wider">{q.category}</span>
-                                        <span className="text-xs font-bold text-slate-400">#{idx + 1}</span>
-                                    </div>
-                                    <p className="font-medium text-slate-800 mb-3">{q.text}</p>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-sm text-slate-500">Resposta:</span>
-                                        <div className="flex gap-1">
-                                            {[1, 2, 3, 4, 5].map((val) => {
-                                                // Mock random answer strictly for UI demo based on question ID + participant ID
-                                                const mockAnswer = ((q.id + selectedParticipant.id) % 5) + 1;
-                                                const isSelected = val === mockAnswer;
-                                                return (
-                                                    <div
-                                                        key={val}
-                                                        className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold border ${isSelected
-                                                            ? 'bg-[#35b6cf] border-[#35b6cf] text-white shadow-sm'
-                                                            : 'bg-white border-slate-200 text-slate-300'
-                                                            }`}
-                                                    >
-                                                        {val}
-                                                    </div>
-                                                );
-                                            })}
+                                    <div>
+                                        <h3 className="font-bold text-lg text-slate-800">{selectedParticipant.name}</h3>
+                                        <div className="flex items-center gap-2 text-sm text-slate-500">
+                                            <span>{selectedParticipant.sector}</span>
+                                            <span>•</span>
+                                            <span>{selectedParticipant.submitted_at}</span>
                                         </div>
                                     </div>
                                 </div>
-                            ))}
-                        </div>
+                                <button
+                                    onClick={() => setSelectedParticipant(null)}
+                                    className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
 
-                        {/* Footer */}
-                        <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-2xl flex justify-end">
-                            <button
-                                onClick={() => setSelectedParticipant(null)}
-                                className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-600 font-medium hover:bg-slate-50 transition-colors shadow-sm"
-                            >
-                                Fechar
-                            </button>
+                            {/* Content */}
+                            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                                {QUESTIONS_LIST.map((q, idx) => (
+                                    <div key={q.id} className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <span className="text-xs font-bold text-[#35b6cf] uppercase tracking-wider">{q.category}</span>
+                                            <span className="text-xs font-bold text-slate-400">#{idx + 1}</span>
+                                        </div>
+                                        <p className="font-medium text-slate-800 mb-3">{q.text}</p>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm text-slate-500">Resposta:</span>
+                                            <div className="flex gap-1">
+                                                {[1, 2, 3, 4, 5].map((val) => {
+                                                    // Mock random answer strictly for UI demo based on question ID + participant ID
+                                                    const mockAnswer = ((q.id + selectedParticipant.id) % 5) + 1;
+                                                    const isSelected = val === mockAnswer;
+                                                    return (
+                                                        <div
+                                                            key={val}
+                                                            className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold border ${isSelected
+                                                                ? 'bg-[#35b6cf] border-[#35b6cf] text-white shadow-sm'
+                                                                : 'bg-white border-slate-200 text-slate-300'
+                                                                }`}
+                                                        >
+                                                            {val}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Footer */}
+                            <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-2xl flex justify-end">
+                                <button
+                                    onClick={() => setSelectedParticipant(null)}
+                                    className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-600 font-medium hover:bg-slate-50 transition-colors shadow-sm"
+                                >
+                                    Fechar
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* --- PARTICIPATION DETAILS MODAL --- */}
-            {showParticipationModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 fade-in animate-in duration-200">
-                    <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl scale-in zoom-in-95 duration-200">
-                        {/* Header */}
-                        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
-                            <h3 className="text-lg font-bold text-slate-800">Detalhes de Participação</h3>
-                            <button
-                                onClick={() => setShowParticipationModal(false)}
-                                className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 p-2 rounded-full transition-all"
-                            >
-                                <X size={20} />
-                            </button>
-                        </div>
-
-                        {/* Stats Row */}
-                        <div className="px-6 py-6 grid grid-cols-2 gap-4">
-                            <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-4 flex flex-col">
-                                <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">Participantes</span>
-                                <span className="text-3xl font-bold text-emerald-700">{dbStats.participants}</span>
+            {
+                showParticipationModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 fade-in animate-in duration-200">
+                        <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl scale-in zoom-in-95 duration-200">
+                            {/* Header */}
+                            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
+                                <h3 className="text-lg font-bold text-slate-800">Detalhes de Participação</h3>
+                                <button
+                                    onClick={() => setShowParticipationModal(false)}
+                                    className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 p-2 rounded-full transition-all"
+                                >
+                                    <X size={20} />
+                                </button>
                             </div>
-                            <div className="bg-orange-50/50 border border-orange-100 rounded-xl p-4 flex flex-col">
-                                <span className="text-xs font-bold text-orange-600 uppercase tracking-wider mb-1">Pendentes</span>
-                                <span className="text-3xl font-bold text-orange-700">{dbStats.pending}</span>
-                            </div>
-                        </div>
 
-                        {/* Tabs */}
-                        <div className="px-6 border-b border-slate-100 flex gap-1 bg-slate-50/50 mx-6 rounded-lg p-1 mb-4">
-                            <button
-                                onClick={() => setParticipationTab('participants')}
-                                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${participationTab === 'participants'
-                                    ? 'bg-white text-emerald-600 shadow-sm'
-                                    : 'text-slate-500 hover:text-slate-700'
-                                    }`}
-                            >
-                                Participantes
-                            </button>
-                            <button
-                                onClick={() => setParticipationTab('pending')}
-                                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${participationTab === 'pending'
-                                    ? 'bg-white text-orange-600 shadow-sm'
-                                    : 'text-slate-500 hover:text-slate-700'
-                                    }`}
-                            >
-                                Pendentes
-                            </button>
-                        </div>
-
-                        {/* Search */}
-                        <div className="px-6 pb-4">
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                                <input
-                                    type="text"
-                                    value={participationSearch}
-                                    onChange={(e) => setParticipationSearch(e.target.value)}
-                                    placeholder="Buscar em participantes..."
-                                    className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf] transition-all"
-                                />
-                            </div>
-                        </div>
-
-                        {/* List Area */}
-                        <div className="flex-1 overflow-y-auto min-h-[300px] border-t border-slate-100 bg-slate-50/30">
-                            {modalLoading ? (
-                                <div className="flex items-center justify-center h-full text-slate-400 text-sm">
-                                    Carregando dados...
+                            {/* Stats Row */}
+                            <div className="px-6 py-6 grid grid-cols-2 gap-4">
+                                <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-4 flex flex-col">
+                                    <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">Participantes</span>
+                                    <span className="text-3xl font-bold text-emerald-700">{dbStats.participants}</span>
                                 </div>
-                            ) : filteredParticipationList.length > 0 ? (
-                                <div className="divide-y divide-slate-100">
-                                    {/* Header Row for List */}
-                                    <div className="px-6 py-3 bg-slate-50 flex items-center text-xs font-bold text-slate-400 uppercase tracking-wider">
-                                        <div className="flex-1">Colaborador</div>
-                                        <div className="w-40 hidden sm:block">Cargo</div>
-                                        <div className="w-20 hidden sm:block text-center">Sexo</div>
-                                        <div className="w-28 hidden sm:block text-right">Nascimento</div>
+                                <div className="bg-orange-50/50 border border-orange-100 rounded-xl p-4 flex flex-col">
+                                    <span className="text-xs font-bold text-orange-600 uppercase tracking-wider mb-1">Pendentes</span>
+                                    <span className="text-3xl font-bold text-orange-700">{dbStats.pending}</span>
+                                </div>
+                            </div>
+
+                            {/* Tabs */}
+                            <div className="px-6 border-b border-slate-100 flex gap-1 bg-slate-50/50 mx-6 rounded-lg p-1 mb-4">
+                                <button
+                                    onClick={() => setParticipationTab('participants')}
+                                    className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${participationTab === 'participants'
+                                        ? 'bg-white text-emerald-600 shadow-sm'
+                                        : 'text-slate-500 hover:text-slate-700'
+                                        }`}
+                                >
+                                    Participantes
+                                </button>
+                                <button
+                                    onClick={() => setParticipationTab('pending')}
+                                    className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${participationTab === 'pending'
+                                        ? 'bg-white text-orange-600 shadow-sm'
+                                        : 'text-slate-500 hover:text-slate-700'
+                                        }`}
+                                >
+                                    Pendentes
+                                </button>
+                            </div>
+
+                            {/* Search */}
+                            <div className="px-6 pb-4">
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                    <input
+                                        type="text"
+                                        value={participationSearch}
+                                        onChange={(e) => setParticipationSearch(e.target.value)}
+                                        placeholder="Buscar em participantes..."
+                                        className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf] transition-all"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* List Area */}
+                            <div className="flex-1 overflow-y-auto min-h-[300px] border-t border-slate-100 bg-slate-50/30">
+                                {modalLoading ? (
+                                    <div className="flex items-center justify-center h-full text-slate-400 text-sm">
+                                        Carregando dados...
                                     </div>
-                                    {filteredParticipationList.map((p: any) => (
-                                        <div key={p.id} className="px-6 py-3 flex items-center hover:bg-white transition-colors group text-sm">
-                                            {/* Nome */}
-                                            <div className="flex-1 font-bold text-slate-700 truncate pr-4">
-                                                {p.nome || 'Sem Nome'}
-                                            </div>
-
-                                            {/* Cargo */}
-                                            <div className="w-40 hidden sm:block text-slate-500 truncate pr-2">
-                                                {/* Try both alias and direct relation, + specific check for cargo_id */}
-                                                {(p.cargos && p.cargos.nome) ? p.cargos.nome :
-                                                    (p.cargo && p.cargo.nome) ? p.cargo.nome :
-                                                        '-'}
-                                            </div>
-
-                                            {/* Sexo */}
-                                            <div className="w-20 hidden sm:block text-slate-500 text-center">
-                                                {p.sexo || '-'}
-                                            </div>
-
-                                            {/* Data Nascimento */}
-                                            <div className="w-28 hidden sm:block text-slate-500 text-right">
-                                                {p.data_nascimento ? new Date(p.data_nascimento).toLocaleDateString() : '-'}
-                                            </div>
+                                ) : filteredParticipationList.length > 0 ? (
+                                    <div className="divide-y divide-slate-100">
+                                        {/* Header Row for List */}
+                                        <div className="px-6 py-3 bg-slate-50 flex items-center text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                            <div className="flex-1">Colaborador</div>
+                                            <div className="w-40 hidden sm:block">Cargo</div>
+                                            <div className="w-20 hidden sm:block text-center">Sexo</div>
+                                            <div className="w-28 hidden sm:block text-right">Nascimento</div>
                                         </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="flex flex-col items-center justify-center h-full text-slate-400 text-sm p-8">
-                                    <p>Nenhuma resposta ainda.</p>
-                                </div>
-                            )}
+                                        {filteredParticipationList.map((p: any) => (
+                                            <div key={p.id} className="px-6 py-3 flex items-center hover:bg-white transition-colors group text-sm">
+                                                {/* Nome */}
+                                                <div className="flex-1 font-bold text-slate-700 truncate pr-4">
+                                                    {p.nome || 'Sem Nome'}
+                                                </div>
+
+                                                {/* Cargo */}
+                                                <div className="w-40 hidden sm:block text-slate-500 truncate pr-2">
+                                                    {/* Try both alias and direct relation, + specific check for cargo_id */}
+                                                    {(p.cargos && p.cargos.nome) ? p.cargos.nome :
+                                                        (p.cargo && p.cargo.nome) ? p.cargo.nome :
+                                                            '-'}
+                                                </div>
+
+                                                {/* Sexo */}
+                                                <div className="w-20 hidden sm:block text-slate-500 text-center">
+                                                    {p.sexo || '-'}
+                                                </div>
+
+                                                {/* Data Nascimento */}
+                                                <div className="w-28 hidden sm:block text-slate-500 text-right">
+                                                    {p.data_nascimento ? new Date(p.data_nascimento).toLocaleDateString() : '-'}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center h-full text-slate-400 text-sm p-8">
+                                        <p>Nenhuma resposta ainda.</p>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };

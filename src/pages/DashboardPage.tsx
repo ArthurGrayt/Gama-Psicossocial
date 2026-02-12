@@ -1,21 +1,29 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { DashboardLayout } from '../layouts/DashboardLayout';
 import { Building, Wallet, ChevronRight, CheckCircle, Clock, Info } from 'lucide-react';
 import { PlanSelectionModal } from '../components/modals/PlanSelectionModal';
 import { PaymentModal } from '../components/modals/PaymentModal';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../services/supabase';
+import { RankingGeralWidget } from '../components/RankingGeralWidget';
 
+
+
+import { useDashboardKPIs } from '../hooks/useDashboardKPIs';
 
 export const DashboardPage: React.FC = () => {
     const { user } = useAuth();
+    const { stats } = useDashboardKPIs(user);
     const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
     const [selectedPackage, setSelectedPackage] = useState<{ id: string; name: string; tokens: number; price: string } | null>(null);
-    const [companiesCount, setCompaniesCount] = useState<number>(0);
-    const [totalResponses, setTotalResponses] = useState<number>(0);
-    const [pendingResponses, setPendingResponses] = useState<number>(0);
-    const [tokenBalance, setTokenBalance] = useState<number>(0);
+
+    // Destructure stats for easier usage in the template
+    const {
+        tokenBalance,
+        companiesCount,
+        totalResponses,
+        pendingResponses
+    } = stats;
 
     const handlePlanSelect = (pkg: { id: string; name: string; tokens: number; price: string }) => {
         console.log('Pacote selecionado:', pkg);
@@ -24,36 +32,7 @@ export const DashboardPage: React.FC = () => {
         setIsPaymentModalOpen(true);
     };
 
-    useEffect(() => {
-        const fetchDashboardData = async () => {
-            if (!user) return;
-
-            try {
-                // Fetch consolidated KPI data from SQL View
-                const { data, error } = await supabase
-                    .from('vw_kpis_dashboard')
-                    .select('*')
-                    .single();
-
-                if (error) {
-                    console.error('Error fetching dashboard KPIs:', error);
-                    return;
-                }
-
-                // Security check and state update
-                if (data && data.usuario_id === user.id) {
-                    setTokenBalance(data.total_tokens || 0);
-                    setCompaniesCount(data.empresas_ativas || 0);
-                    setTotalResponses(data.total_respondidos || 0);
-                    setPendingResponses(data.total_pendentes || 0);
-                }
-            } catch (err) {
-                console.error('Exception fetching dashboard data:', err);
-            }
-        };
-
-        fetchDashboardData();
-    }, [user]);
+    // REMOVED local useEffect data fetching
 
 
     return (
@@ -156,6 +135,17 @@ export const DashboardPage: React.FC = () => {
                         <div>
                             <h3 className="text-3xl font-bold text-slate-800 tracking-tight">{pendingResponses}</h3>
                         </div>
+                    </div>
+                </div>
+
+                {/* 3. MIDDLE SECTION - Ranking & Charts */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                    <div className="lg:col-span-1">
+                        <RankingGeralWidget />
+                    </div>
+                    {/* Placeholder for future charts/widgets */}
+                    <div className="lg:col-span-2 bg-slate-50 rounded-2xl border border-dashed border-slate-200 flex items-center justify-center p-8 text-slate-400">
+                        <span className="text-sm">Área disponível para gráficos detalhados</span>
                     </div>
                 </div>
 
