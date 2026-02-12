@@ -176,15 +176,12 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
                 formIds = [form.id];
             }
 
-            // 3. Fetch Questions (from first form if company level, or the form itself)
-            if (formIds.length > 0) {
-                const { data: qs } = await supabase
-                    .from('form_questions')
-                    .select('*')
-                    .eq('form_id', formIds[0])
-                    .order('question_order');
-                setQuestions(qs || []);
-            }
+            // 3. Fetch Questions (Global list for all forms)
+            const { data: qs } = await supabase
+                .from('form_questions')
+                .select('*')
+                .order('question_order');
+            setQuestions(qs || []);
 
             // 4. Fetch Recent Responses across all formIds
             if (formIds.length > 0) {

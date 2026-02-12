@@ -24,11 +24,10 @@ export const FormAnalytics: React.FC<FormAnalyticsProps> = ({ form, onBack }) =>
     const loadData = async () => {
         setLoading(true);
         try {
-            // 1. Fetch Questions
+            // 1. Fetch Questions (Global library)
             const { data: qs, error: qError } = await supabase
                 .from('form_questions')
                 .select('*')
-                .eq('form_id', form.id)
                 .order('question_order');
 
             if (qError) throw qError;

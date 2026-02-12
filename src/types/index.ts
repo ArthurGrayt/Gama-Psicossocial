@@ -31,7 +31,7 @@ export interface FormQuestion {
     option_2?: string;
     option_3?: string;
     option_4?: string;
-    option_5?: string;
+    option_5?: number; // Numeric in schema
 
     // Rating
     min_value?: number;
