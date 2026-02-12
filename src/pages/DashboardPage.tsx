@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '../layouts/DashboardLayout';
-import { Building, Wallet, ChevronRight, CheckCircle, Clock, ArrowUpRight, Activity, Calendar, Info, Bell } from 'lucide-react';
+import { Building, Wallet, ChevronRight, CheckCircle, Clock, Activity, Calendar, Info, Bell } from 'lucide-react';
 import { BarChart, Bar, XAxis, Tooltip as RechartsTooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { PlanSelectionModal } from '../components/modals/PlanSelectionModal';
 import { PaymentModal } from '../components/modals/PaymentModal';
@@ -24,6 +24,7 @@ export const DashboardPage: React.FC = () => {
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
     const [selectedPackage, setSelectedPackage] = useState<{ id: string; name: string; tokens: number; price: string } | null>(null);
     const [companiesCount, setCompaniesCount] = useState<number>(0);
+    const [totalResponses, setTotalResponses] = useState<number>(0);
 
     const handlePlanSelect = (pkg: { id: string; name: string; tokens: number; price: string }) => {
         console.log('Pacote selecionado:', pkg);
@@ -33,26 +34,56 @@ export const DashboardPage: React.FC = () => {
     };
 
     useEffect(() => {
-        const fetchCompaniesCount = async () => {
+        const fetchDashboardData = async () => {
             if (!user) return;
 
             try {
-                const { count, error } = await supabase
+                // 1. Fetch Companies Count
+                const { data: companies, error: companiesError } = await supabase
                     .from('clientes')
-                    .select('*', { count: 'exact', head: true })
+                    .select('id, cliente_uuid')
                     .eq('empresa_responsavel', user.id);
 
-                if (error) {
-                    console.error('Error fetching companies count:', error);
+                if (companiesError) {
+                    console.error('Error fetching companies:', companiesError);
                 } else {
-                    setCompaniesCount(count || 0);
+                    setCompaniesCount(companies?.length || 0);
+
+                    if (companies && companies.length > 0) {
+                        const clienteUuids = companies.map(c => c.cliente_uuid);
+
+                        // 2. Fetch Units for these companies
+                        const { data: units, error: unitsError } = await supabase
+                            .from('unidades')
+                            .select('id')
+                            .in('empresa_mae', clienteUuids);
+
+                        if (unitsError) {
+                            console.error('Error fetching units:', unitsError);
+                        } else if (units && units.length > 0) {
+                            const unitIds = units.map(u => u.id);
+
+                            // 3. Fetch Forms for these units and sum responses
+                            const { data: forms, error: formsError } = await supabase
+                                .from('forms')
+                                .select('qtd_respostas')
+                                .in('unidade_id', unitIds);
+
+                            if (formsError) {
+                                console.error('Error fetching forms:', formsError);
+                            } else if (forms) {
+                                const total = forms.reduce((sum, f) => sum + (f.qtd_respostas || 0), 0);
+                                setTotalResponses(total);
+                            }
+                        }
+                    }
                 }
             } catch (err) {
-                console.error('Exception fetching companies count:', err);
+                console.error('Exception fetching dashboard data:', err);
             }
         };
 
-        fetchCompaniesCount();
+        fetchDashboardData();
     }, [user]);
 
     // Filtered Mock Data
@@ -210,10 +241,12 @@ export const DashboardPage: React.FC = () => {
                             </div>
                         </div>
                         <div>
-                            <h3 className="text-3xl font-bold text-slate-800 tracking-tight">1.2k</h3>
+                            <h3 className="text-3xl font-bold text-slate-800 tracking-tight">
+                                {totalResponses >= 1000 ? `${(totalResponses / 1000).toFixed(1)}k` : totalResponses}
+                            </h3>
                             <div className="flex items-center gap-1 mt-1 text-emerald-500 font-bold text-sm">
-                                <ArrowUpRight size={16} />
-                                <span>+12.5%</span>
+                                <CheckCircle size={16} />
+                                <span>Total acumulado</span>
                             </div>
                         </div>
                     </div>

@@ -87,10 +87,22 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
     const fetchCompanies = async () => {
         setIsLoading(true);
         try {
-            // 1. Lite Fetch: Clients
+            // Optimized: Single Fetch with Deep Nesting
             const { data: clientsData, error: clientsError } = await supabase
                 .from('clientes')
-                .select('*')
+                .select(`
+                    id,
+                    cliente_uuid,
+                    nome_fantasia,
+                    razao_social,
+                    cnpj,
+                    unidades (
+                        id,
+                        nome,
+                        empresa_mae,
+                        colaboradores (count)
+                    )
+                `)
                 .eq('empresa_responsavel', user?.id)
                 .order('nome_fantasia');
 
@@ -102,27 +114,12 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                 return;
             }
 
-            const clientUuids = clientsData.map(c => c.cliente_uuid);
-
-            // 2. Lite Fetch: Units (Basic info + Collaborator Count)
-            const { data: allUnits, error: unitsError } = await supabase
-                .from('unidades')
-                .select('id, nome, empresa_mae, colaboradores(count)')
-                .in('empresa_mae', clientUuids);
-
-            if (unitsError) throw unitsError;
-
-
-
-            // 3. Lite Fetch: Collaborator Counts (Embedded in Step 2)
-            // Logic moved to Step 2 query.
-
-            // 4. Construct Lite Objects
+            // Construct Lite Objects directly from nested response
             const liteCompanies = clientsData.map(client => {
-                const clientUnits = (allUnits || []).filter(u => u.empresa_mae === client.cliente_uuid);
+                const clientUnits = client.unidades || [];
 
                 let totalCollaborators = 0;
-                const mappedUnits = clientUnits.map(u => {
+                const mappedUnits = clientUnits.map((u: any) => {
                     // Extract count from embedded relation
                     // Supabase returns relations as arrays of objects or single objects depending on query
                     // Query: colaboradores(count) -> returns [{ count: N }]
@@ -171,6 +168,14 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
 
         try {
             // Re-fetch clean list of units for this company
+            const { data: clientFull, error: cErr } = await supabase
+                .from('clientes')
+                .select('*')
+                .eq('id', company.id)
+                .single();
+
+            if (cErr) throw cErr;
+
             const { data: unitsData, error: uErr } = await supabase
                 .from('unidades')
                 .select('*')
@@ -270,20 +275,23 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
             }));
             const uniqueRoleNames = Array.from(new Set(allCompanyRoles.map(r => r.nome)));
 
-            const fullCompany = {
+            // Merge with new client record
+            const updatedCompany = {
                 ...company,
-                // Update with full details
+                ...clientFull,
+                name: clientFull.nome_fantasia || clientFull.razao_social,
                 units: mappedUnits,
                 setores: Array.from(allCompanySectorNames),
                 roles: uniqueRoleNames,
                 cargos: allCompanyRoles,
                 collaborators: uiCollaborators,
-                detailsLoaded: true // Mark as loaded
+                detailsLoaded: true
             };
 
-            // Update State
-            setCompanies(prev => prev.map(c => c.id === company.id ? fullCompany : c));
-            return fullCompany;
+            // Update local state so it stays loaded
+            setCompanies(prev => prev.map(c => c.id === company.id ? updatedCompany : c));
+
+            return updatedCompany;
 
         } catch (err) {
             console.error("Error lazy loading details:", err);

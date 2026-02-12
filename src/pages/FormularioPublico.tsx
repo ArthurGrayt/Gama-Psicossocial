@@ -3,141 +3,22 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 import type { Form, FormQuestion, Collaborator } from '../types';
-import { CheckCircle, Check, AlertCircle, ChevronRight, User, Hash, ChevronDown, Search } from 'lucide-react';
+import { CheckCircle, AlertCircle, ChevronRight, User, Hash, ChevronDown } from 'lucide-react';
 import logo from '../assets/logo.png';
 
 const LoadingScreen = () => (
-    <div className="fixed inset-0 bg-gray-50 z-50 flex items-center justify-center font-sans antialiased">
-        <style>{`
-            @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;700&display=swap');
-            
-            @keyframes text-slide {
-                0%, 27.777% { transform: translateY(0%); }
-                33.333%, 61.111% { transform: translateY(-25%); }
-                66.666%, 94.444% { transform: translateY(-50%); }
-                100% { transform: translateY(-75%); }
-            }
-
-            .slider {
-                animation: text-slide 6.5s cubic-bezier(0.83, 0, 0.17, 1) infinite;
-            }
-
-            .gpu-text {
-                transform: translateZ(0);
-                backface-visibility: hidden;
-                -webkit-font-smoothing: antialiased;
-            }
-        `}</style>
-
-        <div className="flex flex-col items-center justify-center text-[#35b6cf] font-bold text-5xl gap-1" style={{ fontFamily: "'Outfit', sans-serif" }}>
-
-            {/* LINE 1: Uma Gama */}
-            <div className="flex items-baseline gap-2">
-                <span className="gpu-text">Uma</span>
-
-                <span className="flex items-baseline gpu-text">
-                    <img src={logo} alt="Logo" className="h-[1.25em] w-auto relative top-[0.25em] -mr-1" />
-                    <span>ama</span>
-                </span>
-            </div>
-
-            {/* LINE 2: de [Animation] */}
-            <div className="flex items-baseline gap-2">
-                <span className="gpu-text">de</span>
-
-                {/* TEXTO ANIMADO */}
-                <div className="overflow-hidden h-[1.3em] -mt-2">
-                    <div className="slider gpu-text">
-                        <span className="block h-[1.3em] leading-[1.3em]">ideias</span>
-                        <span className="block h-[1.3em] leading-[1.3em]">soluções</span>
-                        <span className="block h-[1.3em] leading-[1.3em]">inovações</span>
-                        {/* Clone of first item for infinite loop illusion */}
-                        <span className="block h-[1.3em] leading-[1.3em]">ideias</span>
-                    </div>
-                </div>
-            </div>
-
-        </div>
+    <div className="fixed inset-0 bg-slate-50 flex flex-col items-center justify-center z-50">
+        <div className="w-12 h-12 border-4 border-[#35b6cf]/30 border-t-[#35b6cf] rounded-full animate-spin mb-4"></div>
+        <p className="text-slate-500 font-medium animate-pulse">Carregando formulário...</p>
     </div>
 );
 
 const CustomSelect = ({ options, value, onChange, placeholder = 'Selecione...' }: any) => {
     const [isOpen, setIsOpen] = useState(false);
-    const triggerRef = useRef<HTMLDivElement>(null);
-    const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
-
-    useEffect(() => {
-        const handleResize = () => setIsOpen(false);
-        const handleScroll = () => setIsOpen(false);
-
-        window.addEventListener('resize', handleResize);
-        window.addEventListener('scroll', handleScroll, true);
-
-        return () => {
-            window.removeEventListener('resize', handleResize);
-            window.removeEventListener('scroll', handleScroll, true);
-        };
-    }, []);
-
-    const handleOpen = () => {
-        if (triggerRef.current) {
-            const rect = triggerRef.current.getBoundingClientRect();
-            setCoords({
-                top: rect.bottom + 4,
-                left: rect.left,
-                width: rect.width
-            });
-            setIsOpen(!isOpen);
-        }
-    };
-
-    return (
-        <div className="relative max-w-xs" ref={triggerRef}>
-            {isOpen && <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />}
-            <div
-                onClick={handleOpen}
-                className={`w-full px-4 py-3 bg-white border rounded-md transition-all cursor-pointer flex justify-between items-center relative z-20 ${isOpen ? 'border-[#35b6cf] ring-2 ring-[#35b6cf]/10' : 'border-slate-200 hover:border-slate-300'}`}
-            >
-                <span className={value ? 'text-slate-800' : 'text-slate-400'}>
-                    {value || placeholder}
-                </span>
-                <ChevronDown size={16} className={`text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-            </div>
-
-            {isOpen && (
-                <div
-                    className="fixed z-50 bg-white border border-slate-100 rounded-lg shadow-xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-200"
-                    style={{
-                        top: `${coords.top}px`,
-                        left: `${coords.left}px`,
-                        width: `${coords.width}px`
-                    }}
-                >
-                    {options.map((opt: string) => (
-                        <div
-                            key={opt}
-                            onClick={() => {
-                                onChange(opt);
-                                setIsOpen(false);
-                            }}
-                            className={`px-4 py-2.5 text-sm cursor-pointer transition-colors flex justify-between items-center ${value === opt ? 'bg-blue-50 text-[#35b6cf] font-medium' : 'text-slate-600 hover:bg-slate-50'}`}
-                        >
-                            {opt}
-                            {value === opt && <Check size={14} />}
-                        </div>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-};
-
-// Searchable Select Component for Registration
-const SearchableSelect = ({ options, value, onChange, placeholder, disabled, icon: Icon, requireSearch, noResultsContent }: any) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const [search, setSearch] = useState('');
     const wrapperRef = useRef<HTMLDivElement>(null);
+    const dropdownRef = useRef<HTMLDivElement>(null);
 
+    // Close on click outside
     useEffect(() => {
         function handleClickOutside(event: any) {
             if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
@@ -145,70 +26,70 @@ const SearchableSelect = ({ options, value, onChange, placeholder, disabled, ico
             }
         }
         document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
     }, [wrapperRef]);
 
-    const filteredOptions = options.filter((opt: any) =>
-        String(opt.label || '').toLowerCase().includes(search.toLowerCase())
-    );
+    // Handle Resize & Scroll to update position
+    useEffect(() => {
+        if (!isOpen) return;
 
-    const selectedLabel = options.find((opt: any) => opt.value === value)?.label || '';
+        const handleResize = () => setIsOpen(false); // Close on resize for simplicity
+        const handleScroll = () => setIsOpen(false); // Close on scroll for simplicity
+
+        window.addEventListener('resize', handleResize);
+        window.addEventListener('scroll', handleScroll, true); // Capture phase for all scrollable elements
+
+        return () => {
+            window.removeEventListener('resize', handleResize);
+            window.removeEventListener('scroll', handleScroll, true);
+        };
+    }, [isOpen]);
+
+    const handleOpen = () => {
+        if (isOpen) {
+            setIsOpen(false);
+        } else {
+            setIsOpen(true);
+        }
+    };
+
+    const selectedOption = options.find((o: any) => o.value === value);
 
     return (
-        <div className="relative" ref={wrapperRef}>
-            {Icon && <Icon size={16} className="absolute left-3 top-3 text-slate-400 pointer-events-none z-10" />}
+        <div className="relative w-full" ref={wrapperRef}>
             <div
-                className={`w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/10 cursor-pointer flex justify-between items-center ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-                onClick={() => !disabled && setIsOpen(!isOpen)}
+                onClick={handleOpen}
+                className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-lg cursor-pointer flex items-center justify-between hover:bg-slate-100 transition-colors"
             >
-                <span className={selectedLabel ? 'text-slate-800' : 'text-slate-400 truncate'}>
-                    {selectedLabel || placeholder}
+                <span className={selectedOption ? 'text-slate-800' : 'text-slate-400'}>
+                    {selectedOption ? selectedOption.label : placeholder}
                 </span>
-                <ChevronDown size={14} className="text-slate-400" />
+                <ChevronDown size={16} className={`text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
             </div>
 
-            {isOpen && !disabled && (
-                <div className="absolute top-full left-0 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 max-h-60 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-100">
-                    <div className="p-2 border-b border-slate-100 sticky top-0 bg-white">
-                        <div className="relative">
-                            <Search size={14} className="absolute left-2 top-2.5 text-slate-400" />
-                            <input
-                                autoFocus
-                                type="text"
-                                className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"
-                                placeholder="Buscar..."
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                onClick={(e) => e.stopPropagation()}
-                            />
-                        </div>
-                    </div>
-                    <div className="overflow-y-auto flex-1">
-                        {!search && requireSearch ? (
-                            <div className="px-4 py-8 text-sm text-slate-400 text-center flex flex-col items-center gap-2">
-                                <Search size={24} className="opacity-20" />
-                                Digite para buscar sua empresa
+            {isOpen && (
+                <div
+                    ref={dropdownRef}
+                    className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar"
+                >
+                    {options.length > 0 ? (
+                        options.map((option: any) => (
+                            <div
+                                key={option.value}
+                                onClick={() => {
+                                    onChange(option.value);
+                                    setIsOpen(false);
+                                }}
+                                className="px-4 py-2 hover:bg-slate-50 cursor-pointer text-slate-700 text-sm border-b border-slate-50 last:border-0"
+                            >
+                                {option.label}
                             </div>
-                        ) : filteredOptions.length > 0 ? (
-                            filteredOptions.map((opt: any) => (
-                                <div
-                                    key={opt.value}
-                                    className={`px-4 py-2 text-sm cursor-pointer hover:bg-blue-50 hover:text-blue-600 transition-colors ${opt.value === value ? 'bg-blue-50 text-blue-600 font-medium' : 'text-slate-600'}`}
-                                    onClick={() => {
-                                        onChange(opt.value);
-                                        setIsOpen(false);
-                                        setSearch('');
-                                    }}
-                                >
-                                    {opt.label}
-                                </div>
-                            ))
-                        ) : (
-                            <div className="px-4 py-3 text-sm text-slate-400 text-center">
-                                {noResultsContent || 'Nenhum resultado'}
-                            </div>
-                        )}
-                    </div>
+                        ))
+                    ) : (
+                        <div className="px-4 py-3 text-slate-400 text-sm text-center">Nenhuma opção disponível</div>
+                    )}
                 </div>
             )}
         </div>
@@ -225,9 +106,9 @@ export const FormularioPublico: React.FC = () => {
 
     // Identity State
     const [cpf, setCpf] = useState('');
+    const [cpfError, setCpfError] = useState<string | null>(null);
     const [checkingCpf, setCheckingCpf] = useState(false);
     const [collaborator, setCollaborator] = useState<Collaborator | null>(null);
-    const [showRegisterModal, setShowRegisterModal] = useState(false);
 
     // Form State
     const [answers, setAnswers] = useState<Record<number, any>>({});
@@ -269,15 +150,16 @@ export const FormularioPublico: React.FC = () => {
             }, timeoutMs);
         };
 
-        // Events to track activity
-        const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
-        events.forEach(event => document.addEventListener(event, resetTimer));
-
-        resetTimer(); // Initialize timer
+        window.addEventListener('mousemove', resetTimer);
+        window.addEventListener('keypress', resetTimer);
+        window.addEventListener('click', resetTimer);
+        resetTimer();
 
         return () => {
             clearTimeout(timer);
-            events.forEach(event => document.removeEventListener(event, resetTimer));
+            window.removeEventListener('mousemove', resetTimer);
+            window.removeEventListener('keypress', resetTimer);
+            window.removeEventListener('click', resetTimer);
         };
     }, [step, submitted]);
 
@@ -356,46 +238,68 @@ export const FormularioPublico: React.FC = () => {
     };
 
     const validateCPF = (cpf: string) => {
-        cpf = cpf.replace(/[^\d]+/g, '');
-        if (cpf === '') return false;
-        if (cpf.length !== 11 ||
-            /^(\d)\1{10}$/.test(cpf)) return false;
+        const cleanCPF = cpf.replace(/\D/g, '');
+        if (cleanCPF.length !== 11) return false;
+        if (/^(\d)\1+$/.test(cleanCPF)) return false; // All same digits
 
-        let add = 0;
-        for (let i = 0; i < 9; i++) add += parseInt(cpf.charAt(i)) * (10 - i);
-        let rev = 11 - (add % 11);
-        if (rev === 10 || rev === 11) rev = 0;
-        if (rev !== parseInt(cpf.charAt(9))) return false;
+        let sum = 0;
+        let remainder;
 
-        add = 0;
-        for (let i = 0; i < 10; i++) add += parseInt(cpf.charAt(i)) * (11 - i);
-        rev = 11 - (add % 11);
-        if (rev === 10 || rev === 11) rev = 0;
-        if (rev !== parseInt(cpf.charAt(10))) return false;
+        for (let i = 1; i <= 9; i++) sum = sum + parseInt(cleanCPF.substring(i - 1, i)) * (11 - i);
+        remainder = (sum * 10) % 11;
+
+        if ((remainder === 10) || (remainder === 11)) remainder = 0;
+        if (remainder !== parseInt(cleanCPF.substring(9, 10))) return false;
+
+        sum = 0;
+        for (let i = 1; i <= 10; i++) sum = sum + parseInt(cleanCPF.substring(i - 1, i)) * (12 - i);
+        remainder = (sum * 10) % 11;
+
+        if ((remainder === 10) || (remainder === 11)) remainder = 0;
+        if (remainder !== parseInt(cleanCPF.substring(10, 11))) return false;
 
         return true;
     };
 
     const handleCheckCPF = async () => {
+        setCpfError(null);
         if (!validateCPF(cpf)) {
-            if (!window.confirm("CPF parece inválido ou incompleto. Deseja continuar mesmo assim?")) {
-                return;
-            }
+            setCpfError("CPF inválido ou incompleto.");
+            return;
         }
 
         setCheckingCpf(true);
         const cleanCpf = cpf.replace(/\D/g, '');
         const formattedCpf = cleanCpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
 
-        // Check Colaboradores (try both clean and formatted, to be safe)
-        const { data: colabData } = await supabase
-            .from('colaboradores')
-            .select('*')
-            .or(`cpf.eq.${cleanCpf},cpf.eq.${formattedCpf}`)
-            .maybeSingle();
+        try {
+            // 1. Check if Collaborator exists
+            const { data: colabData, error } = await supabase
+                .from('colaboradores')
+                .select('*')
+                .or(`cpf.eq.${cleanCpf},cpf.eq.${formattedCpf}`)
+                .maybeSingle();
 
-        if (colabData) {
-            // Found! Get Company Name via Unit
+            if (error) throw error;
+
+            if (!colabData) {
+                // Not found -> RESTRICTED
+                setCpfError('CPF não encontrado na base de colaboradores. Entre em contato com seu RH.');
+                setCheckingCpf(false);
+                return;
+            }
+
+            // 2. Check Inclusion List (colaboladores_inclusos)
+            const allowedIds = (form?.colaboladores_inclusos || []) as string[];
+            const isIncluded = allowedIds.includes(colabData.id);
+
+            if (!isIncluded) {
+                setCpfError('Você não está habilitado para responder este formulário.');
+                setCheckingCpf(false);
+                return;
+            }
+
+            // 3. Success -> Get Company Name via Unit
             let companyName = '';
             if (colabData.unidade_id) {
                 const { data: unitData } = await supabase
@@ -416,18 +320,15 @@ export const FormularioPublico: React.FC = () => {
 
             setCollaborator({ ...colabData, empresa_nome: companyName });
             setStep('form');
-        } else {
-            // Not Found -> Open Registration
-            setShowRegisterModal(true);
+
+        } catch (err) {
+            console.error('Error checking CPF:', err);
+            setCpfError('Erro ao verificar suas credenciais. Tente novamente.');
+        } finally {
+            setCheckingCpf(false);
         }
-        setCheckingCpf(false);
     };
 
-    const handleRegistrationSuccess = (newColab: Collaborator) => {
-        setCollaborator(newColab);
-        setShowRegisterModal(false);
-        setStep('form');
-    };
 
     const handleAnswerChange = (questionId: number, value: any) => {
         setAnswers(prev => ({ ...prev, [questionId]: value }));
@@ -577,13 +478,6 @@ export const FormularioPublico: React.FC = () => {
     return (
         <div className={`bg-slate-50 flex flex-col items-center font-sans px-3 sm:px-0 ${step !== 'form' ? 'h-screen overflow-hidden justify-center' : 'min-h-screen pt-4 sm:pt-8 pb-10 justify-start'}`}>
 
-            <RegistrationModal
-                isOpen={showRegisterModal}
-                onClose={() => setShowRegisterModal(false)}
-                cpf={cpf}
-                onSuccess={handleRegistrationSuccess}
-            />
-
             {/* STEP 0: COVER PAGE */}
             {step === 'cover' && (
                 <div className={`${FORM_WIDTH} h-full flex flex-col justify-center animate-in slide-in-from-bottom-4 duration-500`}>
@@ -627,11 +521,12 @@ export const FormularioPublico: React.FC = () => {
                                     <Hash size={18} className="absolute left-3 top-3 text-slate-400" />
                                     <input
                                         type="text"
-                                        className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#35b6cf]/20 focus:border-[#35b6cf] outline-none transition-all"
+                                        className={`w-full pl-10 pr-4 py-2.5 border ${cpfError ? 'border-red-300 focus:border-red-500 focus:ring-red-200' : 'border-slate-200 focus:border-[#35b6cf] focus:ring-[#35b6cf]/20'} rounded-lg focus:ring-2 outline-none transition-all`}
                                         placeholder="000.000.000-00"
                                         maxLength={14}
                                         value={cpf}
                                         onChange={(e) => {
+                                            setCpfError(null);
                                             let v = e.target.value.replace(/\D/g, '');
                                             if (v.length > 11) v = v.slice(0, 11);
                                             v = v.replace(/(\d{3})(\d)/, '$1.$2');
@@ -642,6 +537,12 @@ export const FormularioPublico: React.FC = () => {
                                         onKeyDown={(e) => e.key === 'Enter' && handleCheckCPF()}
                                     />
                                 </div>
+                                {cpfError && (
+                                    <div className="mt-2 text-red-500 text-sm flex items-center gap-2 animate-in slide-in-from-top-1">
+                                        <AlertCircle size={14} />
+                                        <span>{cpfError}</span>
+                                    </div>
+                                )}
                             </div>
 
                             <button
@@ -801,241 +702,3 @@ export const FormularioPublico: React.FC = () => {
     );
 };
 
-// MODAL DE REGISTRO
-interface RegistrationModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-    cpf: string;
-    onSuccess: (collaborator: Collaborator) => void;
-}
-
-const RegistrationModal = ({ isOpen, onClose, cpf, onSuccess }: RegistrationModalProps) => {
-    const [loading, setLoading] = useState(false);
-
-    // Form Data
-    const [nome, setNome] = useState('');
-    const [dataNascimento, setDataNascimento] = useState('');
-    const [empresaId, setEmpresaId] = useState<string>('');
-    const [unidadeId, setUnidadeId] = useState<number | undefined>();
-    const [setorId, setSetorId] = useState<number | undefined>();
-    const [cargoId, setCargoId] = useState<number | undefined>();
-    const [sexo, setSexo] = useState('');
-
-    // Lists
-    const [companies, setCompanies] = useState<any[]>([]);
-    const [units, setUnits] = useState<any[]>([]);
-    const [sectores, setSectores] = useState<any[]>([]);
-    const [cargos, setCargos] = useState<any[]>([]);
-
-    useEffect(() => {
-        if (isOpen) {
-            fetchInitialData();
-            // Reset state
-            setNome('');
-            setDataNascimento('');
-            setEmpresaId('');
-            setUnidadeId(undefined);
-            setSetorId(undefined);
-            setCargoId(undefined);
-            setSexo('');
-        }
-    }, [isOpen]);
-
-    // Load Units when Company changes
-    useEffect(() => {
-        if (empresaId) {
-            fetchUnits(empresaId);
-        } else {
-            setUnits([]);
-        }
-    }, [empresaId]);
-
-    const fetchInitialData = async () => {
-        const [resCompanies, resSectores, resCargos] = await Promise.all([
-            supabase.from('clientes').select('id, cliente_uuid, nome_fantasia, razao_social').order('nome_fantasia'),
-            supabase.from('setor').select('id, nome').order('nome'),
-            supabase.from('cargos').select('id, nome').order('nome')
-        ]);
-
-        if (resCompanies.data) setCompanies(resCompanies.data);
-        if (resSectores.data) setSectores(resSectores.data);
-        if (resCargos.data) setCargos(resCargos.data);
-    };
-
-    const fetchUnits = async (companyId: string) => {
-        const { data } = await supabase
-            .from('unidades')
-            .select('id, nome_unidade, nome')
-            .eq('empresa_mae', companyId)
-            .order('nome_unidade');
-
-        if (data) setUnits(data);
-    };
-
-    const handleRegister = async () => {
-        if (!nome || !cpf || !empresaId || !unidadeId || !setorId || !cargoId || !sexo || !dataNascimento) {
-            alert("Preencha todos os campos obrigatórios");
-            return;
-        }
-
-        setLoading(true);
-
-        const newColab: Collaborator = {
-            nome,
-            cpf: cpf.replace(/\D/g, ''), // Clean CPF
-            data_nascimento: dataNascimento,
-            unidade_id: unidadeId,
-            setor_id: setorId,
-            cargo_id: cargoId,
-            sexo,
-            avulso: true
-        };
-
-        const { data, error } = await supabase
-            .from('colaboradores')
-            .insert(newColab)
-            .select()
-            .single();
-
-        if (error) {
-            console.error(error);
-            alert("Erro ao cadastrar. Tente novamente.");
-            setLoading(false);
-            return;
-        }
-
-        // Get company name for display
-        const company = companies.find((c: any) => String(c.id) === String(empresaId) || c.cliente_uuid === empresaId);
-        const savedColab: Collaborator = { ...newColab, id: data.id, empresa_nome: company?.nome_fantasia || company?.razao_social };
-
-        onSuccess(savedColab);
-        onClose();
-        setLoading(false);
-    };
-
-    if (!isOpen) return null;
-
-    return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
-                <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-                    <h2 className="text-lg font-bold text-slate-800">Completar Cadastro</h2>
-                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
-                        <span className="sr-only">Fechar</span>
-                        <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
-                    </button>
-                </div>
-
-                <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-                    <div className="bg-blue-50 text-blue-800 p-3 rounded-lg text-sm mb-4">
-                        Não encontramos seu CPF na base. Por favor, complete seus dados para continuar.
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">CPF</label>
-                        <input type="text" value={cpf} disabled className="w-full px-4 py-2 bg-slate-100 border border-slate-200 rounded-lg text-slate-500" />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Nome Completo <span className="text-red-500">*</span></label>
-                            <input
-                                type="text"
-                                value={nome}
-                                onChange={e => setNome(e.target.value)}
-                                className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#35b6cf]/20 focus:border-[#35b6cf] outline-none"
-                                placeholder="Seu nome"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">D. Nascimento <span className="text-red-500">*</span></label>
-                            <input
-                                type="date"
-                                value={dataNascimento}
-                                onChange={e => setDataNascimento(e.target.value)}
-                                className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#35b6cf]/20 focus:border-[#35b6cf] outline-none"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Empresa <span className="text-red-500">*</span></label>
-                            <SearchableSelect
-                                placeholder="Buscar..."
-                                options={companies.map((c: any) => ({ value: c.cliente_uuid, label: c.nome_fantasia || c.razao_social }))}
-                                value={empresaId}
-                                onChange={setEmpresaId}
-                                requireSearch={true}
-                                noResultsContent={
-                                    <div className="flex flex-col items-center justify-center py-4 px-2 text-center space-y-2">
-                                        <img src="/favicon.png" alt="Gama" className="w-8 h-8 opacity-80" />
-                                        <p className="text-xs text-slate-800 font-medium">Sua empresa não é cliente da Gama Center</p>
-                                    </div>
-                                }
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Unidade <span className="text-red-500">*</span></label>
-                            <SearchableSelect
-                                placeholder={empresaId ? "Selecione..." : "Escolha a empresa"}
-                                options={units.map((u: any) => ({ value: u.id, label: u.nome_unidade || u.nome }))}
-                                value={unidadeId}
-                                onChange={setUnidadeId}
-                                disabled={!empresaId}
-                            />
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Setor <span className="text-red-500">*</span></label>
-                            <SearchableSelect
-                                placeholder="Selecione..."
-                                options={sectores.map(s => ({ value: s.id, label: s.nome }))}
-                                value={setorId}
-                                onChange={setSetorId}
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Cargo <span className="text-red-500">*</span></label>
-                            <SearchableSelect
-                                placeholder="Selecione..."
-                                options={cargos.map(c => ({ value: c.id, label: c.nome }))}
-                                value={cargoId}
-                                onChange={setCargoId}
-                            />
-                        </div>
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Sexo <span className="text-red-500">*</span></label>
-                        <select
-                            value={sexo}
-                            onChange={e => setSexo(e.target.value)}
-                            className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#35b6cf]/20 focus:border-[#35b6cf] outline-none"
-                        >
-                            <option value="">Selecione...</option>
-                            <option value="Masculino">Masculino</option>
-                            <option value="Feminino">Feminino</option>
-                            <option value="Outro">Outro</option>
-                        </select>
-                    </div>
-
-                </div>
-
-                <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3">
-                    <button onClick={onClose} className="px-4 py-2 text-slate-600 hover:text-slate-800 font-medium">Cancelar</button>
-                    <button
-                        onClick={handleRegister}
-                        disabled={loading}
-                        className="bg-[#35b6cf] text-white px-6 py-2 rounded-lg font-medium hover:bg-[#2ca1b7] disabled:opacity-50 flex items-center gap-2"
-                    >
-                        {loading ? 'Salvando...' : 'Salvar e Continuar'}
-                        {!loading && <ChevronRight size={16} />}
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-};
