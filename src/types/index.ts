@@ -12,6 +12,7 @@ export interface Form {
     hse_id?: number;
     qtd_respostas?: number;
     colaboladores_inclusos?: string[];
+    respondentes?: string[];
     link?: string;
     questions?: FormQuestion[];
 }

@@ -52,6 +52,7 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
     const [participantsList, setParticipantsList] = useState<any[]>([]);
     const [pendingList, setPendingList] = useState<any[]>([]);
     const [modalLoading, setModalLoading] = useState(false);
+    const [dbStats, setDbStats] = useState({ participants: 0, pending: 0 });
 
 
 
@@ -389,13 +390,52 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
     const fetchParticipationDetails = async () => {
         setModalLoading(true);
         try {
-            // 1. Determine Scope & Fetch ALL Collaborators (Potential Participants)
-            const isCompanyLevel = !(form as any).slug;
+            // 1. Determine Scope & Fetch Stats from FORMS table
+            const isCompanyLevel = !(form as any).slug && (form as any).cliente_uuid;
+            let formQuery = supabase.from('forms').select('colaboladores_inclusos, respondentes');
+
+            if (isCompanyLevel) {
+                // Fetch units to filter forms
+                const { data: units } = await supabase
+                    .from('unidades')
+                    .select('id')
+                    .eq('empresa_mae', (form as any).cliente_uuid);
+                const unitIds = (units || []).map(u => u.id);
+
+                if (unitIds.length > 0) {
+                    formQuery = formQuery.in('unidade_id', unitIds);
+                } else {
+                    // No units, no forms
+                    setDbStats({ participants: 0, pending: 0 });
+                    return;
+                }
+            } else {
+                formQuery = formQuery.eq('id', form.id);
+            }
+
+            const { data: formsData } = await formQuery;
+
+            // Calculate Stats from Forms Table
+            const allParticipants = new Set<string>();
+            const allRespondents = new Set<string>();
+
+            (formsData || []).forEach((f: any) => {
+                (f.colaboladores_inclusos || []).forEach((id: string) => allParticipants.add(id));
+                (f.respondentes || []).forEach((id: string) => allRespondents.add(id));
+            });
+
+            setDbStats({
+                participants: allRespondents.size,
+                pending: Math.max(0, allParticipants.size - allRespondents.size)
+            });
+
+
+            // 2. Fetch Actual Collaborators for the List
             const sectorId = selectedSector ? sectors.find(s => s.nome === selectedSector)?.id : null;
 
             let colabQuery = supabase
                 .from('colaboradores')
-                .select('id, nome, email, cargo'); // Minimal fields used for display
+                .select('id, nome, email, sexo, data_nascimento, cargo_id, cargos(nome)');
 
             if (selectedUnit) {
                 colabQuery = colabQuery.eq('unidade_id', selectedUnit);
@@ -423,44 +463,28 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
                 }
             }
 
-            const { data: allCollaborators } = await colabQuery;
+            const { data: fetchedCollaborators } = await colabQuery;
 
-            // 2. Fetch Actual Responses and Determine Status
-            if (isCompanyLevel) {
-                const validColabIds = (allCollaborators || []).map(c => c.id);
-                if (validColabIds.length > 0) {
-                    // Fetch answers for ANY relevant collaborator
-                    const { data: answers } = await supabase
-                        .from('form_answers')
-                        .select('respondedor, created_at')
-                        .in('respondedor', validColabIds);
+            // 3. Filter & Categorize
+            let relevantCollaborators = fetchedCollaborators || [];
 
-                    const participatedIds = new Set((answers || []).map(a => a.respondedor));
-
-                    const participated = (allCollaborators || []).filter(c => participatedIds.has(c.id));
-                    const pending = (allCollaborators || []).filter(c => !participatedIds.has(c.id));
-
-                    setParticipantsList(participated);
-                    setPendingList(pending);
-                } else {
-                    setParticipantsList([]);
-                    setPendingList([]);
-                }
-            } else {
-                // Single Form View
-                const { data: answers } = await supabase
-                    .from('form_answers')
-                    .select('respondedor, created_at')
-                    .eq('form_id', form.id);
-
-                const participatedIds = new Set((answers || []).map(a => a.respondedor));
-                // Only filter out collaborators that are in scope (allCollaborators)
-                const participated = (allCollaborators || []).filter(c => participatedIds.has(c.id));
-                const pending = (allCollaborators || []).filter(c => !participatedIds.has(c.id));
-
-                setParticipantsList(participated);
-                setPendingList(pending);
+            // Filter by "Invited" list if we have one (colaboladores_inclusos)
+            if (allParticipants.size > 0) {
+                relevantCollaborators = relevantCollaborators.filter(c => allParticipants.has(c.id));
             }
+
+            // Split into Responded vs Pending
+            const participated = relevantCollaborators.filter(c => allRespondents.has(c.id));
+            const pending = relevantCollaborators.filter(c => !allRespondents.has(c.id));
+
+            setParticipantsList(participated);
+            setPendingList(pending);
+
+            // Update stats to match displayed lists (more accurate than raw DB stats if filters applied)
+            setDbStats({
+                participants: participated.length,
+                pending: pending.length
+            });
 
         } catch (error) {
             console.error('Error fetching participation details:', error);
@@ -958,11 +982,11 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
                         <div className="px-6 py-6 grid grid-cols-2 gap-4">
                             <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-4 flex flex-col">
                                 <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">Participantes</span>
-                                <span className="text-3xl font-bold text-emerald-700">{participantsList.length}</span>
+                                <span className="text-3xl font-bold text-emerald-700">{dbStats.participants}</span>
                             </div>
                             <div className="bg-orange-50/50 border border-orange-100 rounded-xl p-4 flex flex-col">
                                 <span className="text-xs font-bold text-orange-600 uppercase tracking-wider mb-1">Pendentes</span>
-                                <span className="text-3xl font-bold text-orange-700">{pendingList.length}</span>
+                                <span className="text-3xl font-bold text-orange-700">{dbStats.pending}</span>
                             </div>
                         </div>
 
@@ -1010,23 +1034,37 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
                                 </div>
                             ) : filteredParticipationList.length > 0 ? (
                                 <div className="divide-y divide-slate-100">
+                                    {/* Header Row for List */}
+                                    <div className="px-6 py-3 bg-slate-50 flex items-center text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                        <div className="flex-1">Colaborador</div>
+                                        <div className="w-40 hidden sm:block">Cargo</div>
+                                        <div className="w-20 hidden sm:block text-center">Sexo</div>
+                                        <div className="w-28 hidden sm:block text-right">Nascimento</div>
+                                    </div>
                                     {filteredParticipationList.map((p: any) => (
-                                        <div key={p.id} className="px-6 py-3 flex items-center justify-between hover:bg-white transition-colors">
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${participationTab === 'participants' ? 'bg-emerald-100 text-emerald-600' : 'bg-orange-100 text-orange-600'
-                                                    }`}>
-                                                    {p.nome ? p.nome.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : '??'}
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-bold text-slate-700">{p.nome || 'Sem Nome'}</p>
-                                                    {p.email && <p className="text-xs text-slate-400">{p.email}</p>}
-                                                </div>
+                                        <div key={p.id} className="px-6 py-3 flex items-center hover:bg-white transition-colors group text-sm">
+                                            {/* Nome */}
+                                            <div className="flex-1 font-bold text-slate-700 truncate pr-4">
+                                                {p.nome || 'Sem Nome'}
                                             </div>
-                                            {participationTab === 'participants' && (
-                                                <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
-                                                    Respondido
-                                                </span>
-                                            )}
+
+                                            {/* Cargo */}
+                                            <div className="w-40 hidden sm:block text-slate-500 truncate pr-2">
+                                                {/* Try both alias and direct relation, + specific check for cargo_id */}
+                                                {(p.cargos && p.cargos.nome) ? p.cargos.nome :
+                                                    (p.cargo && p.cargo.nome) ? p.cargo.nome :
+                                                        '-'}
+                                            </div>
+
+                                            {/* Sexo */}
+                                            <div className="w-20 hidden sm:block text-slate-500 text-center">
+                                                {p.sexo || '-'}
+                                            </div>
+
+                                            {/* Data Nascimento */}
+                                            <div className="w-28 hidden sm:block text-slate-500 text-right">
+                                                {p.data_nascimento ? new Date(p.data_nascimento).toLocaleDateString() : '-'}
+                                            </div>
                                         </div>
                                     ))}
                                 </div>

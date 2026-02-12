@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Building, Search, Filter, Trash2, Users, FileText, ChevronRight, Edit, X, LayoutGrid, List, LayoutTemplate, Settings, FilePlus, BarChart, Copy, ExternalLink, Check, HelpCircle } from 'lucide-react';
+import { Building, Search, Filter, Trash2, Users, FileText, ChevronRight, Edit, X, LayoutGrid, List, LayoutTemplate, Settings, FilePlus, Copy, ExternalLink, Check, HelpCircle } from 'lucide-react';
 import { CompanyRegistrationModal } from './CompanyRegistrationModal';
+import { CollaboratorManagerModal } from './CollaboratorManagerModal';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
 
@@ -47,6 +48,10 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
 
     // Info Modal State
     const [infoModalCompany, setInfoModalCompany] = useState<any>(null);
+
+    // Collaborator Management Modal
+    const [showCollaboratorManager, setShowCollaboratorManager] = useState(false);
+    const [managingCompany, setManagingCompany] = useState<any>(null);
 
     // Summary Modal State
     const [summaryModalOpen, setSummaryModalOpen] = useState(false);
@@ -99,35 +104,18 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
 
             const clientUuids = clientsData.map(c => c.cliente_uuid);
 
-            // 2. Lite Fetch: Units (Basic info only)
+            // 2. Lite Fetch: Units (Basic info + Collaborator Count)
             const { data: allUnits, error: unitsError } = await supabase
                 .from('unidades')
-                .select('id, nome, empresa_mae')
+                .select('id, nome, empresa_mae, colaboradores(count)')
                 .in('empresa_mae', clientUuids);
 
             if (unitsError) throw unitsError;
 
-            const unitIds = (allUnits || []).map(u => u.id);
 
-            // 3. Lite Fetch: Collaborator Counts ONLY
-            // We fetch just the IDs and unit_ids to count them in memory.
-            // This avoids fetching potentially thousands of full collaborator records with joins.
-            let unitCollaboratorCounts: Record<number, number> = {};
 
-            if (unitIds.length > 0) {
-                const { data: colabsRef, error: colabError } = await supabase
-                    .from('colaboradores')
-                    .select('unidade_id')
-                    .in('unidade_id', unitIds);
-
-                if (colabError) {
-                    console.error('Error fetching collaborator counts:', colabError);
-                } else if (colabsRef) {
-                    colabsRef.forEach((c: any) => {
-                        unitCollaboratorCounts[c.unidade_id] = (unitCollaboratorCounts[c.unidade_id] || 0) + 1;
-                    });
-                }
-            }
+            // 3. Lite Fetch: Collaborator Counts (Embedded in Step 2)
+            // Logic moved to Step 2 query.
 
             // 4. Construct Lite Objects
             const liteCompanies = clientsData.map(client => {
@@ -135,7 +123,12 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
 
                 let totalCollaborators = 0;
                 const mappedUnits = clientUnits.map(u => {
-                    const count = unitCollaboratorCounts[u.id] || 0;
+                    // Extract count from embedded relation
+                    // Supabase returns relations as arrays of objects or single objects depending on query
+                    // Query: colaboradores(count) -> returns [{ count: N }]
+                    const colabRelation = u.colaboradores as unknown as { count: number }[];
+                    const count = (colabRelation && colabRelation.length > 0) ? colabRelation[0].count : 0;
+
                     totalCollaborators += count;
                     return {
                         id: u.id,
@@ -817,15 +810,15 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                     <FilePlus size={18} />
                                 </button>
                                 <button
-                                    onClick={async (e) => {
+                                    onClick={(e) => {
                                         e.stopPropagation();
-                                        const full = await fetchCompanyDetails(company);
-                                        onAnalyzeForm(full);
+                                        setManagingCompany(company);
+                                        setShowCollaboratorManager(true);
                                     }}
                                     className="p-2 text-slate-400 hover:text-[#35b6cf] hover:bg-white rounded-lg transition-all"
-                                    title="Levantamentos"
+                                    title="Colaboradores"
                                 >
-                                    <BarChart size={18} />
+                                    <Users size={18} />
                                 </button>
                             </div>
                         </div>
@@ -883,14 +876,15 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                                     <Edit size={16} />
                                                 </button>
                                                 <button
-                                                    onClick={async () => {
-                                                        const full = await fetchCompanyDetails(company);
-                                                        onAnalyzeForm(full);
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setManagingCompany(company);
+                                                        setShowCollaboratorManager(true);
                                                     }}
                                                     className="p-1.5 text-slate-400 hover:text-[#35b6cf] transition-colors"
-                                                    title="Levantamentos"
+                                                    title="Colaboradores"
                                                 >
-                                                    <FileText size={16} />
+                                                    <Users size={16} />
                                                 </button>
                                                 <button
                                                     className="p-1.5 text-slate-300 hover:text-red-400 transition-colors"
@@ -1455,6 +1449,17 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                     </div>
                 </div>
             )}
+
+            {/* Collaborator Manager Modal */}
+            <CollaboratorManagerModal
+                isOpen={showCollaboratorManager}
+                onClose={() => {
+                    setShowCollaboratorManager(false);
+                    setManagingCompany(null);
+                    fetchCompanies(); // Refresh counts
+                }}
+                company={managingCompany}
+            />
         </div>
     );
 };
