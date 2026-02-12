@@ -609,8 +609,8 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                 const unitPayload = {
                     nome: unit.name,
                     empresa_mae: parentCompanyUuid,
-                    setores: unitSectorIds,
-                    cargos: unitRoleIds
+                    setores: unitSectorIds, // Array of sector IDs
+                    cargos: unitRoleIds     // Array of role IDs
                 };
 
                 // Detailed log for unit persistence verification

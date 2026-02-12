@@ -25,6 +25,7 @@ export const DashboardPage: React.FC = () => {
     const [selectedPackage, setSelectedPackage] = useState<{ id: string; name: string; tokens: number; price: string } | null>(null);
     const [companiesCount, setCompaniesCount] = useState<number>(0);
     const [totalResponses, setTotalResponses] = useState<number>(0);
+    const [tokenBalance, setTokenBalance] = useState<number>(0);
 
     const handlePlanSelect = (pkg: { id: string; name: string; tokens: number; price: string }) => {
         console.log('Pacote selecionado:', pkg);
@@ -38,6 +39,19 @@ export const DashboardPage: React.FC = () => {
             if (!user) return;
 
             try {
+                // 0. Fetch User Tokens
+                const { data: userData, error: userError } = await supabase
+                    .from('users')
+                    .select('tokens')
+                    .eq('user_id', user.id)
+                    .single();
+
+                if (userError) {
+                    console.error('Error fetching user tokens:', userError);
+                } else if (userData) {
+                    setTokenBalance(userData.tokens || 0);
+                }
+
                 // 1. Fetch Companies Count
                 const { data: companies, error: companiesError } = await supabase
                     .from('clientes')
@@ -163,46 +177,8 @@ export const DashboardPage: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <div className="flex items-center justify-between gap-4">
-                                    <div>
-                                        <h3 className="text-3xl font-black tracking-tight text-slate-800">850 <span className="text-lg font-medium text-slate-400">Tokens</span></h3>
-
-                                    </div>
-
-                                    {/* Consumption Circle */}
-                                    <div className="relative flex items-center justify-center group/progress shrink-0">
-                                        <svg className="w-12 h-12 transform -rotate-90">
-                                            {/* Background Circle */}
-                                            <circle
-                                                cx="24"
-                                                cy="24"
-                                                r="18"
-                                                stroke="currentColor"
-                                                strokeWidth="4"
-                                                fill="transparent"
-                                                className="text-slate-100"
-                                            />
-                                            {/* Progress Circle (85%) */}
-                                            <circle
-                                                cx="24"
-                                                cy="24"
-                                                r="18"
-                                                stroke="currentColor"
-                                                strokeWidth="4"
-                                                fill="transparent"
-                                                strokeDasharray={113}
-                                                strokeDashoffset={113 * (1 - 0.85)}
-                                                strokeLinecap="round"
-                                                className="text-orange-500 transition-all duration-1000 ease-out group-hover/progress:stroke-[5px]"
-                                            />
-                                        </svg>
-                                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                            <span className="text-[10px] font-bold text-orange-600">85%</span>
-                                        </div>
-
-                                        {/* Small notification badge for urgency */}
-                                        <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-orange-500 rounded-full border-2 border-white"></div>
-                                    </div>
+                                <div>
+                                    <h3 className="text-3xl font-black tracking-tight text-slate-800">{tokenBalance} <span className="text-lg font-medium text-slate-400">Tokens</span></h3>
                                 </div>
                             </div>
 
@@ -382,6 +358,6 @@ export const DashboardPage: React.FC = () => {
                 onClose={() => setIsPaymentModalOpen(false)}
                 selectedPackage={selectedPackage}
             />
-        </DashboardLayout>
+        </DashboardLayout >
     );
 };

@@ -80,7 +80,10 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                     ...u,
                     id: String(u.id), // Garante ID como string
                     // CORREÇÃO CRÍTICA: Carrega APENAS 'sectors'. Removemos 'setores' para evitar duplicação global.
-                    sectors: (u.sectors || []).map((s: any) => String(s).trim()).filter(Boolean)
+                    sectors: (u.sectors || []).map((s: any) => {
+                        if (typeof s === 'object' && s !== null && s.name) return String(s.name).trim();
+                        return String(s).trim();
+                    }).filter(Boolean)
                 }));
 
                 // 3. Lógica de Legado/Migração (Só roda se for uma empresa antiga de 1 unidade E ela estiver vazia)
