@@ -387,43 +387,63 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
     const fetchParticipationDetails = async () => {
         setModalLoading(true);
         try {
-            // 1. Determine Scope & Fetch Stats from FORMS table
+            // 1. Determine Scope
             const isCompanyLevel = !(form as any).slug && (form as any).cliente_uuid;
-            let formQuery = supabase.from('forms').select('colaboladores_inclusos, respondentes');
+            const targetClientUuid = (form as any).cliente_uuid;
 
+            // 1.1 Get Unit IDs
+            let unitIds: number[] = [];
             if (isCompanyLevel) {
-                // Fetch units to filter forms
                 const { data: units } = await supabase
                     .from('unidades')
                     .select('id')
-                    .eq('empresa_mae', (form as any).cliente_uuid);
-                const unitIds = (units || []).map(u => u.id);
+                    .eq('empresa_mae', targetClientUuid);
+                unitIds = (units || []).map(u => u.id);
+            } else if (selectedUnit) {
+                unitIds = [Number(selectedUnit)];
+            } else if (form.unidade_id) {
+                unitIds = [form.unidade_id];
+            }
 
-                if (unitIds.length > 0) {
-                    formQuery = formQuery.in('unidade_id', unitIds);
-                } else {
-                    // No units, no forms
-                    setDbStats({ participants: 0, pending: 0 });
-                    return;
-                }
+            if (unitIds.length === 0) {
+                setDbStats({ participants: 0, pending: 0 });
+                setParticipantsList([]);
+                setPendingList([]);
+                return;
+            }
+
+            // 2. Fetch Forms & Respondents
+            let formQuery = supabase.from('forms').select('id, colaboladores_inclusos');
+            if (isCompanyLevel) {
+                formQuery = formQuery.in('unidade_id', unitIds);
             } else {
                 formQuery = formQuery.eq('id', form.id);
             }
 
-            const { data: formsData } = await formQuery;
+            const { data: formsData, error: formsError } = await formQuery;
+            if (formsError) throw formsError;
 
-            // Calculate Stats from Forms Table
-            const allParticipants = new Set<string>();
-            const allRespondents = new Set<string>();
+            const currentFormIds = (formsData || []).map(f => f.id);
+
+            // Fetch actual respondents
+            const { data: answersData, error: answersError } = await supabase
+                .from('form_answers')
+                .select('respondedor')
+                .in('form_id', currentFormIds);
+
+            if (answersError) throw answersError;
+
+            const allInvitedIds = new Set<string>();
+            const allRespondentIds = new Set<string>();
 
             (formsData || []).forEach((f: any) => {
-                (f.colaboladores_inclusos || []).forEach((id: string) => allParticipants.add(id));
-                (f.respondentes || []).forEach((id: string) => allRespondents.add(id));
+                (f.colaboladores_inclusos || []).forEach((id: any) => {
+                    if (id) allInvitedIds.add(String(id));
+                });
             });
 
-            setDbStats({
-                participants: allRespondents.size,
-                pending: Math.max(0, allParticipants.size - allRespondents.size)
+            (answersData || []).forEach((a: any) => {
+                if (a.respondedor) allRespondentIds.add(String(a.respondedor));
             });
 
 
@@ -432,20 +452,8 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
 
             let colabQuery = supabase
                 .from('colaboradores')
-                .select('id, nome, email, sexo, data_nascimento, cargo_id, cargos(nome)');
-
-            if (selectedUnit) {
-                colabQuery = colabQuery.eq('unidade_id', selectedUnit);
-            } else if (isCompanyLevel) {
-                const { data: units } = await supabase
-                    .from('unidades')
-                    .select('id')
-                    .eq('empresa_mae', (form as any).cliente_uuid);
-                const unitIds = (units || []).map(u => u.id);
-                colabQuery = colabQuery.in('unidade_id', unitIds);
-            } else {
-                colabQuery = colabQuery.eq('unidade_id', form.unidade_id);
-            }
+                .select('id, nome, email, sexo, data_nascimento, cargo_id, cargos(nome)')
+                .in('unidade_id', unitIds);
 
             if (sectorId) {
                 const { data: roles } = await supabase
@@ -460,24 +468,24 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
                 }
             }
 
-            const { data: fetchedCollaborators } = await colabQuery;
+            const { data: fetchedCollaborators, error: colabError } = await colabQuery;
+            if (colabError) throw colabError;
 
-            // 3. Filter & Categorize
+            // 4. Filter & Categorize
             let relevantCollaborators = fetchedCollaborators || [];
 
-            // Filter by "Invited" list if we have one (colaboladores_inclusos)
-            if (allParticipants.size > 0) {
-                relevantCollaborators = relevantCollaborators.filter(c => allParticipants.has(c.id));
+            // If we have an explicit invite list, filter by it
+            if (allInvitedIds.size > 0) {
+                relevantCollaborators = relevantCollaborators.filter(c => allInvitedIds.has(String(c.id)));
             }
 
             // Split into Responded vs Pending
-            const participated = relevantCollaborators.filter(c => allRespondents.has(c.id));
-            const pending = relevantCollaborators.filter(c => !allRespondents.has(c.id));
+            const participated = relevantCollaborators.filter(c => allRespondentIds.has(String(c.id)));
+            const pending = relevantCollaborators.filter(c => !allRespondentIds.has(String(c.id)));
 
             setParticipantsList(participated);
             setPendingList(pending);
 
-            // Update stats to match displayed lists (more accurate than raw DB stats if filters applied)
             setDbStats({
                 participants: participated.length,
                 pending: pending.length
