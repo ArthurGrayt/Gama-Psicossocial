@@ -87,22 +87,10 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
     const fetchCompanies = async () => {
         setIsLoading(true);
         try {
-            // Optimized: Single Fetch with Deep Nesting
+            // OPTIMIZED: Use SQL View for direct counters
             const { data: clientsData, error: clientsError } = await supabase
-                .from('clientes')
-                .select(`
-                    id,
-                    cliente_uuid,
-                    nome_fantasia,
-                    razao_social,
-                    cnpj,
-                    unidades (
-                        id,
-                        nome,
-                        empresa_mae,
-                        colaboradores (count)
-                    )
-                `)
+                .from('vw_empresas_dashboard')
+                .select('*')
                 .eq('empresa_responsavel', user?.id)
                 .order('nome_fantasia');
 
@@ -114,44 +102,25 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                 return;
             }
 
-            // Construct Lite Objects directly from nested response
-            const liteCompanies = clientsData.map(client => {
-                const clientUnits = client.unidades || [];
+            // Simple mapping - no nested logic needed
+            const liteCompanies = clientsData.map(client => ({
+                id: client.id,
+                cliente_uuid: client.cliente_uuid,
+                name: client.nome_fantasia || client.razao_social || 'Sem Nome',
+                cnpj: client.cnpj,
+                total_collaborators: client.total_colaboradores || 0,
+                // View returns pre-calculated count. We keep units empty initially.
+                units: [],
+                roles: [],
+                cargos: [],
+                collaborators: [],
+                setores: [],
+                detailsLoaded: false,
+                // Helper for UI display
+                total_units: client.total_unidades || 0
+            }));
 
-                let totalCollaborators = 0;
-                const mappedUnits = clientUnits.map((u: any) => {
-                    // Extract count from embedded relation
-                    // Supabase returns relations as arrays of objects or single objects depending on query
-                    // Query: colaboradores(count) -> returns [{ count: N }]
-                    const colabRelation = u.colaboradores as unknown as { count: number }[];
-                    const count = (colabRelation && colabRelation.length > 0) ? colabRelation[0].count : 0;
-
-                    totalCollaborators += count;
-                    return {
-                        id: u.id,
-                        name: u.nome,
-                        sectors: [], // Unknown in lite mode
-                        sectorIds: [],
-                        roles: []
-                    };
-                });
-
-                return {
-                    id: client.id,
-                    cliente_uuid: client.cliente_uuid,
-                    name: client.nome_fantasia || client.razao_social,
-                    cnpj: client.cnpj,
-                    total_collaborators: totalCollaborators,
-                    units: mappedUnits,
-                    roles: [],
-                    cargos: [],
-                    collaborators: [],
-                    setores: [],
-                    detailsLoaded: false
-                };
-            });
-
-            console.log(`[LITE LOAD] Loaded ${liteCompanies.length} companies (Lite Mode).`);
+            console.log(`[VIEW LOAD] Loaded ${liteCompanies.length} companies from View.`);
             setCompanies(liteCompanies);
         } catch (error) {
             console.error('Error fetching companies:', error);
@@ -761,6 +730,17 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                         <Plus size={18} />
                         <span>Nova Empresa</span>
                     </button>
+
+                    <button
+                        onClick={() => {
+                            setManagingCompany(null); // Global mode
+                            setShowCollaboratorManager(true);
+                        }}
+                        className="flex items-center justify-center gap-2 px-6 bg-white text-[#35b6cf] border border-[#35b6cf] rounded-xl font-bold hover:bg-[#35b6cf]/5 transition-all shadow-sm shrink-0 md:w-48 h-11"
+                    >
+                        <Users size={18} />
+                        <span>Novo Colaborador</span>
+                    </button>
                 </div>
             </div>
 
@@ -817,7 +797,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                     </div>
                                     <div className="px-2.5 py-1 bg-slate-50 text-slate-500 rounded-lg text-xs font-bold border border-slate-100 flex items-center gap-2">
                                         {loadingDetailsFor === company.id && <div className="w-3 h-3 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />}
-                                        {company.units.length} {company.units.length === 1 ? 'Unidade' : 'Unidades'}
+                                        {(company.total_units !== undefined ? company.total_units : company.units?.length || 0)} {(company.total_units !== undefined ? company.total_units : company.units?.length) === 1 ? 'Unidade' : 'Unidades'}
                                     </div>
                                 </div>
 
@@ -901,7 +881,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                         </td>
                                         <td className="px-6 py-4 text-sm text-center">
                                             <span className="px-2.5 py-1 bg-slate-50 text-slate-600 rounded-lg text-xs font-bold border border-slate-100">
-                                                {company.units.length}
+                                                {(company.total_units !== undefined ? company.total_units : company.units?.length || 0)}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-center text-slate-600 font-medium">
@@ -1508,6 +1488,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                     fetchCompanies(); // Refresh counts
                 }}
                 company={managingCompany}
+                companies={companies} // Pass all companies for global selection
             />
         </div>
     );

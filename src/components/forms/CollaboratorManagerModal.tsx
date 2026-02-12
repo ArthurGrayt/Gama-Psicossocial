@@ -1,17 +1,20 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Search, Plus, Save, User, AlertCircle, FileSpreadsheet, Filter } from 'lucide-react';
+import { X, Search, Plus, Save, User, AlertCircle, FileSpreadsheet, Filter, Building } from 'lucide-react';
 import { supabase } from '../../services/supabase';
 import { ImportCollaboratorsModal } from './ImportCollaboratorsModal';
 
 interface CollaboratorManagerModalProps {
     isOpen: boolean;
     onClose: () => void;
-    company: any; // Client object
+    company?: any; // Now optional
+    companies?: any[]; // List of available companies for selection
 }
 
-export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> = ({ isOpen, onClose, company }) => {
-    const [loading, setLoading] = useState(true);
+export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> = ({ isOpen, onClose, company, companies = [] }) => {
+    const [loading, setLoading] = useState(false);
+    const [selectedCompany, setSelectedCompany] = useState<any>(null); // Local state for selected company
+
     const [collaborators, setCollaborators] = useState<any[]>([]);
     const [forms, setForms] = useState<any[]>([]);
     const [selectedFormId, setSelectedFormId] = useState<number | null>(null);
@@ -39,13 +42,32 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
         unidade_id: ''
     });
 
+    // Initialize or Reset
     useEffect(() => {
-        if (isOpen && company) {
-            fetchInitialData();
+        if (isOpen) {
+            if (company) {
+                // Pre-selected mode (Manage Mode)
+                setSelectedCompany(company);
+                setIsAdding(false);
+            } else {
+                // Global mode (Add Only Mode): Reset selection
+                setSelectedCompany(null);
+                setCollaborators([]);
+                setUnits([]);
+                setIsAdding(true); // Always adding in this mode
+            }
         }
     }, [isOpen, company]);
 
+    // Fetch Data when Company Changes
+    useEffect(() => {
+        if (isOpen && selectedCompany) {
+            fetchInitialData();
+        }
+    }, [selectedCompany]);
+
     const fetchInitialData = async () => {
+        if (!selectedCompany) return;
         setLoading(true);
         try {
             // 1. Fetch Units for this Company (Client)
@@ -53,19 +75,20 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
             const { data: unitsData } = await supabase
                 .from('unidades')
                 .select('id, nome, empresa_mae, setores, cargos')
-                .eq('empresa_mae', company.cliente_uuid);
+                .eq('empresa_mae', selectedCompany.cliente_uuid);
 
             const unitList = unitsData || [];
-            setUnits(unitList);
-            const unitIds = unitList.map(u => u.id);
-
-            if (unitIds.length === 0) {
+            if (unitList.length === 0) {
+                setUnits([]);
                 setCollaborators([]);
                 setForms([]);
                 setRefData({ sectors: [], roles: [] });
                 setLoading(false);
                 return;
             }
+
+            setUnits(unitList);
+            const unitIds = unitList.map(u => u.id);
 
             // 1.5 Fetch Reference Data (Sectors and Roles)
             const allSectorIds = Array.from(new Set((unitsData || []).flatMap(u => u.setores || [])));
@@ -325,61 +348,193 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                 {/* Header */}
                 <div className="flex items-center justify-between px-8 py-6 border-b border-slate-100">
                     <div>
-                        <h2 className="text-xl font-bold text-slate-800">Gerenciar Colaboradores</h2>
-                        <p className="text-sm text-slate-500">{company.name}</p>
+                        <h2 className="text-xl font-bold text-slate-800">
+                            {isAdding ? 'Cadastrar Novo Colaborador' : 'Gerenciar Colaboradores'}
+                        </h2>
+                        {company && <p className="text-sm text-slate-500">{selectedCompany?.name}</p>}
+                        {!company && isAdding && <p className="text-sm text-slate-500">Preencha os dados abaixo.</p>}
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
                         <X size={24} />
                     </button>
                 </div>
 
-                {/* Controls */}
-                <div className="px-8 py-6 bg-slate-50 border-b border-slate-100 space-y-4">
-                    {/* Add Button */}
+                {/* Content Area */}
+                <div className="flex-1 overflow-hidden flex flex-col">
                     {!isAdding ? (
-                        <div className="flex items-center justify-between">
-                            {/* Form Selection */}
-                            <div className="flex-1 max-w-sm mr-4">
-                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Formulário Ativo (Participantes)</label>
-                                {forms.length > 0 ? (
-                                    <select
-                                        value={selectedFormId || ''}
-                                        onChange={(e) => handleFormChange(Number(e.target.value))}
-                                        className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:border-[#35b6cf] outline-none shadow-sm"
+                        <>
+                            {/* Controls (Manage Mode) */}
+                            <div className="px-8 py-6 bg-slate-50 border-b border-slate-100 space-y-4">
+                                <div className="flex items-center justify-between">
+                                    {/* Form Selection */}
+                                    <div className="flex-1 max-w-sm mr-4">
+                                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Formulário Ativo (Participantes)</label>
+                                        {forms.length > 0 ? (
+                                            <select
+                                                value={selectedFormId || ''}
+                                                onChange={(e) => handleFormChange(Number(e.target.value))}
+                                                className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:border-[#35b6cf] outline-none shadow-sm"
+                                            >
+                                                {forms.map(f => (
+                                                    <option key={f.id} value={f.id}>{f.title}</option>
+                                                ))}
+                                            </select>
+                                        ) : (
+                                            <div className="text-sm text-orange-500 font-medium flex items-center gap-2 bg-orange-50 px-3 py-2 rounded-lg border border-orange-100">
+                                                <AlertCircle size={16} />
+                                                Nenhum formulário encontrado.
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <button
+                                        onClick={() => setIsAdding(true)}
+                                        disabled={!selectedCompany}
+                                        className={`flex items-center gap-2 text-white font-bold text-sm px-4 py-2.5 rounded-xl transition-all shadow-sm ${!selectedCompany ? 'bg-slate-300 cursor-not-allowed' : 'bg-[#35b6cf] hover:bg-[#2ca3bc]'}`}
                                     >
-                                        {forms.map(f => (
-                                            <option key={f.id} value={f.id}>{f.title}</option>
-                                        ))}
-                                    </select>
+                                        <Plus size={18} />
+                                        Novo Colaborador
+                                    </button>
+
+                                    <button
+                                        onClick={() => setIsImportModalOpen(true)}
+                                        disabled={!selectedCompany}
+                                        className={`flex items-center gap-2 border font-bold text-sm px-4 py-2.5 rounded-xl transition-all shadow-sm ${!selectedCompany ? 'bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed' : 'bg-white text-emerald-600 border-emerald-200 hover:bg-emerald-50'}`}
+                                    >
+                                        <FileSpreadsheet size={18} />
+                                        Importar Planilha
+                                    </button>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                    {/* Filters */}
+                                    <div className="relative w-36">
+                                        <Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                        <select
+                                            className="w-full pl-8 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf] appearance-none cursor-pointer"
+                                            value={filterSector}
+                                            onChange={(e) => setFilterSector(e.target.value)}
+                                        >
+                                            <option value="">Setores</option>
+                                            {refData.sectors.map(s => (
+                                                <option key={s.id} value={s.nome}>{s.nome}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="relative w-36">
+                                        <Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                        <select
+                                            className="w-full pl-8 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf] appearance-none cursor-pointer"
+                                            value={filterUnit}
+                                            onChange={(e) => setFilterUnit(e.target.value)}
+                                        >
+                                            <option value="">Unidades</option>
+                                            {units.map(u => (
+                                                <option key={u.id} value={u.id}>{u.nome}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="relative w-36">
+                                        <Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                        <select
+                                            className="w-full pl-8 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf] appearance-none cursor-pointer"
+                                            value={filterRole}
+                                            onChange={(e) => setFilterRole(e.target.value)}
+                                        >
+                                            <option value="">Cargos</option>
+                                            {refData.roles.map(r => (
+                                                <option key={r.id} value={r.nome}>{r.nome}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="relative flex-1 min-w-[300px]">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                        <input
+                                            type="text"
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                            placeholder="Buscar por nome ou email..."
+                                            className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf] shadow-sm"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* List Table */}
+                            <div className="flex-1 overflow-y-auto bg-slate-50/30">
+                                {loading ? (
+                                    <div className="flex justify-center p-12 text-slate-400 items-center gap-2">
+                                        <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
+                                        Carregando dados...
+                                    </div>
+                                ) : filteredCollaborators.length > 0 ? (
+                                    <table className="w-full text-left border-collapse">
+                                        <thead className="bg-slate-50 sticky top-0 z-10 shadow-sm">
+                                            <tr className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                                <th className="px-6 py-4 border-b border-slate-100">Colaborador</th>
+                                                <th className="px-6 py-4 border-b border-slate-100">Cargo</th>
+                                                <th className="px-6 py-4 border-b border-slate-100">Setor</th>
+                                                <th className="px-6 py-4 border-b border-slate-100">Sexo</th>
+                                                <th className="px-6 py-4 border-b border-slate-100">Unidade</th>
+                                                <th className="px-6 py-4 border-b border-slate-100 text-center w-32">Participante</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100 bg-white">
+                                            {filteredCollaborators.map(colab => {
+                                                const isIncluded = invitedIds.has(String(colab.id));
+                                                return (
+                                                    <tr key={colab.id} className="hover:bg-slate-50 transition-colors group">
+                                                        <td className="px-6 py-4">
+                                                            <p className="font-bold text-slate-700">{colab.nome}</p>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <span className="text-sm text-slate-600">{colab.cargo_nome || colab.cargo || '-'}</span>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <span className="text-sm text-slate-600">{colab.setor || '-'}</span>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <span className="text-sm text-slate-600">{colab.sexo || '-'}</span>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <span className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-md font-medium border border-slate-200">
+                                                                {units.find(u => u.id === colab.unidade_id)?.nome || colab.unidade_id}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-center">
+                                                            <button
+                                                                onClick={() => handleToggleParticipant(colab.id, isIncluded)}
+                                                                disabled={!selectedFormId}
+                                                                title={!selectedFormId ? "Selecione um formulário" : isIncluded ? "Remover participação" : "Incluir participação"}
+                                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#35b6cf] focus:ring-offset-2 ${!selectedFormId ? 'bg-slate-100 cursor-not-allowed opacity-50' :
+                                                                    isIncluded ? 'bg-emerald-500' : 'bg-slate-200'
+                                                                    }`}
+                                                            >
+                                                                <span
+                                                                    className={`${isIncluded ? 'translate-x-6' : 'translate-x-1'
+                                                                        } inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 shadow-sm`}
+                                                                />
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
                                 ) : (
-                                    <div className="text-sm text-orange-500 font-medium flex items-center gap-2 bg-orange-50 px-3 py-2 rounded-lg border border-orange-100">
-                                        <AlertCircle size={16} />
-                                        Nenhum formulário encontrado.
+                                    <div className="text-center p-12">
+                                        <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
+                                            <User size={32} />
+                                        </div>
+                                        <h3 className="text-slate-500 font-medium">Nenhum colaborador encontrado</h3>
+                                        <p className="text-sm text-slate-400 mt-2">Adicione novos colaboradores para começar.</p>
                                     </div>
                                 )}
                             </div>
-
-                            <button
-                                onClick={() => setIsAdding(true)}
-                                className="flex items-center gap-2 bg-[#35b6cf] text-white font-bold text-sm hover:bg-[#2ca3bc] px-4 py-2.5 rounded-xl transition-all shadow-sm"
-                            >
-                                <Plus size={18} />
-                                Novo Colaborador
-                            </button>
-
-                            <button
-                                onClick={() => setIsImportModalOpen(true)}
-                                className="flex items-center gap-2 bg-white text-emerald-600 border border-emerald-200 font-bold text-sm hover:bg-emerald-50 px-4 py-2.5 rounded-xl transition-all shadow-sm"
-                            >
-                                <FileSpreadsheet size={18} />
-                                Importar Planilha
-                            </button>
-                        </div>
+                        </>
                     ) : (
-                        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-lg animate-in slide-in-from-top-2 duration-200 relative">
-                            <button onClick={() => setIsAdding(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><X size={20} /></button>
-                            <h4 className="font-bold text-slate-800 mb-4 text-lg">Cadastrar Novo Colaborador</h4>
-
+                        /* Add Form */
+                        <div className="bg-white p-6 rounded-xl border-none shadow-none h-full overflow-y-auto">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                                 <div>
                                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Nome Completo *</label>
@@ -399,7 +554,6 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                                         placeholder="email@empresa.com"
                                     />
                                 </div>
-
                                 <div>
                                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1">CPF</label>
                                     <input
@@ -418,7 +572,6 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                                         placeholder="(00) 00000-0000"
                                     />
                                 </div>
-
                                 <div>
                                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Nascimento</label>
                                     <input
@@ -442,17 +595,55 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                                     </select>
                                 </div>
 
+                                {/* Company Selector Logic for Global Mode - Next to Setor */}
+                                {!company && (
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Empresa Responsável *</label>
+                                        <div className="relative">
+                                            <Building size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                            <select
+                                                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf]"
+                                                value={selectedCompany?.id || ''}
+                                                onChange={(e) => {
+                                                    const comp = companies.find(c => String(c.id) === e.target.value);
+                                                    setSelectedCompany(comp || null);
+                                                }}
+                                            >
+                                                <option value="">Selecione...</option>
+                                                {companies.map(c => (
+                                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div>
                                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Setor</label>
                                     <select
                                         className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf] bg-white"
                                         value={newColab.setor}
-                                        onChange={e => setNewColab({ ...newColab, setor: e.target.value, cargo: '' })} // Reset cargo on sector change
+                                        onChange={e => setNewColab({ ...newColab, setor: e.target.value, cargo: '' })}
                                         disabled={!newColab.unidade_id}
                                     >
                                         <option value="">{newColab.unidade_id ? "Selecione..." : "Selecione a Unidade"}</option>
                                         {availableSectors.map(s => (
                                             <option key={s.id} value={s.id}>{s.nome}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Unidade *</label>
+                                    <select
+                                        className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf] focus:ring-2 focus:ring-[#35b6cf]/20 transition-all bg-white"
+                                        value={newColab.unidade_id}
+                                        onChange={e => setNewColab({ ...newColab, unidade_id: e.target.value })}
+                                        disabled={!selectedCompany}
+                                    >
+                                        <option value="">{selectedCompany ? "Selecione a Unidade" : "Selecione a Empresa primeiro"}</option>
+                                        {units.map(u => (
+                                            <option key={u.id} value={u.id}>{u.nome}</option>
                                         ))}
                                     </select>
                                 </div>
@@ -473,20 +664,6 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                                 </div>
 
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Unidade *</label>
-                                    <select
-                                        className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf] focus:ring-2 focus:ring-[#35b6cf]/20 transition-all bg-white"
-                                        value={newColab.unidade_id}
-                                        onChange={e => setNewColab({ ...newColab, unidade_id: e.target.value })}
-                                    >
-                                        <option value="">Selecione...</option>
-                                        {units.map(u => (
-                                            <option key={u.id} value={u.id}>{u.nome}</option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div>
                                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Data Desligamento</label>
                                     <input
                                         type="date"
@@ -498,7 +675,13 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                             </div>
                             <div className="flex justify-end gap-3">
                                 <button
-                                    onClick={() => setIsAdding(false)}
+                                    onClick={() => {
+                                        if (company) {
+                                            setIsAdding(false);
+                                        } else {
+                                            onClose();
+                                        }
+                                    }}
                                     className="px-4 py-2 text-slate-500 hover:bg-slate-50 rounded-lg text-sm font-medium transition-colors"
                                 >
                                     Cancelar
@@ -511,136 +694,6 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                                     Salvar Cadastro
                                 </button>
                             </div>
-                        </div>
-                    )}
-
-                    <div className="flex items-center gap-2">
-                        {/* Sector Filter */}
-                        <div className="relative w-36">
-                            <Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                            <select
-                                className="w-full pl-8 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf] appearance-none cursor-pointer"
-                                value={filterSector}
-                                onChange={(e) => setFilterSector(e.target.value)}
-                            >
-                                <option value="">Setores</option>
-                                {refData.sectors.map(s => (
-                                    <option key={s.id} value={s.nome}>{s.nome}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* Unit Filter */}
-                        <div className="relative w-36">
-                            <Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                            <select
-                                className="w-full pl-8 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf] appearance-none cursor-pointer"
-                                value={filterUnit}
-                                onChange={(e) => setFilterUnit(e.target.value)}
-                            >
-                                <option value="">Unidades</option>
-                                {units.map(u => (
-                                    <option key={u.id} value={u.id}>{u.nome}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* Role Filter */}
-                        <div className="relative w-36">
-                            <Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                            <select
-                                className="w-full pl-8 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf] appearance-none cursor-pointer"
-                                value={filterRole}
-                                onChange={(e) => setFilterRole(e.target.value)}
-                            >
-                                <option value="">Cargos</option>
-                                {refData.roles.map(r => (
-                                    <option key={r.id} value={r.nome}>{r.nome}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div className="relative flex-1 min-w-[300px]">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                            <input
-                                type="text"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                placeholder="Buscar por nome ou email..."
-                                className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf] shadow-sm"
-                            />
-                        </div>
-                    </div>
-                </div>
-
-                {/* List */}
-                <div className="flex-1 overflow-y-auto bg-slate-50/30">
-                    {loading ? (
-                        <div className="flex justify-center p-12 text-slate-400 items-center gap-2">
-                            <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
-                            Carregando dados...
-                        </div>
-                    ) : filteredCollaborators.length > 0 ? (
-                        <table className="w-full text-left border-collapse">
-                            <thead className="bg-slate-50 sticky top-0 z-10 shadow-sm">
-                                <tr className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                                    <th className="px-6 py-4 border-b border-slate-100">Colaborador</th>
-                                    <th className="px-6 py-4 border-b border-slate-100">Cargo</th>
-                                    <th className="px-6 py-4 border-b border-slate-100">Setor</th>
-                                    <th className="px-6 py-4 border-b border-slate-100">Sexo</th>
-                                    <th className="px-6 py-4 border-b border-slate-100">Unidade</th>
-                                    <th className="px-6 py-4 border-b border-slate-100 text-center w-32">Participante</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100 bg-white">
-                                {filteredCollaborators.map(colab => {
-                                    const isIncluded = invitedIds.has(String(colab.id));
-                                    return (
-                                        <tr key={colab.id} className="hover:bg-slate-50 transition-colors group">
-                                            <td className="px-6 py-4">
-                                                <p className="font-bold text-slate-700">{colab.nome}</p>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className="text-sm text-slate-600">{colab.cargo_nome || colab.cargo || '-'}</span>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className="text-sm text-slate-600">{colab.setor || '-'}</span>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className="text-sm text-slate-600">{colab.sexo || '-'}</span>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-md font-medium border border-slate-200">
-                                                    {units.find(u => u.id === colab.unidade_id)?.nome || colab.unidade_id}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                <button
-                                                    onClick={() => handleToggleParticipant(colab.id, isIncluded)}
-                                                    disabled={!selectedFormId}
-                                                    title={!selectedFormId ? "Selecione um formulário" : isIncluded ? "Remover participação" : "Incluir participação"}
-                                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#35b6cf] focus:ring-offset-2 ${!selectedFormId ? 'bg-slate-100 cursor-not-allowed opacity-50' :
-                                                        isIncluded ? 'bg-emerald-500' : 'bg-slate-200'
-                                                        }`}
-                                                >
-                                                    <span
-                                                        className={`${isIncluded ? 'translate-x-6' : 'translate-x-1'
-                                                            } inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 shadow-sm`}
-                                                    />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    ) : (
-                        <div className="text-center p-12">
-                            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
-                                <User size={32} />
-                            </div>
-                            <h3 className="text-slate-500 font-medium">Nenhum colaborador encontrado</h3>
-                            <p className="text-sm text-slate-400 mt-2">Adicione novos colaboradores para começar.</p>
                         </div>
                     )}
                 </div>
