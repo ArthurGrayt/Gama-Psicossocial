@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../services/supabase';
-import { X, FileText, Plus, Building, Users, Calendar, BarChart2, Copy, ExternalLink } from 'lucide-react';
+import { X, FileText, Plus, Building, Users, Calendar, BarChart2, Copy, ExternalLink, Pencil, Trash2, Check, MoreVertical } from 'lucide-react';
 
 interface Company {
     id: number;
@@ -43,6 +43,12 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
     const [forms, setForms] = useState<Form[]>([]);
     const [loading, setLoading] = useState(false);
 
+    // Actions State
+    const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
+    const [editingForm, setEditingForm] = useState<Form | null>(null);
+    const [editFormTitle, setEditFormTitle] = useState('');
+    const [editFormDesc, setEditFormDesc] = useState('');
+
     useEffect(() => {
         const fetchForms = async () => {
             if (!company || !isOpen) return;
@@ -80,11 +86,68 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
         fetchForms();
     }, [company, isOpen]);
 
+    // Close dropdown on outside click
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (openDropdownId && !(event.target as Element).closest('.dropdown-tork')) {
+                setOpenDropdownId(null);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [openDropdownId]);
+
+
+    const handleDeleteForm = async (id: number) => {
+        if (!window.confirm('Tem certeza que deseja excluir este formulário? Esta ação não pode ser desfeita.')) return;
+
+        try {
+            const { error } = await supabase.from('forms').delete().eq('id', id);
+            if (error) throw error;
+
+            setForms(prev => prev.filter(f => f.id !== id));
+            setOpenDropdownId(null);
+        } catch (err) {
+            console.error('Error deleting form:', err);
+            alert('Erro ao excluir formulário.');
+        }
+    };
+
+    const handleOpenEdit = (form: Form) => {
+        setEditingForm(form);
+        setEditFormTitle(form.title);
+        setEditFormDesc(form.description || '');
+        setOpenDropdownId(null);
+    };
+
+    const handleSaveEdit = async () => {
+        if (!editingForm) return;
+
+        try {
+            const { error } = await supabase
+                .from('forms')
+                .update({
+                    title: editFormTitle,
+                    description: editFormDesc
+                })
+                .eq('id', editingForm.id);
+
+            if (error) throw error;
+
+            setForms(prev => prev.map(f => f.id === editingForm.id ? { ...f, title: editFormTitle, description: editFormDesc } : f));
+            setEditingForm(null);
+        } catch (err) {
+            console.error('Error updating form:', err);
+            alert('Erro ao atualizar formulário.');
+        }
+    };
+
     if (!isOpen || !company) return null;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-            <div className="bg-white w-full max-w-4xl rounded-3xl shadow-2xl border border-slate-100 overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]">
+            {/* Main Modal */}
+            <div className={`bg-white w-full max-w-4xl rounded-3xl shadow-2xl border border-slate-100 overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh] ${editingForm ? 'brightness-50 pointer-events-none' : ''}`}>
 
                 {/* Header */}
                 <div className="p-6 border-b border-slate-50 flex items-center justify-between bg-white shrink-0">
@@ -160,6 +223,37 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
                                             >
                                                 <Copy size={18} />
                                             </button>
+
+                                            {/* Edit/Delete Dropdown Trigger */}
+                                            <div className="relative dropdown-tork">
+                                                <button
+                                                    onClick={() => setOpenDropdownId(openDropdownId === form.id ? null : form.id)}
+                                                    className={`p-1 transition-colors ${openDropdownId === form.id ? 'text-[#35b6cf] bg-slate-50 rounded' : 'text-slate-300 hover:text-[#35b6cf]'}`}
+                                                    title="Opções"
+                                                >
+                                                    <Pencil size={18} />
+                                                </button>
+
+                                                {/* Dropdown Menu */}
+                                                {openDropdownId === form.id && (
+                                                    <div className="absolute right-0 top-full mt-1 w-32 bg-white rounded-xl shadow-xl border border-slate-100 py-1 z-10 animate-in fade-in zoom-in-95 duration-200">
+                                                        <button
+                                                            onClick={() => handleOpenEdit(form)}
+                                                            className="w-full text-left px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-[#35b6cf] flex items-center gap-2"
+                                                        >
+                                                            <Pencil size={14} />
+                                                            Editar
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteForm(form.id)}
+                                                            className="w-full text-left px-3 py-2 text-xs font-bold text-rose-500 hover:bg-rose-50 flex items-center gap-2"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                            Excluir
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
 
@@ -207,6 +301,57 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
                     </button>
                 </div>
             </div>
+
+            {/* Edit Modal (Nested Overlay) */}
+            {editingForm && (
+                <div className="absolute inset-0 z-[60] flex items-center justify-center p-4">
+                    <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 p-6 animate-in zoom-in-95 duration-200">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-bold text-slate-800">Editar Formulário</h3>
+                            <button onClick={() => setEditingForm(null)} className="p-1 hover:bg-slate-50 rounded-full text-slate-400">
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Título</label>
+                                <input
+                                    type="text"
+                                    value={editFormTitle}
+                                    onChange={e => setEditFormTitle(e.target.value)}
+                                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#35b6cf] text-sm font-medium"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Descrição</label>
+                                <textarea
+                                    value={editFormDesc}
+                                    onChange={e => setEditFormDesc(e.target.value)}
+                                    rows={3}
+                                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#35b6cf] text-sm font-medium resize-none"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end gap-3 mt-6">
+                            <button
+                                onClick={() => setEditingForm(null)}
+                                className="px-4 py-2 text-slate-500 text-xs font-bold hover:bg-slate-50 rounded-lg transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleSaveEdit}
+                                className="px-4 py-2 bg-[#35b6cf] text-white text-xs font-bold rounded-lg hover:bg-[#2ca3bc] transition-colors shadow-lg shadow-[#35b6cf]/20 flex items-center gap-2"
+                            >
+                                <Check size={14} />
+                                Salvar Alterações
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
