@@ -6,14 +6,13 @@ export interface Form {
     created_at?: string;
     title: string;
     description: string;
-    slug: string;
-    active: boolean;
     // Relationships/FKs
-    empresa?: number | string; // Sometimes inferred as ID or string in legacy code, usually int
     unidade_id?: number;
-    setor?: number | string; // Assuming sector ID or name
+    setor_id?: number;
     hse_id?: number;
     qtd_respostas?: number;
+    colaboladores_inclusos?: string[];
+    link?: string;
     questions?: FormQuestion[];
 }
 

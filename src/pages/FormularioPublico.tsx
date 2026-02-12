@@ -4,6 +4,7 @@ import { useParams } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 import type { Form, FormQuestion, Collaborator } from '../types';
 import { CheckCircle, Check, AlertCircle, ChevronRight, User, Hash, ChevronDown, Search } from 'lucide-react';
+import logo from '../assets/logo.png';
 
 const LoadingScreen = () => (
     <div className="fixed inset-0 bg-gray-50 z-50 flex items-center justify-center font-sans antialiased">
@@ -35,7 +36,7 @@ const LoadingScreen = () => (
                 <span className="gpu-text">Uma</span>
 
                 <span className="flex items-baseline gpu-text">
-                    <img src="/corped.png" alt="" className="h-[1.25em] w-auto relative top-[0.25em] -mr-1" />
+                    <img src={logo} alt="Logo" className="h-[1.25em] w-auto relative top-[0.25em] -mr-1" />
                     <span>ama</span>
                 </span>
             </div>
@@ -260,11 +261,14 @@ export const FormularioPublico: React.FC = () => {
         const minWaitPromise = new Promise(resolve => setTimeout(resolve, 2000));
 
         // 1. Get Form
+        const currentLink = `${window.location.origin}${window.location.pathname}`;
+        console.log('Fetching form with link:', currentLink);
+
+
         const { data: formData, error: formError } = await supabase
             .from('forms')
             .select('*')
-            .eq('slug', slug)
-            .eq('slug', slug)
+            .eq('link', currentLink)
             .single();
 
         if (formError || !formData) {
@@ -569,8 +573,8 @@ export const FormularioPublico: React.FC = () => {
                         </div>
                     </div>
                     <div className="flex items-center justify-center gap-2 mt-4 opacity-70">
-                        <img src="/favicon.png" alt="Logo" className="h-5 w-auto" />
-                        <span className="text-xs text-slate-500 font-medium">Gama Center - 2025</span>
+                        <img src={logo} alt="Logo" className="h-5 w-auto" />
+                        <span className="text-xs text-slate-500 font-medium">Gama Center - 2026</span>
                     </div>
                 </div>
             )}

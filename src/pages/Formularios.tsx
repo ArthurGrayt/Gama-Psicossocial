@@ -35,11 +35,10 @@ export const Formularios: React.FC = () => {
                 .insert([{
                     title: data.title,
                     description: data.description,
-                    slug: finalSlug,
-                    empresa: data.company_id,
                     unidade_id: data.unit_id,
-                    setor: data.sector,
-                    active: true,
+                    setor_id: data.sector_id,
+                    colaboladores_inclusos: data.colaboladores_inclusos || [],
+                    link: data.link || `${window.location.origin}/form/${finalSlug}`,
                     created_at: new Date().toISOString()
                 }]);
 

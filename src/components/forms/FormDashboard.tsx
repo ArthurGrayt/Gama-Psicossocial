@@ -239,12 +239,15 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                 const roleSectorIdsFromUnit = associatedRoles.map(r => r.setor_id).filter(Boolean);
 
                 const allUnitSectorIds = Array.from(new Set([...explicitSectorIds, ...roleSectorIdsFromUnit])) as number[];
-                const uSectorNames = allUnitSectorIds.map(id => sectorMap.get(id)).filter(Boolean);
+                const uSectorObjs = allUnitSectorIds.map(id => ({
+                    id,
+                    name: sectorMap.get(id) || 'Desconhecido'
+                })).filter(s => s.name !== 'Desconhecido');
 
                 return {
                     id: u.id,
                     name: u.nome_unidade || u.nome,
-                    sectors: uSectorNames,
+                    sectors: uSectorObjs, // Now objects {id, name}
                     sectorIds: allUnitSectorIds,
                     roles: associatedRoles.map(r => ({
                         ...r,
@@ -264,8 +267,8 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
 
             // Process Roles & Sectors List
             const allCompanySectorNames = new Set<string>();
-            mappedUnits.forEach(u => u.sectors.forEach((s: string | undefined) => {
-                if (s) allCompanySectorNames.add(s);
+            mappedUnits.forEach(u => u.sectors.forEach((s: any) => {
+                if (s.name) allCompanySectorNames.add(s.name);
             }));
 
             const allCompanyRoles = mappedUnits.flatMap(u => u.roles).map(r => ({
@@ -317,12 +320,13 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
         }
     };
 
-    const handleFinishSelection = (company: any, unit: any, sector: string) => {
+    const handleFinishSelection = (company: any, unit: any, sector: string, sectorId: number | null) => {
         // Instead of directly creating, show the summary modal
         setSummaryData({
             company: company,
             unit: unit,
             sector: sector,
+            sectorId: sectorId,
             kpiCollaborators: unit.collaborators, // Logic: Use unit collaborators count
             kpiQuestions: 15, // Mock
             formTitle: 'Pesquisa de Clima Organizacional 2024',
@@ -336,7 +340,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
 
         // Default all collaborators to selected
         const allIndices = new Set<number>();
-        company.roles.forEach((_: any, idx: number) => allIndices.add(idx));
+        (company.collaborators || []).forEach((_: any, idx: number) => allIndices.add(idx));
         setSelectedCollaborators(allIndices);
     };
 
@@ -357,6 +361,13 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
         // Update summary data with REAL link to show in success modal
         setSummaryData((prev: any) => ({ ...prev, publicLink }));
 
+        // Collect UUIDs of selected collaborators
+        const collaborators = summaryData.company.collaborators || [];
+        const selectedUuids = collaborators
+            .filter((_: any, idx: number) => selectedCollaborators.has(idx))
+            .map((c: any) => c.id)
+            .filter(Boolean);
+
         // Pass data to parent to handle creation (bypassing the wizard)
         onCreateForm({
             company_id: summaryData.company.id,
@@ -364,7 +375,10 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
             unit_id: summaryData.unit.id,
             unit_name: summaryData.unit.name,
             sector: summaryData.sector,
+            sector_id: summaryData.sectorId,
             selected_collaborators_count: selectedCollaborators.size,
+            colaboladores_inclusos: selectedUuids,
+            link: publicLink,
             title: summaryData.formTitle,
             description: summaryData.formDesc,
             slug: slug
@@ -963,7 +977,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
 
                                                             {/* General Option */}
                                                             <button
-                                                                onClick={() => handleFinishSelection(selectingFor, unit, 'Geral')}
+                                                                onClick={() => handleFinishSelection(selectingFor, unit, 'Geral', null)}
                                                                 className="w-full flex items-center justify-between p-3 rounded-xl bg-white/60 hover:bg-white border border-transparent hover:border-[#35b6cf]/30 transition-all text-left group/sector"
                                                             >
                                                                 <span className="text-sm font-medium text-slate-600 group-hover/sector:text-[#35b6cf]">Geral / Todos os setores</span>
@@ -973,13 +987,13 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                                             </button>
 
                                                             {/* Actual Sectors */}
-                                                            {unit.sectors.map((sector: string) => (
+                                                            {unit.sectors.map((sector: any) => (
                                                                 <button
-                                                                    key={sector}
-                                                                    onClick={() => handleFinishSelection(selectingFor, unit, sector)}
+                                                                    key={sector.id}
+                                                                    onClick={() => handleFinishSelection(selectingFor, unit, sector.name, sector.id)}
                                                                     className="w-full flex items-center justify-between p-3 rounded-xl bg-white/60 hover:bg-white border border-transparent hover:border-[#35b6cf]/30 transition-all text-left group/sector"
                                                                 >
-                                                                    <span className="text-sm font-bold text-slate-700 group-hover/sector:text-[#35b6cf]">{sector}</span>
+                                                                    <span className="text-sm font-bold text-slate-700 group-hover/sector:text-[#35b6cf]">{sector.name}</span>
                                                                     <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 group-hover/sector:bg-[#35b6cf] group-hover/sector:text-white transition-all">
                                                                         <ChevronRight size={14} />
                                                                     </div>
@@ -1207,7 +1221,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                                 <tbody className="divide-y divide-slate-100">
                                                     {summaryData.company.roles.map((role: string, idx: number) => {
                                                         const name = `Colaborador ${idx + 1}`;
-                                                        const sector = summaryData.company.units[0]?.sectors[idx % summaryData.company.units[0]?.sectors.length] || 'Geral';
+                                                        const sector = summaryData.company.units[0]?.sectors[idx % summaryData.company.units[0]?.sectors.length]?.name || 'Geral';
                                                         const email = `colaborador${idx + 1}@${summaryData.company.name.toLowerCase().replace(/\s/g, '')}.com.br`;
                                                         const sexo = idx % 2 === 0 ? 'M' : 'F';
 
