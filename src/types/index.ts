@@ -1,5 +1,5 @@
 
-export type QuestionType = 'short_text' | 'long_text' | 'choice' | 'select' | 'rating' | 'section_break';
+export type QuestionType = 'short_text' | 'long_text' | 'choice' | 'select' | 'rating' | 'scale' | 'section_break';
 
 export interface Form {
     id: number;

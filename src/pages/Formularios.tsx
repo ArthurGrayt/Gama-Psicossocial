@@ -18,73 +18,85 @@ export const Formularios: React.FC = () => {
 
     // Handlers
     const handleCreateForm = async (data: any) => {
+        console.log('[CREATE FORM - DEBUG] Starting handleCreateForm with payload:', data);
         try {
-            // Use provided slug or generate logical one
-            let finalSlug = data.slug;
-
-            if (!finalSlug) {
-                const slugBase = (data.title || 'novo-formulario')
-                    .toLowerCase()
-                    .normalize('NFD')
-                    .replace(/[\u0300-\u036f]/g, '')
-                    .replace(/[^a-z0-9]+/g, '-')
-                    .replace(/(^-|-$)+/g, '');
-                finalSlug = `${slugBase}-${Date.now()}`;
-            }
+            // Generate a unique identifier for the link if not provided
+            const uniqueId = Date.now();
+            const generatedLink = `${window.location.origin}/form/${uniqueId}`;
 
             // TOKEN DEDUCTION LOGIC
             const cost = data.selected_collaborators_count || 0;
+            console.log(`[CREATE FORM - DEBUG] Cost: ${cost}, User ID: ${user?.id}`);
+
             if (user && cost > 0) {
                 // Check balance
+                console.log('[CREATE FORM - DEBUG] Fetching user token balance...');
                 const { data: userData, error: userError } = await supabase
                     .from('users')
-                    .select('total_tokens')
-                    .eq('id', user.id)
+                    .select('tokens')
+                    .eq('user_id', user.id)
                     .single();
 
                 if (userError || !userData) {
-                    alert('Erro ao verificar saldo de tokens.');
+                    console.error('[CREATE FORM - DEBUG] Error fetching user data:', userError);
+                    alert(`Erro ao verificar saldo de tokens: ${userError?.message || 'Usuário não encontrado'}`);
                     return;
                 }
 
-                if ((userData.total_tokens || 0) < cost) {
-                    alert(`Saldo insuficiente. Você precisa de ${cost} tokens para ${cost} colaboradores, mas tem apenas ${userData.total_tokens || 0}.`);
+                console.log(`[CREATE FORM - DEBUG] User has ${userData.tokens} tokens.`);
+                if ((userData.tokens || 0) < cost) {
+                    alert(`Saldo insuficiente. Você precisa de ${cost} tokens para ${cost} colaboradores, mas tem apenas ${userData.tokens || 0}.`);
                     return;
                 }
 
                 // Deduct
+                console.log(`[CREATE FORM - DEBUG] Deducting ${cost} tokens from user...`);
                 const { error: updateError } = await supabase
                     .from('users')
-                    .update({ total_tokens: (userData.total_tokens || 0) - cost })
-                    .eq('id', user.id);
+                    .update({ tokens: (userData.tokens || 0) - cost })
+                    .eq('user_id', user.id);
 
                 if (updateError) {
-                    alert('Erro ao processar débito de tokens.');
+                    console.error('[CREATE FORM - DEBUG] Token deduction error:', updateError);
+                    alert(`Erro ao processar débito de tokens: ${updateError.message}`);
                     return;
                 }
+                console.log('[CREATE FORM - DEBUG] Tokens deducted successfully.');
             }
 
-            const { error } = await supabase
+            const insertPayload = {
+                title: data.title,
+                description: data.description,
+                unidade_id: data.unit_id,
+                setor_id: data.sector_id,
+                colaboladores_inclusos: data.colaboladores_inclusos || [],
+                total_colabora: (data.colaboladores_inclusos || []).length,
+                respondentes: 0,
+                link: data.link || generatedLink,
+                created_at: new Date().toISOString()
+            };
+
+            console.log('[CREATE FORM - DEBUG] Inserting into "forms" table...', insertPayload);
+
+            const { data: newForm, error: insertError } = await supabase
                 .from('forms')
-                .insert([{
-                    title: data.title,
-                    description: data.description,
-                    unidade_id: data.unit_id,
-                    setor_id: data.sector_id,
-                    colaboladores_inclusos: data.colaboladores_inclusos || [],
-                    link: data.link || `${window.location.origin}/form/${finalSlug}`,
-                    created_at: new Date().toISOString()
-                }]);
+                .insert([insertPayload])
+                .select();
 
-            if (error) throw error;
+            if (insertError) {
+                console.error('[CREATE FORM - DEBUG] Supabase INSERT Error:', insertError);
+                alert(`Erro do Banco de Dados (tabela forms): ${insertError.message} (Código: ${insertError.code})`);
+                throw insertError;
+            }
 
-            // Just return to dashboard (which triggers refresh if we used a ref or context, but here maybe just simple reload or state reset)
+            console.log('[CREATE FORM - DEBUG] Form created successfully:', newForm);
+            alert('Formulário criado com sucesso!');
+
+            // Just return to dashboard
             setView('dashboard');
-
-            // Optionally could force refresh FormDashboard list if we had a mechanism, 
-            // but for now user will see it next reload or we could key the component.
-        } catch (error) {
-            console.error('Error creating form:', error);
+        } catch (error: any) {
+            console.error('[CREATE FORM - DEBUG] Fatal error in handleCreateForm:', error);
+            alert(`Ocorreu um erro fatal ao criar o formulário: ${error.message || 'Erro desconhecido'}`);
         }
     };
 

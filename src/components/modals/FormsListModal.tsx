@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../services/supabase';
-import { X, FileText, Plus, Building, Users, Calendar, BarChart2, Copy, ExternalLink, Pencil, Trash2, Check, MoreVertical } from 'lucide-react';
+import { X, FileText, Plus, Building, Users, Calendar, BarChart2, Copy, ExternalLink, Pencil, Trash2, Check } from 'lucide-react';
 
 interface Company {
     id: number;
@@ -20,6 +20,7 @@ interface Form {
     created_at: string;
     qtd_respostas: number;
     slug?: string;
+    link?: string;
     unidades?: {
         nome: string;
         setores?: number[];
@@ -204,7 +205,9 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
                                         <div className="flex items-center gap-1">
                                             <button
                                                 onClick={() => {
-                                                    const url = `${window.location.origin}/form/${form.slug}`;
+                                                    // Extract slug from stored link or use slug property if available
+                                                    const slugInfo = form.slug || form.link?.split('/').filter(Boolean).pop() || '';
+                                                    const url = `${window.location.origin}/form/${slugInfo}`;
                                                     window.open(url, '_blank');
                                                 }}
                                                 className="text-slate-300 hover:text-[#35b6cf] transition-colors p-1"
@@ -214,7 +217,8 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
                                             </button>
                                             <button
                                                 onClick={() => {
-                                                    const url = `${window.location.origin}/form/${form.slug}`;
+                                                    const slugInfo = form.slug || form.link?.split('/').filter(Boolean).pop() || '';
+                                                    const url = `${window.location.origin}/form/${slugInfo}`;
                                                     navigator.clipboard.writeText(url);
                                                     // Could add a toast here
                                                 }}

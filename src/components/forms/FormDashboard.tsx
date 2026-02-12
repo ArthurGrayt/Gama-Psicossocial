@@ -336,39 +336,45 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
 
     const questionsDimensions = Array.from(new Set(MOCK_QUESTIONS.map(q => q.dimension)));
 
-    const confirmCreateForm = () => {
+    const confirmCreateForm = async () => {
         if (!summaryData) return;
 
-        const slug = generateSlug(summaryData.formTitle);
-        const publicLink = `${window.location.origin}/form/${slug}`;
+        try {
+            const uniqueId = Date.now();
+            const publicLink = `${window.location.origin}/form/${uniqueId}`;
 
-        // Update summary data with REAL link to show in success modal
-        setSummaryData((prev: any) => ({ ...prev, publicLink }));
+            // Update summary data with REAL link to show in success modal
+            setSummaryData((prev: any) => ({ ...prev, publicLink }));
 
-        // Collect UUIDs of selected collaborators
-        const collaborators = summaryData.company.collaborators || [];
-        const selectedUuids = collaborators
-            .filter((_: any, idx: number) => selectedCollaborators.has(idx))
-            .map((c: any) => c.id)
-            .filter(Boolean);
+            // Collect UUIDs of selected collaborators
+            const collaborators = summaryData.company.collaborators || [];
+            const selectedUuids = collaborators
+                .filter((_: any, idx: number) => selectedCollaborators.has(idx))
+                .map((c: any) => c.id)
+                .filter(Boolean);
 
-        // Pass data to parent to handle creation (bypassing the wizard)
-        onCreateForm({
-            company_id: summaryData.company.id,
-            company_name: summaryData.company.name,
-            unit_id: summaryData.unit.id,
-            unit_name: summaryData.unit.name,
-            sector: summaryData.sector,
-            sector_id: summaryData.sectorId,
-            selected_collaborators_count: selectedCollaborators.size,
-            colaboladores_inclusos: selectedUuids,
-            link: publicLink,
-            title: summaryData.formTitle,
-            description: summaryData.formDesc,
-            slug: slug
-        });
-        setSummaryModalOpen(false);
-        setSuccessModalOpen(true);
+            // Pass data to parent to handle creation (bypassing the wizard)
+            await onCreateForm({
+                company_id: summaryData.company.id,
+                company_name: summaryData.company.name,
+                unit_id: summaryData.unit.id,
+                unit_name: summaryData.unit.name,
+                sector: summaryData.sector,
+                sector_id: summaryData.sectorId,
+                selected_collaborators_count: selectedCollaborators.size,
+                colaboladores_inclusos: selectedUuids,
+                link: publicLink,
+                title: summaryData.formTitle,
+                description: summaryData.formDesc
+            });
+
+            setSummaryModalOpen(false);
+            setSuccessModalOpen(true);
+
+        } catch (error) {
+            console.error('Erro ao criar formulário:', error);
+            alert('Erro ao criar formulário. Verifique o console para mais detalhes.');
+        }
     };
 
 
@@ -944,7 +950,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                 </div>
             )}
 
-         
+
 
             {/* Selection Modal Overlay */}
             {selectingFor && (
@@ -1248,17 +1254,17 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-slate-100">
-                                                    {summaryData.company.roles.map((role: string, idx: number) => {
-                                                        const name = `Colaborador ${idx + 1}`;
-                                                        const sector = summaryData.company.units[0]?.sectors[idx % summaryData.company.units[0]?.sectors.length]?.name || 'Geral';
-                                                        const email = `colaborador${idx + 1}@${summaryData.company.name.toLowerCase().replace(/\s/g, '')}.com.br`;
-                                                        const sexo = idx % 2 === 0 ? 'M' : 'F';
+                                                    {(summaryData.company.collaborators || []).map((colab: any, idx: number) => {
+                                                        const name = colab.nome || `Colaborador ${idx + 1}`;
+                                                        const colabSector = colab.setor || 'Geral';
+                                                        const email = colab.email || '-';
+                                                        const sexo = colab.sexo || 'M';
 
                                                         // Filter Logic
                                                         if (collaboratorSearch &&
                                                             !name.toLowerCase().includes(collaboratorSearch.toLowerCase()) &&
-                                                            !role.toLowerCase().includes(collaboratorSearch.toLowerCase()) &&
-                                                            !sector.toLowerCase().includes(collaboratorSearch.toLowerCase())
+                                                            !(colab.cargo || '').toLowerCase().includes(collaboratorSearch.toLowerCase()) &&
+                                                            !colabSector.toLowerCase().includes(collaboratorSearch.toLowerCase())
                                                         ) {
                                                             return null;
                                                         }
@@ -1266,7 +1272,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                                         const isSelected = selectedCollaborators.has(idx);
 
                                                         return (
-                                                            <tr key={idx} className={`hover:bg-slate-50 transition-colors ${!isSelected ? 'opacity-60 bg-slate-50/30' : ''}`}>
+                                                            <tr key={colab.id || idx} className={`hover:bg-slate-50 transition-colors ${!isSelected ? 'opacity-60 bg-slate-50/30' : ''}`}>
                                                                 <td className="px-4 py-3">
                                                                     <input
                                                                         type="checkbox"
@@ -1282,13 +1288,13 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                                                     </span>
                                                                 </td>
                                                                 <td className="px-4 py-3 text-slate-500 text-xs">{email}</td>
-                                                                <td className="px-4 py-3 text-slate-500">{role}</td>
+                                                                <td className="px-4 py-3 text-slate-500">{colab.cargo || '-'}</td>
                                                                 <td className="px-4 py-3 text-slate-500">
                                                                     <span className="inline-block px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-600">
-                                                                        {sector}
+                                                                        {colabSector}
                                                                     </span>
                                                                 </td>
-                                                                <td className="px-4 py-3 text-slate-500 text-xs">01/0{idx % 9 + 1}/2023</td>
+                                                                <td className="px-4 py-3 text-slate-500 text-xs">{colab.data_admissao ? new Date(colab.data_admissao).toLocaleDateString() : '-'}</td>
                                                             </tr>
                                                         );
                                                     })}
