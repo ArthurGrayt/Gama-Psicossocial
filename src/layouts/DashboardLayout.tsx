@@ -1,5 +1,5 @@
 import React from 'react';
-import { Settings, LogOut, LayoutDashboard, Building } from 'lucide-react';
+import { Settings, LogOut, LayoutDashboard, Building, User } from 'lucide-react';
 import { useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { FirstAccessModal } from '../components/modals/FirstAccessModal';
@@ -37,8 +37,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
 
     return (
         <div className="min-h-screen bg-slate-50 flex font-sans text-slate-900 selection:bg-indigo-100 selection:text-indigo-900">
-            {/* Sidebar */}
-            <aside className="fixed inset-y-0 left-0 w-64 bg-white border-r border-slate-100 flex flex-col z-30">
+            {/* Sidebar - hidden on mobile */}
+            <aside className="fixed inset-y-0 left-0 w-64 bg-white border-r border-slate-100 hidden md:flex flex-col z-30">
                 {/* Logo Area */}
                 <div className="h-24 flex items-center px-8">
                     <div className="flex items-center gap-3">
@@ -103,13 +103,57 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 ml-64 min-h-screen flex flex-col">
+            <main className="flex-1 ml-0 md:ml-64 min-h-screen flex flex-col pb-20 md:pb-0">
 
 
-                <div className="p-10 max-w-7xl mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="p-4 md:p-10 max-w-7xl mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
                     {children}
                 </div>
             </main>
+
+            {/* Mobile Tab Bar */}
+            <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex items-center justify-around px-2 py-2 z-40 md:hidden safe-area-bottom">
+                {MENU_ITEMS.map((item) => {
+                    const active = isActive(item.path);
+                    return (
+                        <Link
+                            key={item.path}
+                            to={item.path === '/forms' ? '/' : item.path}
+                            className={`
+                                flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl text-[10px] font-semibold transition-all duration-200 min-w-[60px]
+                                ${active
+                                    ? 'text-[#0f978e]'
+                                    : 'text-slate-400 hover:text-slate-600'}
+                            `}
+                        >
+                            <span className={`transition-all duration-200 ${active ? 'scale-110' : ''}`}>
+                                {React.cloneElement(item.icon as React.ReactElement<any>, { size: 22 })}
+                            </span>
+                            <span>{item.label}</span>
+                        </Link>
+                    );
+                })}
+                {/* Profile avatar tab */}
+                <Link
+                    to="/profile"
+                    className={`
+                        flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl text-[10px] font-semibold transition-all duration-200 min-w-[60px]
+                        ${isActive('/profile')
+                            ? 'text-[#0f978e]'
+                            : 'text-slate-400 hover:text-slate-600'}
+                    `}
+                >
+                    <span className={`w-6 h-6 rounded-full overflow-hidden flex items-center justify-center border-2 transition-all duration-200 ${isActive('/profile') ? 'border-[#0f978e]' : 'border-slate-200'
+                        }`}>
+                        {profile?.img_url ? (
+                            <img src={profile.img_url} alt="Perfil" className="w-full h-full object-cover" />
+                        ) : (
+                            <User size={14} className={isActive('/profile') ? 'text-[#0f978e]' : 'text-slate-400'} />
+                        )}
+                    </span>
+                    <span>Perfil</span>
+                </Link>
+            </nav>
 
             {/* First Access Modal - Only renders if user has primeiro_acesso === true */}
             <FirstAccessModal isOpen={profile?.primeiro_acesso === true} />
