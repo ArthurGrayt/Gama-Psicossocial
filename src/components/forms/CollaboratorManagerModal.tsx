@@ -277,19 +277,22 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/50 backdrop-blur-sm md:p-4 animate-in fade-in duration-200">
+            <div
+                className="bg-white md:rounded-2xl w-full h-[calc(100dvh-70px)] md:h-auto md:max-w-4xl md:max-h-[90vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom-4 md:zoom-in-95 duration-200"
+                style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+            >
                 {/* Header */}
-                <div className="flex items-center justify-between px-8 py-6 border-b border-slate-100">
-                    <div>
-                        <h2 className="text-xl font-bold text-slate-800">
+                <div className="flex items-center justify-between px-4 md:px-8 py-4 md:py-6 border-b border-slate-100">
+                    <div className="min-w-0">
+                        <h2 className="text-lg md:text-xl font-bold text-slate-800 truncate">
                             {isAdding ? 'Cadastrar Novo Colaborador' : 'Gerenciar Colaboradores'}
                         </h2>
-                        {selectedCompany && <p className="text-sm text-slate-500">{selectedCompany.name || selectedCompany.nome_fantasia || selectedCompany.razao_social}</p>}
+                        {selectedCompany && <p className="text-sm text-slate-500 truncate">{selectedCompany.name || selectedCompany.nome_fantasia || selectedCompany.razao_social}</p>}
                         {!company && isAdding && <p className="text-sm text-slate-500">Preencha os dados abaixo.</p>}
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
-                        <X size={24} />
+                    <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors shrink-0">
+                        <X size={20} />
                     </button>
                 </div>
 
@@ -299,15 +302,15 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                         <>
                             {/* Controls (Manage Mode) */}
                             <div className="bg-slate-50 border-b border-slate-100">
-                                <div className="px-8 py-6 pb-4">
+                                <div className="px-4 md:px-8 py-4 md:py-6 pb-3 md:pb-4">
                                     <div className="flex items-center justify-between">
 
                                     </div>
                                 </div>
 
                                 {/* Toolbar */}
-                                <div className="px-8 py-3 border-t border-slate-100 flex gap-4 bg-white items-center">
-                                    <div className="relative flex-1">
+                                <div className="px-4 md:px-8 py-3 border-t border-slate-100 flex flex-wrap gap-2 md:gap-4 bg-white items-center">
+                                    <div className="relative flex-1 min-w-[150px]">
                                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                                         <input
                                             type="text"
@@ -317,34 +320,36 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                                             className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-[#35b6cf] transition-all text-sm"
                                         />
                                     </div>
-                                    <button
-                                        onClick={() => setIsAdding(true)}
-                                        disabled={!selectedCompany || loading}
-                                        className="px-4 py-2 bg-[#35b6cf] text-white rounded-xl font-bold hover:brightness-110 transition-all flex items-center gap-2 shadow-lg shadow-cyan-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                                    >
-                                        <Plus size={16} />
-                                        Novo
-                                    </button>
-                                    <button
-                                        onClick={() => setIsImportModalOpen(true)}
-                                        disabled={!selectedCompany || loading}
-                                        className="px-4 py-2 bg-emerald-500 text-white rounded-xl font-bold hover:bg-emerald-400 transition-all flex items-center gap-2 shadow-lg shadow-emerald-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                                    >
-                                        <FileSpreadsheet size={16} />
-                                        Importar
-                                    </button>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => setIsAdding(true)}
+                                            disabled={!selectedCompany || loading}
+                                            className="px-3 md:px-4 py-2 bg-[#35b6cf] text-white rounded-xl font-bold hover:brightness-110 transition-all flex items-center gap-1.5 shadow-lg shadow-cyan-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                                        >
+                                            <Plus size={16} />
+                                            <span className="hidden sm:inline">Novo</span>
+                                        </button>
+                                        <button
+                                            onClick={() => setIsImportModalOpen(true)}
+                                            disabled={!selectedCompany || loading}
+                                            className="px-3 md:px-4 py-2 bg-emerald-500 text-white rounded-xl font-bold hover:bg-emerald-400 transition-all flex items-center gap-1.5 shadow-lg shadow-emerald-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                                        >
+                                            <FileSpreadsheet size={16} />
+                                            <span className="hidden sm:inline">Importar</span>
+                                        </button>
+                                    </div>
                                 </div>
 
                                 {/* Filters */}
-                                <div className="px-8 py-2 bg-slate-50/50 border-t border-slate-100 flex gap-3 overflow-x-auto items-center">
-                                    <div className="flex items-center gap-2 text-slate-400 mr-2">
+                                <div className="px-4 md:px-8 py-2 bg-slate-50/50 border-t border-slate-100 flex flex-wrap gap-2 md:gap-3 overflow-x-auto items-center">
+                                    <div className="flex items-center gap-2 text-slate-400 mr-1 md:mr-2">
                                         <Filter size={12} />
                                         <span className="text-[10px] font-bold uppercase">Filtros</span>
                                     </div>
                                     <select
                                         value={filterUnit}
                                         onChange={(e) => setFilterUnit(e.target.value)}
-                                        className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-600 outline-none focus:border-[#35b6cf]"
+                                        className="px-2 md:px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-600 outline-none focus:border-[#35b6cf] flex-1 min-w-[100px] md:flex-none"
                                     >
                                         <option value="">Todas Unidades</option>
                                         {units.map((u: any) => (
@@ -354,7 +359,7 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                                     <select
                                         value={filterSector}
                                         onChange={(e) => setFilterSector(e.target.value)}
-                                        className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-600 outline-none focus:border-[#35b6cf]"
+                                        className="px-2 md:px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-600 outline-none focus:border-[#35b6cf] flex-1 min-w-[100px] md:flex-none"
                                     >
                                         <option value="">Todos Setores</option>
                                         {refData.sectors.map((s: any) => (
@@ -369,7 +374,7 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                                     </div>
                                 </div>
                             </div>
-                            {/* List */}
+                            {/* List — Mobile cards + Desktop table */}
                             <div className="flex-1 overflow-y-auto p-0">
                                 {loading && collaborators.length === 0 ? (
                                     <div className="flex flex-col items-center justify-center p-12 text-slate-400">
@@ -384,18 +389,49 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                                         <p>Selecione uma empresa para gerenciar</p>
                                     </div>
                                 ) : collaborators.length > 0 ? (
-                                    <table className="w-full text-left border-collapse">
-                                        <thead className="bg-slate-50 sticky top-0 z-10 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                                            <tr>
-                                                <th className="px-6 py-3 border-b border-slate-100">Nome / Email</th>
-                                                <th className="px-6 py-3 border-b border-slate-100">Cargo / Setor</th>
-                                                <th className="px-6 py-3 border-b border-slate-100">Status</th>
-                                                <th className="px-6 py-3 border-b border-slate-100 text-right">Ações</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100 text-sm">
-                                            {filteredCollaborators
-                                                .map((colab) => (
+                                    <>
+                                        {/* Mobile Card Layout */}
+                                        <div className="md:hidden divide-y divide-slate-100">
+                                            {filteredCollaborators.map((colab) => (
+                                                <div key={colab.id} className="px-4 py-3 flex items-center gap-3">
+                                                    <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 shrink-0">
+                                                        <User size={16} />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="font-bold text-sm text-slate-800 truncate">{colab.nome}</div>
+                                                        <div className="text-xs text-slate-500 truncate">{colab.cargo || colab.cargo_nome || '-'} · {colab.setor || 'Geral'}</div>
+                                                    </div>
+                                                    <div className="flex items-center gap-1 shrink-0">
+                                                        {colab.data_desligamento ? (
+                                                            <span className="px-1.5 py-0.5 bg-red-50 text-red-600 rounded text-[10px] font-bold">Inativo</span>
+                                                        ) : (
+                                                            <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-600 rounded text-[10px] font-bold">Ativo</span>
+                                                        )}
+                                                        <button
+                                                            onClick={() => {
+                                                                setColabToDelete(colab);
+                                                                setShowDeleteConfirm(true);
+                                                            }}
+                                                            className="p-1.5 text-slate-300 hover:text-red-500 transition-colors"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        {/* Desktop Table */}
+                                        <table className="hidden md:table w-full text-left border-collapse">
+                                            <thead className="bg-slate-50 sticky top-0 z-10 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                                <tr>
+                                                    <th className="px-6 py-3 border-b border-slate-100">Nome / Email</th>
+                                                    <th className="px-6 py-3 border-b border-slate-100">Cargo / Setor</th>
+                                                    <th className="px-6 py-3 border-b border-slate-100">Status</th>
+                                                    <th className="px-6 py-3 border-b border-slate-100 text-right">Ações</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100 text-sm">
+                                                {filteredCollaborators.map((colab) => (
                                                     <tr key={colab.id} className="hover:bg-slate-50/80 transition-colors group">
                                                         <td className="px-6 py-4">
                                                             <div>
@@ -437,8 +473,9 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                                                         </td>
                                                     </tr>
                                                 ))}
-                                        </tbody>
-                                    </table>
+                                            </tbody>
+                                        </table>
+                                    </>
                                 ) : (
                                     <div className="text-center p-12">
                                         <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
@@ -451,20 +488,20 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                             </div>
 
                             {/* Footer for Manage Mode */}
-                            <div className="px-8 py-4 border-t border-slate-100 bg-slate-50 flex justify-between items-center rounded-b-2xl">
+                            <div className="px-4 md:px-8 py-3 md:py-4 border-t border-slate-100 bg-slate-50 flex justify-between items-center md:rounded-b-2xl" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
                                 <div className="text-xs text-slate-400">
                                     Mostrando {collaborators.length} registros
                                 </div>
                                 <button
                                     onClick={onClose}
-                                    className="px-6 py-2 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-colors"
+                                    className="px-4 md:px-6 py-2 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-colors text-sm"
                                 >
                                     Fechar
                                 </button>
                             </div>
                         </>
                     ) : (
-                        <div className="flex-1 overflow-y-auto p-8">
+                        <div className="flex-1 overflow-y-auto p-4 md:p-8">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                                 <div>
                                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Nome Completo *</label>
@@ -603,7 +640,7 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                                     />
                                 </div>
                             </div>
-                            <div className="flex justify-end gap-3">
+                            <div className="flex justify-end gap-3 mt-4" style={{ paddingBottom: 'max(0, env(safe-area-inset-bottom))' }}>
                                 <button
                                     onClick={() => {
                                         if (company) {

@@ -815,36 +815,36 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
                                 {/* Participação */}
                                 <div
                                     onClick={handleOpenParticipation}
-                                    className="p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-slate-50 transition-colors group relative"
+                                    className="p-4 md:p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-slate-50 transition-colors group relative"
                                 >
                                     <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <Search size={16} className="text-slate-400" />
                                     </div>
-                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Participação</p>
+                                    <p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 md:mb-2">Participação</p>
                                     <div className="flex items-baseline gap-1">
-                                        <span className="text-3xl font-bold text-slate-900">
+                                        <span className="text-2xl md:text-3xl font-bold text-slate-900">
                                             {totalResponses}
                                         </span>
-                                        <span className="text-lg text-slate-400 font-medium">
+                                        <span className="text-sm md:text-lg text-slate-400 font-medium">
                                             /{totalColabs}
                                         </span>
                                     </div>
                                 </div>
 
                                 {/* Total de Perguntas */}
-                                <div className="p-6 flex flex-col items-center justify-center text-center">
-                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Total de Perguntas</p>
-                                    <span className="text-3xl font-bold text-slate-900">
+                                <div className="p-4 md:p-6 flex flex-col items-center justify-center text-center">
+                                    <p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 md:mb-2">Total de Perguntas</p>
+                                    <span className="text-2xl md:text-3xl font-bold text-slate-900">
                                         {form.questions?.length || questions.length || 0}
                                     </span>
                                 </div>
 
                                 {/* Tempo Médio */}
-                                <div className="p-6 flex flex-col items-center justify-center text-center">
-                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Tempo Médio</p>
+                                <div className="p-4 md:p-6 flex flex-col items-center justify-center text-center">
+                                    <p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 md:mb-2">Tempo Médio</p>
                                     <div className="flex items-baseline gap-1">
-                                        <span className="text-3xl font-bold text-slate-900">--</span>
-                                        <span className="text-lg text-slate-900 font-bold">min</span>
+                                        <span className="text-2xl md:text-3xl font-bold text-slate-900">--</span>
+                                        <span className="text-sm md:text-lg text-slate-900 font-bold">min</span>
                                     </div>
                                 </div>
                             </div>
@@ -863,7 +863,7 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
                                     </div>
                                 </div>
                                 <div className="overflow-x-auto">
-                                    <table className="w-full text-left">
+                                    <table className="hidden md:table w-full text-left">
                                         <thead>
                                             <tr className="border-b border-slate-100 text-xs font-bold text-slate-400 uppercase tracking-wider">
                                                 <th className="px-8 py-4">Participante</th>
@@ -903,6 +903,29 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
                                             ))}
                                         </tbody>
                                     </table>
+
+                                    {/* Mobile View */}
+                                    <div className="md:hidden divide-y divide-slate-100">
+                                        {recentResponses.map((p) => (
+                                            <div key={p.id} className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-sm">
+                                                        {p.name ? p.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : '??'}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-bold text-slate-700 text-sm">{p.name || 'Anônimo'}</p>
+                                                        <p className="text-[10px] text-slate-400">{p.submitted_at}</p>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={() => setSelectedParticipant(p)}
+                                                    className="p-2 text-[#35b6cf] bg-[#35b6cf]/10 rounded-lg"
+                                                >
+                                                    <FileText size={18} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1079,34 +1102,36 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
                                     ) : filteredParticipationList.length > 0 ? (
                                         <div className="divide-y divide-slate-100">
                                             {/* Header Row for List */}
-                                            <div className="px-6 py-3 bg-slate-50 flex items-center text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                            <div className="px-4 md:px-6 py-3 bg-slate-50 flex items-center text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider">
                                                 <div className="flex-1">Colaborador</div>
-                                                <div className="w-40 hidden sm:block">Cargo</div>
-                                                <div className="w-20 hidden sm:block text-center">Sexo</div>
+                                                <div className="w-40 hidden md:block">Cargo</div>
+                                                <div className="w-20 hidden lg:block text-center">Sexo</div>
                                                 <div className="w-28 hidden sm:block text-right">Nascimento</div>
                                             </div>
                                             {filteredParticipationList.map((p: any) => (
-                                                <div key={p.id} className="px-6 py-3 flex items-center hover:bg-white transition-colors group text-sm">
+                                                <div key={p.id} className="px-4 md:px-6 py-3 flex items-center hover:bg-white transition-colors group text-sm">
                                                     {/* Nome */}
-                                                    <div className="flex-1 font-bold text-slate-700 truncate pr-4">
-                                                        {p.nome || 'Sem Nome'}
+                                                    <div className="flex-1 min-w-0 pr-4">
+                                                        <div className="font-bold text-slate-700 truncate">{p.nome || 'Sem Nome'}</div>
+                                                        <div className="md:hidden text-[10px] text-slate-400 truncate">
+                                                            {(p.cargos && p.cargos.nome) ? p.cargos.nome : (p.cargo && p.cargo.nome) ? p.cargo.nome : '-'}
+                                                        </div>
                                                     </div>
 
                                                     {/* Cargo */}
-                                                    <div className="w-40 hidden sm:block text-slate-500 truncate pr-2">
-                                                        {/* Try both alias and direct relation, + specific check for cargo_id */}
+                                                    <div className="w-40 hidden md:block text-slate-500 truncate pr-2">
                                                         {(p.cargos && p.cargos.nome) ? p.cargos.nome :
                                                             (p.cargo && p.cargo.nome) ? p.cargo.nome :
                                                                 '-'}
                                                     </div>
 
                                                     {/* Sexo */}
-                                                    <div className="w-20 hidden sm:block text-slate-500 text-center">
+                                                    <div className="w-20 hidden lg:block text-slate-500 text-center">
                                                         {p.sexo || '-'}
                                                     </div>
 
                                                     {/* Data Nascimento */}
-                                                    <div className="w-28 hidden sm:block text-slate-500 text-right">
+                                                    <div className="w-28 hidden sm:block text-slate-500 text-right text-xs">
                                                         {p.data_nascimento ? new Date(p.data_nascimento).toLocaleDateString() : '-'}
                                                     </div>
                                                 </div>

@@ -176,7 +176,7 @@ export const ProfilePage: React.FC = () => {
                 <div className="flex items-center gap-4 mb-2">
                     <button
                         onClick={() => navigate(-1)}
-                        className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-500"
+                        className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-500 hidden md:block"
                     >
                         <ArrowLeft size={20} />
                     </button>
@@ -228,11 +228,6 @@ export const ProfilePage: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="bg-[#0f978e]/5 p-6 rounded-2xl border border-[#0f978e]/10">
-                            <p className="text-sm text-[#0f978e] leading-relaxed">
-                                <strong>Dica:</strong> Clique no avatar ou no ícone de câmera para carregar uma imagem do seu dispositivo.
-                            </p>
-                        </div>
                     </div>
 
                     {/* Right Side: Edit Form */}
@@ -324,22 +319,6 @@ export const ProfilePage: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <hr className="border-slate-100" />
-
-                                {/* Avatar URL Input */}
-                                <div className="space-y-2">
-                                    <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
-                                        <Camera size={16} className="text-[#0f978e]" />
-                                        URL da Foto de Perfil
-                                    </label>
-                                    <input
-                                        type="url"
-                                        value={formData.img_url}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, img_url: e.target.value }))}
-                                        placeholder="https://exemplo.com/sua-foto.jpg"
-                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0f978e]/20 focus:border-[#0f978e] transition-all font-mono text-sm"
-                                    />
-                                </div>
 
                                 {/* Feedback Messages */}
                                 {error && (

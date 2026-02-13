@@ -1454,13 +1454,12 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
             {/* Selection Modal Overlay */}
             {
                 selectingFor && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
-                        <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-slate-100 overflow-hidden animate-in zoom-in-95 duration-300">
-                            {/* Modal Header */}
-                            <div className="p-6 border-b border-slate-50 flex items-center justify-between bg-white sticky top-0">
-                                <div>
-                                    <h2 className="text-xl font-bold text-slate-800">Gerar Formulário</h2>
-                                    <p className="text-sm text-slate-500 mt-1">{selectingFor.name}</p>
+                    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center md:p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
+                        <div className="bg-white w-full max-h-[88dvh] md:max-h-none md:max-w-lg rounded-t-3xl md:rounded-3xl shadow-2xl border border-slate-100 overflow-hidden animate-in slide-in-from-bottom-4 md:zoom-in-95 duration-300" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+                            <div className="p-4 md:p-6 border-b border-slate-50 flex items-center justify-between bg-white sticky top-0">
+                                <div className="min-w-0">
+                                    <h2 className="text-lg md:text-xl font-bold text-slate-800">Gerar Formulário</h2>
+                                    <p className="text-sm text-slate-500 mt-1 truncate">{selectingFor.name}</p>
                                 </div>
                                 <button
                                     onClick={() => setSelectingFor(null)}
@@ -1471,7 +1470,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                             </div>
 
                             {/* Modal Content */}
-                            <div className="p-6">
+                            <div className="p-4 md:p-6">
                                 <div className="space-y-4">
                                     <div className="flex items-center gap-2 mb-2">
                                         <div className="w-8 h-8 rounded-lg bg-[#35b6cf]/10 flex items-center justify-center text-[#35b6cf]">
@@ -1560,13 +1559,13 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
             {/* FORM SUMMARY MODAL */}
             {
                 summaryModalOpen && summaryData && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
-                        <div className={`bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden animate-in zoom-in-95 duration-300 flex transition-all duration-500 ease-in-out h-[40rem] ${expandedView !== 'none' ? 'w-[75rem] max-w-full' : 'w-full max-w-lg'}`}>
+                    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center md:p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
+                        <div className={`bg-white w-full h-[calc(100dvh-80px)] md:h-auto md:rounded-3xl shadow-2xl border border-slate-100 overflow-hidden animate-in slide-in-from-bottom-4 md:zoom-in-95 duration-300 flex flex-col md:flex-row transition-all duration-500 ease-in-out md:h-[40rem] ${expandedView !== 'none' ? 'md:w-[75rem] md:max-w-full' : 'md:max-w-lg'}`}>
 
                             {/* LEFT PANEL - SUMMARY */}
-                            <div className={`flex flex-col border-r border-slate-100 transition-all duration-500 ${expandedView !== 'none' ? 'w-[28rem] shrink-0' : 'w-full'}`}>
-                                <div className="px-6 py-4 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
-                                    <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                            <div className={`flex flex-col border-r border-slate-100 transition-all duration-500 ${expandedView !== 'none' ? 'md:w-[28rem] md:shrink-0' : 'w-full'}`}>
+                                <div className="px-4 md:px-6 py-4 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
+                                    <h3 className="text-base md:text-lg font-bold text-slate-800 flex items-center gap-2">
                                         <FileText size={20} className="text-[#35b6cf]" />
                                         Resumo do Formulário
                                     </h3>
@@ -1577,7 +1576,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                     )}
                                 </div>
 
-                                <div className="flex-1 overflow-auto p-6 space-y-6">
+                                <div className="flex-1 overflow-auto p-4 md:p-6 space-y-6">
                                     {/* Header Info */}
                                     <div className="flex items-center gap-4">
                                         <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center font-bold text-lg">
@@ -1683,7 +1682,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                     </div>
                                 </div>
 
-                                <div className="px-6 pt-6 pb-16 border-t border-slate-50 bg-slate-50/30 flex justify-end gap-3">
+                                <div className="px-4 md:px-6 pt-6 pb-6 md:pb-16 border-t border-slate-50 bg-slate-50/30 flex justify-end gap-3" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
                                     <button
                                         onClick={() => setSummaryModalOpen(false)}
                                         className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition-colors text-sm"
@@ -1701,9 +1700,9 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                             </div>
 
                             {/* RIGHT PANEL - EXPANDED CONTENT */}
-                            <div className={`flex flex-col bg-slate-50/50 transition-all duration-500 overflow-hidden ${expandedView !== 'none' ? 'flex-1 opacity-100' : 'w-0 opacity-0'}`}>
+                            <div className={`flex flex-col bg-slate-50/50 transition-all duration-500 overflow-hidden ${expandedView !== 'none' ? 'fixed inset-0 z-[60] md:static md:z-auto flex-1 opacity-100 bg-white md:bg-slate-50/50' : 'w-0 opacity-0 hidden md:block'}`}>
                                 {expandedView === 'collaborators' && (
-                                    <div className="h-full flex flex-col min-w-[30rem]">
+                                    <div className="h-full flex flex-col min-w-0 md:min-w-[30rem]">
                                         <div className="px-6 py-4 border-b border-slate-100 bg-white">
                                             <div className="flex items-center justify-between mb-4">
                                                 <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">

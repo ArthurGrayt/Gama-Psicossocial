@@ -92,7 +92,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // C. Supabase: Buscar ou Criar Usuário
     const { data: { users } } = await supabase.auth.admin.listUsers();
-    const existingUser = users.find(u => u.email === userEmail);
+    const existingUser = (users as any[]).find(u => u.email === userEmail);
 
     let userIdStr = '';
     let isNewUser = false;

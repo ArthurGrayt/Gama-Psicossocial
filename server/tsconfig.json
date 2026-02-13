@@ -20,7 +20,6 @@
         "noFallthroughCasesInSwitch": false
     },
     "include": [
-        "**/*.ts",
-        "../server/**/*.ts"
+        "**/*.ts"
     ]
 }

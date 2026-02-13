@@ -845,17 +845,93 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
     // Renderiza o modal via Portal no final do body para evitar problemas de z-index e overflow
     return ReactDOM.createPortal(
         // Fundo escurecido atrás da janela (Modal)
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6">
+        <div className="fixed inset-0 z-[9999] flex items-end md:items-center justify-center md:p-4 lg:p-6">
             <div
                 className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
                 onClick={onClose}
             />
 
             {/* Janela Principal do Modal */}
-            <div className="relative w-full max-w-[90rem] bg-white rounded-[2.5rem] shadow-2xl overflow-hidden flex h-[96vh] animate-in fade-in zoom-in-95 duration-300">
+            <div className="relative w-full h-[calc(100dvh-70px)] md:h-[96vh] md:max-w-[90rem] bg-white md:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col md:flex-row animate-in fade-in slide-in-from-bottom-4 md:zoom-in-95 duration-300">
 
-                {/* --- Barra Lateral Esquerda (Sidebar) --- */}
-                <div className="w-1/3 bg-slate-50 border-r border-slate-200 flex flex-col">
+                {/* --- Mobile Header + Tab Bar (visible < md) --- */}
+                <div className="md:hidden bg-slate-50 border-b border-slate-200 shrink-0">
+                    {/* Mobile Company Header */}
+                    <div className="flex items-center gap-3 px-4 pt-4 pb-3">
+                        <div
+                            onClick={handleUploadClick}
+                            className={`w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-300 overflow-hidden relative shrink-0 ${isUploading ? 'opacity-50' : ''}`}
+                        >
+                            <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
+                            {isUploading ? (
+                                <Loader2 size={16} className="text-[#35b6cf] animate-spin" />
+                            ) : formData.img_url ? (
+                                <img src={formData.img_url} alt="Logo" className="w-full h-full object-cover" />
+                            ) : formData.nomeFantasia ? (
+                                <span className="text-sm font-bold text-slate-400">{formData.nomeFantasia.substring(0, 2).toUpperCase()}</span>
+                            ) : (
+                                <Building size={18} />
+                            )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <h2 className="text-sm font-bold text-slate-800 truncate">{formData.nomeFantasia || 'Nova Empresa'}</h2>
+                            <p className="text-xs text-slate-500 truncate">{formData.cnpj || 'CNPJ não informado'}</p>
+                        </div>
+                        <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors shrink-0">
+                            <X size={20} />
+                        </button>
+                    </div>
+
+                    {/* Mobile Unit Selector */}
+                    {formData.units.length > 1 && ['setores', 'cargos', 'colaboradores'].includes(activeSection) && (
+                        <div className="px-4 pb-2">
+                            <select
+                                value={String(formData.selectedUnitId || '')}
+                                onChange={handleUnitChange}
+                                className="w-full appearance-none bg-white border border-slate-200 text-slate-700 font-bold py-2 pl-3 pr-8 rounded-xl text-sm outline-none focus:border-[#35b6cf] transition-all"
+                            >
+                                {formData.units.map((unit: any) => (
+                                    <option key={unit.id} value={unit.id}>{unit.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+
+                    {/* Horizontal Scrollable Tab Bar */}
+                    <div className="flex overflow-x-auto gap-1 px-3 pb-2 scrollbar-hide">
+                        {[
+                            { id: 'dados', label: 'Dados', icon: Building },
+                            { id: 'unidades', label: 'Unidades', icon: LayoutGrid, badge: formData.units.length },
+                            { id: 'setores', label: 'Setores', icon: LayoutGrid, badge: formData.setores.length },
+                            { id: 'cargos', label: 'Cargos', icon: Briefcase, badge: formData.cargos.length },
+                            { id: 'colaboradores', label: 'Colab.', icon: Users, badge: formData.colaboradores.length },
+                        ].map(tab => {
+                            const Icon = tab.icon;
+                            const isActive = activeSection === tab.id;
+                            return (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveSection(tab.id as any)}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all shrink-0 ${isActive
+                                        ? 'bg-[#35b6cf] text-white shadow-sm'
+                                        : 'text-slate-500 hover:bg-slate-100'
+                                        }`}
+                                >
+                                    <Icon size={14} />
+                                    {tab.label}
+                                    {tab.badge !== undefined && (
+                                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                                            {tab.badge}
+                                        </span>
+                                    )}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* --- Barra Lateral Esquerda (Sidebar) — hidden on mobile --- */}
+                <div className="hidden md:flex w-1/3 bg-slate-50 border-r border-slate-200 flex-col">
                     {/* Cabeçalho da Barra Lateral / Cartão da Empresa */}
                     <div className="p-8 pb-4">
                         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 text-center relative overflow-hidden group">
@@ -982,10 +1058,10 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
 
                 {/* --- Conteúdo Principal (Lado Direito) --- */}
                 <div className="flex-1 bg-white flex flex-col min-w-0">
-                    {/* Cabeçalho do Conteúdo */}
-                    <div className="px-10 py-8 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
+                    {/* Cabeçalho do Conteúdo — hidden on mobile (tabs already show section) */}
+                    <div className="hidden md:flex px-6 lg:px-10 py-6 lg:py-8 border-b border-slate-100 justify-between items-center bg-white sticky top-0 z-10">
                         <div>
-                            <h2 className="text-2xl font-bold text-slate-800">
+                            <h2 className="text-xl lg:text-2xl font-bold text-slate-800">
                                 {activeSection === 'dados' && 'Dados da Empresa'}
                                 {activeSection === 'unidades' && 'Gerenciar Unidades'}
                                 {activeSection === 'setores' && 'Setores e Departamentos'}
@@ -1006,7 +1082,7 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                     </div>
 
                     {/* Corpo do Modal (Área de Rolagem) */}
-                    <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-slate-50/30">
+                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 custom-scrollbar bg-slate-50/30">
                         {/* --- SEÇÃO: DADOS DA EMPRESA --- */}
                         {activeSection === 'dados' && (
                             <div className="space-y-8 animate-in slide-in-from-right-4 duration-300 max-w-3xl">
@@ -1081,12 +1157,12 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                                 {/* Bloco de Endereço */}
                                 <div className="space-y-4">
                                     <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Endereço</h3>
-                                    <div className="grid grid-cols-6 gap-4">
-                                        <div className="col-span-2"><label className="text-xs font-bold text-slate-600">CEP</label><input type="text" name="cep" value={formData.cep} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none focus:border-[#35b6cf]" /></div>
-                                        <div className="col-span-4"><label className="text-xs font-bold text-slate-600">Rua</label><input type="text" name="rua" value={formData.rua} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none focus:border-[#35b6cf]" /></div>
-                                        <div className="col-span-2"><label className="text-xs font-bold text-slate-600">Bairro</label><input type="text" name="bairro" value={formData.bairro} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none focus:border-[#35b6cf]" /></div>
-                                        <div className="col-span-3"><label className="text-xs font-bold text-slate-600">Cidade</label><input type="text" name="cidade" value={formData.cidade} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none focus:border-[#35b6cf]" /></div>
-                                        <div className="col-span-1"><label className="text-xs font-bold text-slate-600">UF</label><input type="text" name="uf" value={formData.uf} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none focus:border-[#35b6cf]" /></div>
+                                    <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                                        <div className="col-span-2 md:col-span-2"><label className="text-xs font-bold text-slate-600">CEP</label><input type="text" name="cep" value={formData.cep} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none focus:border-[#35b6cf]" /></div>
+                                        <div className="col-span-2 md:col-span-4"><label className="text-xs font-bold text-slate-600">Rua</label><input type="text" name="rua" value={formData.rua} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none focus:border-[#35b6cf]" /></div>
+                                        <div className="col-span-2 md:col-span-2"><label className="text-xs font-bold text-slate-600">Bairro</label><input type="text" name="bairro" value={formData.bairro} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none focus:border-[#35b6cf]" /></div>
+                                        <div className="col-span-2 md:col-span-3"><label className="text-xs font-bold text-slate-600">Cidade</label><input type="text" name="cidade" value={formData.cidade} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none focus:border-[#35b6cf]" /></div>
+                                        <div className="col-span-2 md:col-span-1"><label className="text-xs font-bold text-slate-600">UF</label><input type="text" name="uf" value={formData.uf} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none focus:border-[#35b6cf]" /></div>
                                     </div>
                                 </div>
 
@@ -1220,15 +1296,15 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                         {/* --- SEÇÃO: CARGOS E FUNÇÕES --- */}
                         {activeSection === 'cargos' && (
                             <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 max-w-3xl border border-slate-200 rounded-2xl bg-white p-6 shadow-sm">
-                                <div className="grid grid-cols-3 gap-3">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                     {/* Primeiro: Escolhe o setor onde o cargo será criado */}
-                                    <select value={selectedSectorForRole} onChange={(e) => setSelectedSectorForRole(e.target.value)} className="col-span-1 border border-slate-200 rounded-xl px-3 outline-none">
+                                    <select value={selectedSectorForRole} onChange={(e) => setSelectedSectorForRole(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 outline-none bg-white">
                                         <option value="" disabled>Selecione Setor</option>
                                         {/* Apenas setores da unidade ativa aparecem aqui */}
                                         {filteredSectors.map((s, i) => <option key={i} value={s}>{s}</option>)}
                                     </select>
                                     {/* Segundo: Campo de nome do cargo */}
-                                    <div className="col-span-2 flex gap-2">
+                                    <div className="md:col-span-2 flex gap-2">
                                         <input
                                             value={newRole}
                                             onChange={(e) => setNewRole(e.target.value)}
@@ -1236,7 +1312,7 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                                             disabled={!selectedSectorForRole}
                                             className="flex-1 border border-slate-200 rounded-xl px-3 outline-none disabled:bg-slate-50"
                                         />
-                                        <button onClick={addRole} disabled={!newRole || !selectedSectorForRole} className="bg-[#35b6cf] text-white p-3 rounded-xl hover:bg-[#2ca3bc]"><Plus size={20} /></button>
+                                        <button onClick={addRole} disabled={!newRole || !selectedSectorForRole} className="bg-[#35b6cf] text-white p-3 rounded-xl hover:bg-[#2ca3bc] shrink-0"><Plus size={20} /></button>
                                     </div>
                                 </div>
                                 {/* Lista de Cargos Filtrados */}
@@ -1448,19 +1524,19 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
 
                                 {/* Lista/Tabela de Colaboradores já cadastrados */}
                                 <div>
-                                    <div className="flex items-center justify-between mb-4 px-2">
+                                    <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 px-2 gap-4">
                                         <h3 className="text-lg font-bold text-slate-800">
                                             Colaboradores Cadastrados ({filteredCollaborators.length})
                                         </h3>
                                         {/* Barra de busca rápida na tabela */}
-                                        <div className="flex items-center gap-2">
-                                            <div className="relative w-64">
+                                        <div className="flex items-center gap-2 w-full md:w-auto">
+                                            <div className="relative flex-1 md:w-64">
                                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                                                 <input
                                                     type="text"
                                                     value={collabSearch}
                                                     onChange={(e) => setCollabSearch(e.target.value)}
-                                                    placeholder="Buscar nome, cargo..."
+                                                    placeholder="Buscar colaborador..."
                                                     className="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-[#35b6cf]"
                                                 />
                                             </div>
@@ -1638,7 +1714,7 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                     </div>
 
                     {/* --- RODAPÉ DO MODAL (Ações Finais de Salvar/Cancelar) --- */}
-                    <div className="p-6 border-t border-slate-200 bg-white flex justify-end gap-3 z-10">
+                    <div className="p-4 md:p-6 border-t border-slate-200 bg-white flex justify-end gap-3 z-10" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
                         {/* Botão de Cancelar - Fecha tudo sem salvar */}
                         <Button
                             variant="ghost"

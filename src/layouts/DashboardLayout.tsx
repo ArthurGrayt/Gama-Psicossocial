@@ -117,31 +117,29 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 ml-0 md:ml-64 min-h-screen flex flex-col pt-14 md:pt-0 pb-[4.5rem] md:pb-0">
-
-
+            <main className="flex-1 ml-0 md:ml-64 min-h-screen flex flex-col pt-14 md:pt-0" style={{ paddingBottom: 'calc(4.5rem + env(safe-area-inset-bottom, 0px))' }}>
                 <div className="p-4 md:p-10 max-w-7xl mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
                     {children}
                 </div>
             </main>
 
             {/* Mobile Tab Bar */}
-            <nav className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-slate-200/80 flex items-center justify-around px-1 z-40 md:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+            <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-slate-200 flex items-center justify-around z-40 md:hidden" style={{ height: 'calc(4.5rem + env(safe-area-inset-bottom, 0px))', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
                 {MENU_ITEMS.map((item) => {
                     const active = isActive(item.path);
                     return (
                         <Link
                             key={item.path}
-                            to={item.path === '/forms' ? '/' : item.path}
+                            to={item.path}
                             className={`
-                                flex flex-col items-center justify-center gap-0.5 py-2 px-1 flex-1 text-[10px] font-semibold transition-all duration-200
+                                flex flex-col items-center justify-center gap-1 py-1 px-1 flex-1 text-[10px] font-semibold transition-all duration-200
                                 ${active
                                     ? 'text-[#0f978e]'
                                     : 'text-slate-400 active:text-slate-600'}
                             `}
                         >
-                            <span className={`transition-all duration-200 ${active ? 'scale-110' : ''}`}>
-                                {React.cloneElement(item.icon as React.ReactElement<any>, { size: 20 })}
+                            <span className={`transition-all duration-200 ${active ? 'scale-110 active:scale-100' : ''}`}>
+                                {React.cloneElement(item.icon as React.ReactElement<any>, { size: 22 })}
                             </span>
                             <span className="truncate max-w-[64px]">{item.label}</span>
                         </Link>
@@ -151,7 +149,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
                 <Link
                     to="/profile"
                     className={`
-                        flex flex-col items-center justify-center gap-0.5 py-2 px-1 flex-1 text-[10px] font-semibold transition-all duration-200
+                        flex flex-col items-center justify-center gap-1 py-1 px-1 flex-1 text-[10px] font-semibold transition-all duration-200
                         ${isActive('/profile')
                             ? 'text-[#0f978e]'
                             : 'text-slate-400 active:text-slate-600'}
