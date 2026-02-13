@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../services/supabase';
-import { ArrowLeft, Copy, Search, FileText, X } from 'lucide-react';
+import { ArrowLeft, Copy, Search, FileText, X, Building2, Tags, ChevronDown } from 'lucide-react';
 import { SegmentedControl } from '../ui/SegmentedControl';
 import type { Form } from '../../types';
 import { DimensionAnalysisSection } from './DimensionAnalysisSection';
@@ -748,36 +748,42 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
                                 </h2>
                             </div>
                             {/* Sector Dropdown Replacement */}
-                            <div className="mt-1 flex items-center gap-2">
+                            <div className="mt-[10px] flex flex-wrap items-center gap-3">
                                 {/* Unit Dropdown (Only show if we have units) */}
                                 {units.length > 0 && (
-                                    <select
-                                        value={selectedUnit}
-                                        onChange={(e) => {
-                                            setSelectedUnit(e.target.value);
-                                            setSelectedSector(''); // Reset sector when unit changes
-                                        }}
-                                        className="bg-slate-50 border-none text-sm text-slate-500 font-medium focus:ring-0 cursor-pointer hover:text-slate-700 py-0 pl-0 pr-8 transition-colors outline-none"
-                                    >
-                                        <option value="">Todas as Unidades</option>
-                                        {units.map(unit => (
-                                            <option key={unit.id} value={unit.id}>{unit.nome}</option>
-                                        ))}
-                                    </select>
+                                    <div className="relative group">
+                                        <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-[#35b6cf] transition-colors" size={16} />
+                                        <select
+                                            value={selectedUnit}
+                                            onChange={(e) => {
+                                                setSelectedUnit(e.target.value);
+                                                setSelectedSector(''); // Reset sector when unit changes
+                                            }}
+                                            className="appearance-none pl-10 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600 font-medium focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 cursor-pointer hover:bg-white hover:border-[#35b6cf]/50 transition-all outline-none shadow-sm min-w-[180px]"
+                                        >
+                                            <option value="">Todas as Unidades</option>
+                                            {units.map(unit => (
+                                                <option key={unit.id} value={unit.id}>{unit.nome}</option>
+                                            ))}
+                                        </select>
+                                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none group-hover:text-[#35b6cf] transition-colors" size={14} />
+                                    </div>
                                 )}
 
-                                {units.length > 0 && <span className="text-slate-300">|</span>}
-
-                                <select
-                                    value={selectedSector}
-                                    onChange={(e) => setSelectedSector(e.target.value)}
-                                    className="bg-slate-50 border-none text-sm text-slate-500 font-medium focus:ring-0 cursor-pointer hover:text-slate-700 py-0 pl-0 pr-8 transition-colors outline-none"
-                                >
-                                    <option value="">Todos os Setores</option>
-                                    {distinctSectors.map(sector => (
-                                        <option key={sector} value={sector}>{sector}</option>
-                                    ))}
-                                </select>
+                                <div className="relative group">
+                                    <Tags className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-[#35b6cf] transition-colors" size={16} />
+                                    <select
+                                        value={selectedSector}
+                                        onChange={(e) => setSelectedSector(e.target.value)}
+                                        className="appearance-none pl-10 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600 font-medium focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 cursor-pointer hover:bg-white hover:border-[#35b6cf]/50 transition-all outline-none shadow-sm min-w-[180px]"
+                                    >
+                                        <option value="">Todos os Setores</option>
+                                        {distinctSectors.map(sector => (
+                                            <option key={sector} value={sector}>{sector}</option>
+                                        ))}
+                                    </select>
+                                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none group-hover:text-[#35b6cf] transition-colors" size={14} />
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -795,14 +801,6 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
                                 <span className="hidden sm:inline">Copiar Link</span>
                             </button>
                         )}
-                        <button
-                            onClick={handleOpenReport}
-                            disabled={reportLoading}
-                            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors font-medium shadow-sm active:scale-95 disabled:opacity-50"
-                        >
-                            <FileText size={16} />
-                            <span className="hidden sm:inline">{reportLoading ? 'Gerando...' : 'Relatório HSE'}</span>
-                        </button>
                     </div>
                 </div>
 

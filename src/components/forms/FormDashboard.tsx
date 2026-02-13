@@ -194,10 +194,16 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                 if (s.name) allCompanySectorNames.add(s.name);
             }));
 
-            const allCompanyRoles = mappedUnits.flatMap(u => u.roles).map(r => ({
-                nome: r.nome,
-                setor: r.setor_name
-            }));
+            const allCompanyRolesReference = mappedUnits.flatMap(u => u.roles);
+            // Deduplicate by ID to avoid visual duplicates in "Cargos" tab
+            const uniqueRolesMap = new Map();
+            allCompanyRolesReference.forEach(r => {
+                const key = `${r.nome}-${r.setor_name}`;
+                if (!uniqueRolesMap.has(key)) {
+                    uniqueRolesMap.set(key, { nome: r.nome, setor: r.setor_name });
+                }
+            });
+            const allCompanyRoles = Array.from(uniqueRolesMap.values());
             const uniqueRoleNames = Array.from(new Set(allCompanyRoles.map(r => r.nome)));
 
             // Merge with new client record
@@ -433,7 +439,8 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
             const sectorNameMap: Record<string, number> = {};
 
             if (formData.setores && formData.setores.length > 0) {
-                for (const sectorName of formData.setores) {
+                const uniqueSectors = Array.from(new Set(formData.setores as string[]));
+                for (const sectorName of uniqueSectors) {
                     // Try to find existing first
                     const { data: existingSector } = await supabase
                         .from('setor')
@@ -463,9 +470,10 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
 
                 // Update company sectors
                 if (sectorIds.length > 0) {
+                    const uniqueSectorIds = Array.from(new Set(sectorIds));
                     await supabase
                         .from('clientes')
-                        .update({ setores: sectorIds })
+                        .update({ setores: uniqueSectorIds })
                         .eq('id', companyId);
                 }
                 console.log(`[SAVE] Synced ${sectorIds.length} sectors for company.`);
@@ -477,8 +485,13 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
 
             // First, get currently linked roles to potentially merge or replace
             if (formData.cargos && formData.cargos.length > 0) {
+                const uniqueRoles = (formData.cargos as any[]).filter((role, index, self) =>
+                    index === self.findIndex((r) => (
+                        r.nome === role.nome && r.setor === role.setor
+                    ))
+                );
 
-                for (const role of formData.cargos) {
+                for (const role of uniqueRoles) {
                     const sectorId = sectorNameMap[role.setor];
                     if (!sectorId) continue; // Skip if sector not resolved
 
@@ -528,9 +541,49 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
             const unitIdMap: Record<string | number, string | number> = {};
             console.log(`[SAVE] Updating ${currentUnits.length} Units. Roles calculated: ${roleIds.length}`);
 
+            // DELETE LOGIC: Remove units that are no longer in the list
+            if (currentUnits.length > 0 && parentCompanyUuid) {
+                const { data: existingUnits } = await supabase
+                    .from('unidades')
+                    .select('id')
+                    .eq('empresa_mae', parentCompanyUuid);
+
+                if (existingUnits) {
+                    const existingIds = existingUnits.map(u => u.id);
+                    // FIX: Handle String/Number IDs correctly
+                    // Convert everything to number for comparison if possible and reasonable size
+                    const currentIds = currentUnits
+                        .map((u: any) => {
+                            const num = Number(u.id);
+                            return !isNaN(num) && num < 1000000000000 ? num : null;
+                        })
+                        .filter((id: any) => id !== null);
+
+                    const idsToDelete = existingIds.filter(id => !currentIds.includes(id));
+
+                    if (idsToDelete.length > 0) {
+                        console.log('[SAVE] Deleting removed units:', idsToDelete);
+                        const { error: deleteError } = await supabase
+                            .from('unidades')
+                            .delete()
+                            .in('id', idsToDelete);
+
+                        if (deleteError) {
+                            console.error('[ERROR] Deleting units (FK constraint?):', deleteError);
+                            // If we can't delete, we should probably warn or try to decouple collaborators?
+                            // For now, we continue, but these units will remain in DB.
+                        }
+                    }
+                }
+            }
+
             for (const unit of currentUnits) {
-                // Fix: Threshold was too high (2T). Date.now() is ~1.73T. Lowered to 1T.
-                const isTempId = typeof unit.id === 'string' || unit.id > 1000000000000;
+                // Fix: Correctly identify Temp IDs vs Real IDs (stringified numbers)
+                const unitIdNum = Number(unit.id);
+                // Real ID if it's a valid number AND small enough (not a timestamp)
+                const isRealId = !isNaN(unitIdNum) && unitIdNum < 1000000000000;
+                const isTempId = !isRealId;
+
                 const parentCompanyUuid = infoModalCompany?.cliente_uuid || formData.cliente_uuid;
 
                 if (!parentCompanyUuid && isTempId) {
@@ -540,14 +593,18 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                 }
 
                 // CRITICAL FIX: Resolve IDs strictly for this unit's sectors and roles
-                const unitSectorIds = (unit.sectors || [])
-                    .map((s: string) => sectorNameMap[s])
-                    .filter(Boolean);
+                const unitSectorIds = Array.from(new Set(
+                    (unit.sectors || [])
+                        .map((s: string) => sectorNameMap[s])
+                        .filter(Boolean)
+                ));
 
-                const unitRoleIds = (formData.cargos || [])
-                    .filter((cargo: any) => unit.sectors.some((us: string) => normalizeText(us) === normalizeText(cargo.setor)))
-                    .map((cargo: any) => roleNameMap[`${cargo.setor}_${cargo.nome}`])
-                    .filter(Boolean);
+                const unitRoleIds = Array.from(new Set(
+                    (formData.cargos || [])
+                        .filter((cargo: any) => unit.sectors.some((us: string) => us === cargo.setor))
+                        .map((cargo: any) => roleNameMap[`${cargo.setor}_${cargo.nome}`])
+                        .filter(Boolean)
+                ));
 
                 const unitPayload = {
                     nome: unit.name,
@@ -576,7 +633,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                         dbUnitId = newUnit.id;
                     }
                 } else {
-                    const { error: updateError } = await supabase.from('unidades').update(unitPayload).eq('id', unit.id);
+                    const { error: updateError } = await supabase.from('unidades').update(unitPayload).eq('id', unitIdNum);
                     if (updateError) {
                         console.error(`[ERROR] Updating unit ${unit.name}:`, updateError);
                         alert(`Erro ao atualizar unidade ${unit.name}: ${updateError.message}`);
@@ -593,6 +650,51 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
             // 5. Sync Collaborators
             const collaborators = formData.colaboradores || [];
             console.log(`[SAVE] Syncing ${collaborators.length} collaborators...`);
+
+            // DELETE LOGIC FOR COLLABORATORS
+            if (parentCompanyUuid) {
+                // 1. Get all units for this company to find related collaborators
+                const { data: companyUnits } = await supabase
+                    .from('unidades')
+                    .select('id')
+                    .eq('empresa_mae', parentCompanyUuid);
+
+                if (companyUnits && companyUnits.length > 0) {
+                    const companyUnitIds = companyUnits.map(u => u.id);
+
+                    // 2. Get all existing collaborators in DB for these units
+                    const { data: existingColabs } = await supabase
+                        .from('colaboradores')
+                        .select('id')
+                        .in('unidade_id', companyUnitIds);
+
+                    if (existingColabs) {
+                        const existingColabIds = existingColabs.map(c => c.id);
+
+                        // 3. Filter IDs currently in the form
+                        // Handle potential string/number mismatches
+                        const currentFormColabIds = collaborators
+                            .map((c: any) => {
+                                const num = Number(c.id);
+                                // Valid ID if number and not temp timestamp (approx check)
+                                return !isNaN(num) && num < 1000000000000 ? num : null;
+                            })
+                            .filter((id: any) => id !== null);
+
+                        const colabsToDelete = existingColabIds.filter(id => !currentFormColabIds.includes(id));
+
+                        if (colabsToDelete.length > 0) {
+                            console.log('[SAVE] Deleting removed collaborators:', colabsToDelete);
+                            const { error: delColabErr } = await supabase
+                                .from('colaboradores')
+                                .delete()
+                                .in('id', colabsToDelete);
+
+                            if (delColabErr) console.error('[ERROR] Deleting collaborators:', delColabErr);
+                        }
+                    }
+                }
+            }
 
             for (const colab of collaborators) {
                 // Resolve IDs
@@ -701,7 +803,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                         className="flex items-center justify-center gap-2 px-6 bg-[#35b6cf] text-white rounded-xl font-bold hover:bg-[#2ca3bc] transition-all shadow-lg shadow-[#35b6cf]/20 shrink-0 md:w-48 h-11"
                     >
                         <Plus size={18} />
-                        <span>Nova Empresa</span>
+                        <span>Empresa</span>
                     </button>
 
                     <button
@@ -712,7 +814,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                         className="flex items-center justify-center gap-2 px-6 bg-white text-[#35b6cf] border border-[#35b6cf] rounded-xl font-bold hover:bg-[#35b6cf]/5 transition-all shadow-sm shrink-0 md:w-48 h-11"
                     >
                         <Plus size={18} />
-                        <span>Novo Colaborador</span>
+                        <span>Colaborador</span>
                     </button>
                 </div>
             </div>
@@ -876,19 +978,21 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                         <td className="px-6 py-4">
                                             <div className="flex items-center justify-end gap-2">
                                                 <button
-                                                    onClick={() => handleGerarFormulario(company)}
-                                                    className="px-3 py-1.5 bg-[#35b6cf]/10 text-[#35b6cf] hover:bg-[#35b6cf] hover:text-white rounded-lg text-xs font-bold transition-all"
+                                                    onClick={(e) => openInfoModal(e, company)}
+                                                    className="p-1.5 text-slate-400 hover:text-[#35b6cf] transition-colors"
+                                                    title="Estrutura da empresa"
                                                 >
-                                                    Gerar Formulário
+                                                    <Settings size={18} />
                                                 </button>
 
                                                 <button
-                                                    onClick={() => onEditForm(company)}
+                                                    onClick={() => handleGerarFormulario(company)}
                                                     className="p-1.5 text-slate-400 hover:text-[#35b6cf] transition-colors"
-                                                    title="Editar"
+                                                    title="Formulários"
                                                 >
-                                                    <Edit size={16} />
+                                                    <FileText size={18} />
                                                 </button>
+
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
@@ -898,13 +1002,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                                     className="p-1.5 text-slate-400 hover:text-[#35b6cf] transition-colors"
                                                     title="Colaboradores"
                                                 >
-                                                    <Users size={16} />
-                                                </button>
-                                                <button
-                                                    className="p-1.5 text-slate-300 hover:text-red-400 transition-colors"
-                                                    title="Excluir"
-                                                >
-                                                    <Trash2 size={16} />
+                                                    <Users size={18} />
                                                 </button>
                                             </div>
                                         </td>

@@ -16,9 +16,6 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
     const [selectedCompany, setSelectedCompany] = useState<any>(null); // Local state for selected company
 
     const [collaborators, setCollaborators] = useState<any[]>([]);
-    const [forms, setForms] = useState<any[]>([]);
-    const [selectedFormId, setSelectedFormId] = useState<number | null>(null);
-    const [invitedIds, setInvitedIds] = useState<Set<string>>(new Set());
     const [searchTerm, setSearchTerm] = useState('');
     const [units, setUnits] = useState<any[]>([]);
     const [refData, setRefData] = useState<{ sectors: any[], roles: any[] }>({ sectors: [], roles: [] });
@@ -72,6 +69,7 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
         try {
             // 1. Fetch Units for this Company (Client)
             // 1. Fetch Units
+            // 1. Fetch Units
             const { data: unitsData } = await supabase
                 .from('unidades')
                 .select('id, nome, empresa_mae, setores, cargos')
@@ -81,7 +79,6 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
             if (unitList.length === 0) {
                 setUnits([]);
                 setCollaborators([]);
-                setForms([]);
                 setRefData({ sectors: [], roles: [] });
                 setLoading(false);
                 return;
@@ -125,26 +122,7 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
 
             setCollaborators(mappedColabs);
 
-            // 3. Fetch Forms (To manage participation)
-            const { data: formsData } = await supabase
-                .from('forms')
-                .select('id, title, colaboladores_inclusos, unidade_id')
-                .in('unidade_id', unitIds) // Assuming forms are linked to units
-                .order('created_at', { ascending: false });
 
-            const fetchedForms = formsData || [];
-            setForms(fetchedForms);
-
-            if (fetchedForms.length > 0) {
-                // Default to first form
-                const initialForm = fetchedForms[0];
-                setSelectedFormId(initialForm.id);
-                const currentInvited = initialForm.colaboladores_inclusos || [];
-                setInvitedIds(new Set(currentInvited.map(String)));
-            } else {
-                setSelectedFormId(null);
-                setInvitedIds(new Set());
-            }
 
         } catch (error) {
             console.error('Error fetching manager data:', error);
@@ -153,53 +131,7 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
         }
     };
 
-    // When form selection changes, update invited set
-    const handleFormChange = (formId: number) => {
-        setSelectedFormId(formId);
-        const form = forms.find(f => f.id === formId);
-        if (form) {
-            setInvitedIds(new Set((form.colaboladores_inclusos || []).map(String)));
-        }
-    };
 
-    const handleToggleParticipant = async (colabId: string, isCurrentlyIncluded: boolean) => {
-        if (!selectedFormId) return;
-
-        const strId = String(colabId);
-        const newSet = new Set(invitedIds);
-
-        if (isCurrentlyIncluded) {
-            newSet.delete(strId);
-        } else {
-            newSet.add(strId);
-        }
-
-        // Optimistic UI
-        setInvitedIds(newSet);
-
-        // API Update
-        try {
-            const { error } = await supabase
-                .from('forms')
-                .update({ colaboladores_inclusos: Array.from(newSet) })
-                .eq('id', selectedFormId);
-
-            if (error) throw error;
-
-            // Update local form state
-            setForms(prev => prev.map(f =>
-                f.id === selectedFormId
-                    ? { ...f, colaboladores_inclusos: Array.from(newSet) }
-                    : f
-            ));
-
-        } catch (error) {
-            console.error('Error updating participation:', error);
-            // Revert
-            setInvitedIds(invitedIds);
-            alert('Erro ao atualizar participação.');
-        }
-    };
 
     const handleImportCollaborators = async (importedData: any[]) => {
         if (!importedData || importedData.length === 0) return;
@@ -290,10 +222,7 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
             const addedColab = { ...data, cargo_nome: data.cargo || '-' };
             setCollaborators(prev => [addedColab, ...prev]);
 
-            // If there's a selected form, auto-invite?
-            if (selectedFormId) {
-                await handleToggleParticipant(String(addedColab.id), false); // Toggle ON
-            }
+
 
             // Reset
             setIsAdding(false);
@@ -350,7 +279,7 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                         <h2 className="text-xl font-bold text-slate-800">
                             {isAdding ? 'Cadastrar Novo Colaborador' : 'Gerenciar Colaboradores'}
                         </h2>
-                        {company && <p className="text-sm text-slate-500">{selectedCompany?.name}</p>}
+                        {selectedCompany && <p className="text-sm text-slate-500">{selectedCompany.name || selectedCompany.nome_fantasia || selectedCompany.razao_social}</p>}
                         {!company && isAdding && <p className="text-sm text-slate-500">Preencha os dados abaixo.</p>}
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
@@ -366,23 +295,7 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                             <div className="bg-slate-50 border-b border-slate-100">
                                 <div className="px-8 py-6 pb-4">
                                     <div className="flex items-center justify-between">
-                                        {/* Form Selection */}
-                                        <div className="flex-1 max-w-sm mr-4">
-                                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Formulário Ativo (Participantes)</label>
-                                            {forms.length > 0 ? (
-                                                <select
-                                                    value={selectedFormId || ''}
-                                                    onChange={(e) => handleFormChange(Number(e.target.value))}
-                                                    className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:border-[#35b6cf] outline-none shadow-sm"
-                                                >
-                                                    {forms.map(f => (
-                                                        <option key={f.id} value={f.id}>{f.title}</option>
-                                                    ))}
-                                                </select>
-                                            ) : (
-                                                <div className="text-sm text-slate-400 italic">Nenhum formulário disponível</div>
-                                            )}
-                                        </div>
+
                                     </div>
                                 </div>
 
@@ -429,7 +342,7 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                                     >
                                         <option value="">Todas Unidades</option>
                                         {units.map((u: any) => (
-                                            <option key={u.id} value={u.id}>{u.name}</option>
+                                            <option key={u.id} value={u.id}>{u.nome_unidade || u.nome || 'Unidade sem Nome'}</option>
                                         ))}
                                     </select>
                                     <select
@@ -439,7 +352,7 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                                     >
                                         <option value="">Todos Setores</option>
                                         {refData.sectors.map((s: any) => (
-                                            <option key={s.id} value={s.id}>{s.name}</option>
+                                            <option key={s.id} value={s.id}>{s.nome || s.name || 'Setor sem Nome'}</option>
                                         ))}
                                     </select>
 
@@ -505,7 +418,24 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                                                                 <button className="p-1.5 text-slate-400 hover:text-[#35b6cf] bg-slate-50 rounded-lg hover:bg-white border border-transparent hover:border-slate-200 transition-all">
                                                                     <Pencil size={14} />
                                                                 </button>
-                                                                <button className="p-1.5 text-slate-400 hover:text-red-500 bg-slate-50 rounded-lg hover:bg-white border border-transparent hover:border-slate-200 transition-all">
+                                                                <button
+                                                                    onClick={async () => {
+                                                                        if (!confirm(`Tem certeza que deseja excluir ${colab.nome}?`)) return;
+                                                                        try {
+                                                                            const { error } = await supabase
+                                                                                .from('colaboradores')
+                                                                                .delete()
+                                                                                .eq('id', colab.id);
+                                                                            if (error) throw error;
+                                                                            // Refresh list
+                                                                            fetchInitialData();
+                                                                        } catch (err) {
+                                                                            console.error('Error deleting:', err);
+                                                                            alert('Erro ao excluir colaborador.');
+                                                                        }
+                                                                    }}
+                                                                    className="p-1.5 text-slate-400 hover:text-red-500 bg-slate-50 rounded-lg hover:bg-white border border-transparent hover:border-slate-200 transition-all"
+                                                                >
                                                                     <Trash2 size={14} />
                                                                 </button>
                                                             </div>
@@ -616,7 +546,7 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                                             >
                                                 <option value="">Selecione...</option>
                                                 {companies.map(c => (
-                                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                                    <option key={c.id} value={c.id}>{c.name || c.nome_fantasia || c.razao_social || 'Empresa sem Nome'}</option>
                                                 ))}
                                             </select>
                                         </div>
@@ -633,7 +563,7 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                                     >
                                         <option value="">{newColab.unidade_id ? "Selecione..." : "Selecione a Unidade"}</option>
                                         {availableSectors.map(s => (
-                                            <option key={s.id} value={s.id}>{s.nome}</option>
+                                            <option key={s.id} value={s.id}>{s.nome || s.name || 'Setor sem Nome'}</option>
                                         ))}
                                     </select>
                                 </div>
@@ -648,7 +578,7 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                                     >
                                         <option value="">{selectedCompany ? "Selecione a Unidade" : "Selecione a Empresa primeiro"}</option>
                                         {units.map(u => (
-                                            <option key={u.id} value={u.id}>{u.nome}</option>
+                                            <option key={u.id} value={u.id}>{u.nome_unidade || u.nome || 'Unidade sem Nome'}</option>
                                         ))}
                                     </select>
                                 </div>
@@ -663,7 +593,7 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                                     >
                                         <option value="">{newColab.setor ? "Selecione..." : "Selecione o Setor"}</option>
                                         {availableRoles.map(r => (
-                                            <option key={r.id} value={r.id}>{r.nome}</option>
+                                            <option key={r.id} value={r.id}>{r.nome || r.name || 'Cargo sem Nome'}</option>
                                         ))}
                                     </select>
                                 </div>

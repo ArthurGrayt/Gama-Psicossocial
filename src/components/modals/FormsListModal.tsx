@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../services/supabase';
 import { X, FileText, Plus, Calendar, BarChart2, Copy, ExternalLink, Pencil, Trash2, Check, MoreVertical, Download } from 'lucide-react';
+import { HSEReportModal } from '../reports/HSEReportModal';
+import type { HSEReportData } from '../reports/HSEReportModal';
+import { generateHSEReport } from '../../utils/reportGenerator';
 
 interface Company {
     id: number;
@@ -59,6 +62,11 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
     const [editingForm, setEditingForm] = useState<Form | null>(null);
     const [editFormTitle, setEditFormTitle] = useState('');
 
+    // Report State
+    const [isReportOpen, setIsReportOpen] = useState(false);
+    const [reportData, setReportData] = useState<HSEReportData | null>(null);
+    const [reportLoading, setReportLoading] = useState(false);
+
     useEffect(() => {
         const fetchForms = async () => {
             if (!company || !isOpen) return;
@@ -79,9 +87,36 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
 
                 if (error) throw error;
 
+                // Fetch response counts for all forms
+                const formIds = data?.map(f => f.id) || [];
+                const responseCounts: Record<number, number> = {};
+
+                if (formIds.length > 0) {
+                    const { data: answersData } = await supabase
+                        .from('form_answers')
+                        .select('form_id, respondedor')
+                        .in('form_id', formIds);
+
+                    // Count unique respondents per form
+                    const countsByForm: Record<number, Set<string>> = {};
+                    answersData?.forEach((answer: any) => {
+                        if (!countsByForm[answer.form_id]) {
+                            countsByForm[answer.form_id] = new Set();
+                        }
+                        if (answer.respondedor) {
+                            countsByForm[answer.form_id].add(String(answer.respondedor));
+                        }
+                    });
+
+                    Object.entries(countsByForm).forEach(([formId, respondents]) => {
+                        responseCounts[Number(formId)] = respondents.size;
+                    });
+                }
+
                 const mappedForms = data?.map(f => ({
                     ...f,
-                    unidade_nome: f.unidades?.nome
+                    unidade_nome: f.unidades?.nome,
+                    qtd_respostas: responseCounts[f.id] || 0
                 })) || [];
 
                 setForms(mappedForms);
@@ -147,6 +182,20 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
         } catch (err) {
             console.error('Error updating form title:', err);
             alert('Erro ao atualizar o título do formulário.');
+        }
+    };
+
+    const handleGenerateReport = async (formId: number) => {
+        setReportLoading(true);
+        try {
+            const report = await generateHSEReport(formId);
+            setReportData(report);
+            setIsReportOpen(true);
+        } catch (err) {
+            console.error('Error generating report:', err);
+            alert('Erro ao gerar relatório.');
+        } finally {
+            setReportLoading(false);
         }
     };
 
@@ -287,11 +336,12 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
                                         )}
 
                                         <button
-                                            className="px-5 py-2.5 bg-[#35b6cf] text-white rounded-xl font-bold text-xs hover:bg-[#2ca3bc] transition-all flex items-center gap-2 shadow-sm"
-                                            onClick={() => {/* Lógica de Download */ }}
+                                            className="px-5 py-2.5 bg-[#35b6cf] text-white rounded-xl font-bold text-xs hover:bg-[#2ca3bc] transition-all flex items-center gap-2 shadow-sm disabled:opacity-50"
+                                            onClick={() => handleGenerateReport(form.id)}
+                                            disabled={reportLoading}
                                         >
                                             <Download size={14} />
-                                            Baixar Relatório
+                                            {reportLoading ? 'Gerando...' : 'Baixar Relatório'}
                                         </button>
 
                                         <button
@@ -366,6 +416,16 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
                     </button>
                 </div>
             </div>
+            {reportData && (
+                <HSEReportModal
+                    isOpen={isReportOpen}
+                    onClose={() => {
+                        setIsReportOpen(false);
+                        setReportData(null);
+                    }}
+                    data={reportData}
+                />
+            )}
         </div>,
         document.body
     );
