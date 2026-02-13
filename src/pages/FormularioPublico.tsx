@@ -547,27 +547,20 @@ export const FormularioPublico: React.FC = () => {
 
                                 {/* Navegação Inferior */}
                                 <div className="flex items-center justify-between pt-6 sm:pt-8">
-                                    {currentQuestionIndex === 0 ? (
-                                        <button
-                                            onClick={handleBack}
-                                            className="flex items-center gap-2 px-4 sm:px-6 py-3 rounded-xl font-bold text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 transition-all text-sm sm:text-base"
-                                        >
-                                            <ChevronDown className="rotate-90" size={18} />
-                                            Voltar
-                                        </button>
-                                    ) : (
-                                        <div></div>
-                                    )}
+                                    <button
+                                        onClick={handleBack}
+                                        className="flex items-center gap-2 px-4 sm:px-6 py-3 rounded-xl font-bold text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 transition-all text-sm sm:text-base"
+                                    >
+                                        <ChevronDown className="rotate-90" size={18} />
+                                        Voltar
+                                    </button>
 
                                     <button
                                         onClick={handleNext}
-                                        className={`flex items-center gap-2 sm:gap-3 px-8 sm:px-12 py-4 sm:py-5 rounded-2xl font-black text-lg sm:text-xl transition-all shadow-xl hover:shadow-[#35b6cf]/20 active:scale-95 ${currentQuestionIndex === validQuestions.length - 1
-                                            ? 'bg-[#35b6cf] text-white hover:bg-[#2ca1b7]'
-                                            : 'bg-slate-800 text-white hover:bg-slate-900'
-                                            }`}
+                                        className="bg-[#35b6cf] text-white px-8 py-3.5 rounded-xl font-bold text-base hover:bg-[#2ca3bc] transition-all shadow-sm active:scale-[0.98] flex items-center gap-2 sm:gap-3"
                                     >
                                         {currentQuestionIndex === validQuestions.length - 1 ? 'Finalizar' : 'Próxima'}
-                                        {currentQuestionIndex < validQuestions.length - 1 && <ChevronDown className="-rotate-90 size-5 sm:size-6" />}
+                                        {currentQuestionIndex < validQuestions.length - 1 && <ChevronDown className="-rotate-90 size-5" />}
                                     </button>
                                 </div>
                             </div>

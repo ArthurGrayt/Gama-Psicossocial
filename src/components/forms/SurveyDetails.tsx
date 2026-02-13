@@ -5,6 +5,8 @@ import { SegmentedControl } from '../ui/SegmentedControl';
 import type { Form } from '../../types';
 import { DimensionAnalysisSection } from './DimensionAnalysisSection';
 import { ActionPlansSection } from './ActionPlansSection';
+import { HSEReportModal } from '../reports/HSEReportModal';
+import type { HSEReportData } from '../reports/HSEReportModal';
 
 interface SurveyDetailsProps {
     form: Form;
@@ -47,6 +49,11 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
     const [pendingList, setPendingList] = useState<any[]>([]);
     const [modalLoading, setModalLoading] = useState(false);
     const [dbStats, setDbStats] = useState({ participants: 0, pending: 0 });
+
+    // --- HSE REPORT STATE ---
+    const [isReportOpen, setIsReportOpen] = useState(false);
+    const [reportData, setReportData] = useState<HSEReportData | null>(null);
+    const [reportLoading, setReportLoading] = useState(false);
 
 
 
@@ -463,6 +470,237 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
         }
     };
 
+    // --- HSE REPORT LOGIC ---
+    const getRiskLevel = (avg: number, isPositive: boolean): string => {
+        if (!isPositive) {
+            // DIRECT: Higher mean = Higher risk
+            if (avg >= 3.0) return 'Alto';
+            if (avg >= 2.0) return 'Moderado';
+            if (avg >= 1.0) return 'Médio';
+            return 'Baixo';
+        } else {
+            // INVERSE: Lower mean = Higher risk
+            if (avg < 1.0) return 'Alto';
+            if (avg < 2.0) return 'Moderado';
+            if (avg < 3.0) return 'Médio';
+            return 'Baixo';
+        }
+    };
+
+    const handleOpenReport = async () => {
+        setReportLoading(true);
+        try {
+            const isCompanyLevel = !(form as any).slug && (form as any).cliente_uuid;
+            const targetClientUuid = (form as any).cliente_uuid;
+
+            // 1. Resolve company name
+            let companyName = form.title || 'Empresa';
+            if (targetClientUuid) {
+                const { data: clientData } = await supabase
+                    .from('clientes')
+                    .select('nome_fantasia')
+                    .eq('cliente_uuid', targetClientUuid)
+                    .single();
+                if (clientData?.nome_fantasia) companyName = clientData.nome_fantasia;
+            }
+
+            // 2. Resolve form IDs (same logic as fetchFilteredStats)
+            let localFormIds: number[] = [];
+            if (isCompanyLevel && targetClientUuid) {
+                const { data: answers } = await supabase
+                    .from('form_answers')
+                    .select(`
+                        form_id,
+                        colaboradores!inner (
+                            unidade_id,
+                            unidades!inner ( id, empresa_mae )
+                        )
+                    `)
+                    .eq('colaboradores.unidades.empresa_mae', targetClientUuid);
+                localFormIds = Array.from(new Set((answers || []).map((a: any) => a.form_id)));
+            } else {
+                localFormIds = formIds.length > 0 ? formIds : [form.id];
+            }
+
+            if (localFormIds.length === 0) {
+                setReportLoading(false);
+                return;
+            }
+
+            // 3. Fetch all answers with dimension info (respecting unit/sector filters)
+            let query = supabase
+                .from('form_answers')
+                .select(`
+                    answer_number,
+                    respondedor,
+                    question_id,
+                    colaboradores!inner ( unidade_id, setor_id ),
+                    form_questions!inner (
+                        id,
+                        label,
+                        titulo_relatorio,
+                        plano_acao_item,
+                        form_hse_dimensions!inner ( id, name, is_positive )
+                    )
+                `)
+                .in('form_id', localFormIds);
+
+            if (selectedUnit) {
+                query = query.eq('colaboradores.unidade_id', Number(selectedUnit));
+            }
+            const sectorId = selectedSector ? sectors.find(s => s.nome === selectedSector)?.id : null;
+            if (sectorId) {
+                query = query.eq('colaboradores.setor_id', sectorId);
+            }
+
+            const { data: rawData, error } = await query;
+            if (error) throw error;
+
+            // 4. Calculate dimension averages AND per-question averages
+            const dimGroups: Record<number, { name: string; total: number; count: number; is_positive: boolean }> = {};
+            const questionGroups: Record<number, { label: string; tituloRelatorio: string; planoAcaoItem: string; dimId: number; total: number; count: number }> = {};
+            const uniqueRespondents = new Set<string>();
+
+            rawData?.forEach((row: any) => {
+                if (typeof row.answer_number !== 'number') return;
+                const qData = row.form_questions;
+                const dimData = qData?.form_hse_dimensions;
+                if (!dimData?.id || !dimData?.name) return;
+                const qId = qData?.id || row.question_id;
+                if (!qId) return;
+
+                if (row.respondedor) uniqueRespondents.add(String(row.respondedor));
+
+                // Dimension aggregation
+                if (!dimGroups[dimData.id]) {
+                    dimGroups[dimData.id] = {
+                        name: dimData.name,
+                        total: 0,
+                        count: 0,
+                        is_positive: dimData.is_positive === true
+                    };
+                }
+                dimGroups[dimData.id].total += row.answer_number;
+                dimGroups[dimData.id].count += 1;
+
+                // Per-question aggregation
+                if (!questionGroups[qId]) {
+                    questionGroups[qId] = {
+                        label: qData.label || `Pergunta ${qId}`,
+                        tituloRelatorio: qData.titulo_relatorio || '',
+                        planoAcaoItem: qData.plano_acao_item || '',
+                        dimId: dimData.id,
+                        total: 0,
+                        count: 0
+                    };
+                }
+                questionGroups[qId].total += row.answer_number;
+                questionGroups[qId].count += 1;
+            });
+
+            const dimensions = Object.entries(dimGroups).map(([id, stats]) => {
+                const avg = stats.total / stats.count;
+                const isPositive = stats.is_positive;
+
+                // Collect items for this dimension
+                const dimItems = Object.entries(questionGroups)
+                    .filter(([, q]) => q.dimId === Number(id))
+                    .map(([, q]) => {
+                        const qAvg = q.total / q.count;
+                        return {
+                            questionLabel: q.label,
+                            average: qAvg,
+                            riskText: getRiskLevel(qAvg, isPositive)
+                        };
+                    });
+
+                return {
+                    id: Number(id),
+                    name: stats.name,
+                    average: avg,
+                    isPositive: isPositive,
+                    riskLevel: getRiskLevel(avg, isPositive),
+                    items: dimItems
+                };
+            });
+
+            // 5. Generate strengths & weaknesses
+            const strengths: string[] = [];
+            const weaknesses: string[] = [];
+            dimensions.forEach(d => {
+                const level = d.riskLevel.toLowerCase();
+                if (level === 'baixo') {
+                    strengths.push(`A dimensão "${d.name}" apresenta risco baixo (média ${d.average.toFixed(2)}), indicando um ponto forte da organização.`);
+                } else if (level === 'médio') {
+                    strengths.push(`A dimensão "${d.name}" apresenta risco médio (média ${d.average.toFixed(2)}), sendo um aspecto adequado com espaço para melhoria.`);
+                } else if (level === 'moderado') {
+                    weaknesses.push(`A dimensão "${d.name}" apresenta risco moderado (média ${d.average.toFixed(2)}), requerendo atenção e acompanhamento.`);
+                } else if (level === 'alto') {
+                    weaknesses.push(`A dimensão "${d.name}" apresenta risco alto (média ${d.average.toFixed(2)}), demandando intervenção prioritária.`);
+                }
+            });
+
+            // 6. Fetch analysis text from view
+            let analysisText = '';
+            const reportFormIds = localFormIds;
+            if (reportFormIds.length > 0) {
+                const { data: analysisData } = await supabase
+                    .from('view_hse_texto_analise')
+                    .select('texto_final_pronto')
+                    .in('form_id', reportFormIds);
+                if (analysisData && analysisData.length > 0) {
+                    analysisText = analysisData.map((r: any) => r.texto_final_pronto).filter(Boolean).join('\n\n');
+                }
+            }
+
+            // 7. Build action plans from items with moderate/high risk
+            const actionPlans: { title: string; action: string }[] = [];
+            Object.values(questionGroups).forEach(q => {
+                const dimGroup = dimGroups[q.dimId];
+                if (!dimGroup) return;
+                const qAvg = q.total / q.count;
+                const risk = getRiskLevel(qAvg, dimGroup.is_positive).toLowerCase();
+                if ((risk === 'moderado' || risk === 'alto') && q.planoAcaoItem) {
+                    actionPlans.push({
+                        title: q.tituloRelatorio || q.label,
+                        action: q.planoAcaoItem
+                    });
+                }
+            });
+
+            // 8. Fetch conclusion text from view
+            let conclusionText = '';
+            if (reportFormIds.length > 0) {
+                const { data: conclusionData } = await supabase
+                    .from('view_hse_texto_conclusao')
+                    .select('texto_conclusao_pronto')
+                    .in('form_id', reportFormIds);
+                if (conclusionData && conclusionData.length > 0) {
+                    conclusionText = conclusionData.map((r: any) => r.texto_conclusao_pronto).filter(Boolean).join('\n\n');
+                }
+            }
+
+            // 9. Build report data
+            const report: HSEReportData = {
+                companyName,
+                respondentsCount: uniqueRespondents.size,
+                reportDate: new Date().toLocaleDateString('pt-BR'),
+                dimensions,
+                texts: { strengths, weaknesses },
+                analysisText: analysisText || undefined,
+                actionPlans,
+                conclusionText: conclusionText || undefined
+            };
+
+            setReportData(report);
+            setIsReportOpen(true);
+        } catch (err) {
+            console.error('Error generating report:', err);
+        } finally {
+            setReportLoading(false);
+        }
+    };
+
     const handleOpenParticipation = () => {
         setShowParticipationModal(true);
         fetchParticipationDetails();
@@ -557,6 +795,14 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
                                 <span className="hidden sm:inline">Copiar Link</span>
                             </button>
                         )}
+                        <button
+                            onClick={handleOpenReport}
+                            disabled={reportLoading}
+                            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors font-medium shadow-sm active:scale-95 disabled:opacity-50"
+                        >
+                            <FileText size={16} />
+                            <span className="hidden sm:inline">{reportLoading ? 'Gerando...' : 'Relatório HSE'}</span>
+                        </button>
                     </div>
                 </div>
 
@@ -879,6 +1125,13 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
                     )
                 }
             </div >
+
+            {/* HSE REPORT MODAL */}
+            <HSEReportModal
+                isOpen={isReportOpen}
+                onClose={() => setIsReportOpen(false)}
+                data={reportData}
+            />
         </>
     );
 };
