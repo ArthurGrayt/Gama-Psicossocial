@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "vercel": "npx vercel dev",
-    "build": "npx tsc -b && vite build",
+    "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },

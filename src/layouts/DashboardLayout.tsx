@@ -37,6 +37,20 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
 
     return (
         <div className="min-h-screen bg-slate-50 flex font-sans text-slate-900 selection:bg-indigo-100 selection:text-indigo-900">
+            {/* Mobile Header - visible only on mobile */}
+            <header className="fixed top-0 left-0 right-0 h-14 bg-white/80 backdrop-blur-xl border-b border-slate-100 flex items-center justify-between px-4 z-40 md:hidden">
+                <div className="flex items-center gap-2">
+                    <img src={logo} alt="Gama Logo" className="w-7 h-7 object-contain" />
+                    <span className="font-bold text-lg text-slate-800 tracking-tight">Gama Psic</span>
+                </div>
+                <button
+                    onClick={() => signOut()}
+                    className="p-2 text-slate-400 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50/50"
+                >
+                    <LogOut size={18} />
+                </button>
+            </header>
+
             {/* Sidebar - hidden on mobile */}
             <aside className="fixed inset-y-0 left-0 w-64 bg-white border-r border-slate-100 hidden md:flex flex-col z-30">
                 {/* Logo Area */}
@@ -103,7 +117,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 ml-0 md:ml-64 min-h-screen flex flex-col pb-20 md:pb-0">
+            <main className="flex-1 ml-0 md:ml-64 min-h-screen flex flex-col pt-14 md:pt-0 pb-[4.5rem] md:pb-0">
 
 
                 <div className="p-4 md:p-10 max-w-7xl mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -112,7 +126,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
             </main>
 
             {/* Mobile Tab Bar */}
-            <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex items-center justify-around px-2 py-2 z-40 md:hidden safe-area-bottom">
+            <nav className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-slate-200/80 flex items-center justify-around px-1 z-40 md:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
                 {MENU_ITEMS.map((item) => {
                     const active = isActive(item.path);
                     return (
@@ -120,16 +134,16 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
                             key={item.path}
                             to={item.path === '/forms' ? '/' : item.path}
                             className={`
-                                flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl text-[10px] font-semibold transition-all duration-200 min-w-[60px]
+                                flex flex-col items-center justify-center gap-0.5 py-2 px-1 flex-1 text-[10px] font-semibold transition-all duration-200
                                 ${active
                                     ? 'text-[#0f978e]'
-                                    : 'text-slate-400 hover:text-slate-600'}
+                                    : 'text-slate-400 active:text-slate-600'}
                             `}
                         >
                             <span className={`transition-all duration-200 ${active ? 'scale-110' : ''}`}>
-                                {React.cloneElement(item.icon as React.ReactElement<any>, { size: 22 })}
+                                {React.cloneElement(item.icon as React.ReactElement<any>, { size: 20 })}
                             </span>
-                            <span>{item.label}</span>
+                            <span className="truncate max-w-[64px]">{item.label}</span>
                         </Link>
                     );
                 })}
@@ -137,10 +151,10 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
                 <Link
                     to="/profile"
                     className={`
-                        flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl text-[10px] font-semibold transition-all duration-200 min-w-[60px]
+                        flex flex-col items-center justify-center gap-0.5 py-2 px-1 flex-1 text-[10px] font-semibold transition-all duration-200
                         ${isActive('/profile')
                             ? 'text-[#0f978e]'
-                            : 'text-slate-400 hover:text-slate-600'}
+                            : 'text-slate-400 active:text-slate-600'}
                     `}
                 >
                     <span className={`w-6 h-6 rounded-full overflow-hidden flex items-center justify-center border-2 transition-all duration-200 ${isActive('/profile') ? 'border-[#0f978e]' : 'border-slate-200'

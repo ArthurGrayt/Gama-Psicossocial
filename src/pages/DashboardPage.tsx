@@ -39,19 +39,19 @@ export const DashboardPage: React.FC = () => {
         <DashboardLayout>
             <div className="space-y-8 animate-in fade-in duration-500">
                 {/* 1. WELCOME HEADER */}
-                <div className="flex justify-between items-end mb-8">
+                <div className="flex justify-between items-end mb-4 md:mb-8">
                     <div>
-                        <h1 className="text-3xl font-bold text-slate-800 tracking-tight">
-                            Bom dia, Arthur. <span className="text-2xl">👋</span>
+                        <h1 className="text-xl md:text-3xl font-bold text-slate-800 tracking-tight">
+                            Bom dia, Arthur. <span className="text-lg md:text-2xl">👋</span>
                         </h1>
                     </div>
                 </div>
 
                 {/* 2. TOP CARDS GRID (BENTO) */}
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-4 md:mb-8">
 
                     {/* TOKEN WALLET CARD */}
-                    <div className="bg-[#f0f9fa] rounded-[2rem] p-6 shadow-sm border border-[#35b6cf]/20 relative group flex flex-col justify-between h-full hover:shadow-md transition-shadow">
+                    <div className="col-span-2 lg:col-span-1 bg-[#f0f9fa] rounded-2xl md:rounded-[2rem] p-4 md:p-6 shadow-sm border border-[#35b6cf]/20 relative group flex flex-col justify-between h-full hover:shadow-md transition-shadow">
                         <div className="relative z-10 flex flex-col h-full justify-between">
                             <div>
                                 <div className="flex items-center gap-2 text-slate-500 mb-2">
@@ -80,7 +80,7 @@ export const DashboardPage: React.FC = () => {
                                 </div>
 
                                 <div>
-                                    <h3 className="text-3xl font-black tracking-tight text-slate-800">{tokenBalance} <span className="text-lg font-medium text-slate-400">Tokens</span></h3>
+                                    <h3 className="text-2xl md:text-3xl font-black tracking-tight text-slate-800">{tokenBalance} <span className="text-sm md:text-lg font-medium text-slate-400">Tokens</span></h3>
                                 </div>
                             </div>
 
@@ -94,7 +94,7 @@ export const DashboardPage: React.FC = () => {
                     </div>
 
                     {/* KPI 3: EMPRESAS */}
-                    <div className="bg-white rounded-[2rem] p-6 border border-slate-100 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between group h-full">
+                    <div className="bg-white rounded-2xl md:rounded-[2rem] p-4 md:p-6 border border-slate-100 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between group h-full">
                         <div className="flex justify-between items-start mb-2">
                             <span className="text-sm font-medium text-slate-500">Empresas</span>
                             <div className="p-2 bg-slate-50 text-slate-600 rounded-xl group-hover:bg-blue-50 group-hover:text-blue-500 transition-colors">
@@ -102,12 +102,12 @@ export const DashboardPage: React.FC = () => {
                             </div>
                         </div>
                         <div>
-                            <h3 className="text-3xl font-bold text-slate-800 tracking-tight">{companiesCount}</h3>
+                            <h3 className="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight">{companiesCount}</h3>
                         </div>
                     </div>
 
                     {/* KPI 1: RESPONDIDOS */}
-                    <div className="bg-white rounded-[2rem] p-6 border border-slate-100 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between group h-full">
+                    <div className="bg-white rounded-2xl md:rounded-[2rem] p-4 md:p-6 border border-slate-100 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between group h-full">
                         <div className="flex justify-between items-start mb-2">
                             <span className="text-sm font-medium text-slate-500">Respondidos</span>
                             <div className="p-2 bg-slate-50 text-slate-600 rounded-xl group-hover:bg-emerald-50 group-hover:text-emerald-500 transition-colors">
@@ -115,14 +115,14 @@ export const DashboardPage: React.FC = () => {
                             </div>
                         </div>
                         <div>
-                            <h3 className="text-3xl font-bold text-slate-800 tracking-tight">
+                            <h3 className="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight">
                                 {totalResponses >= 1000 ? `${(totalResponses / 1000).toFixed(1)}k` : totalResponses}
                             </h3>
                         </div>
                     </div>
 
                     {/* KPI 2: PENDENTES */}
-                    <div className="bg-white rounded-[2rem] p-6 border border-slate-100 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between group h-full">
+                    <div className="bg-white rounded-2xl md:rounded-[2rem] p-4 md:p-6 border border-slate-100 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between group h-full">
                         <div className="flex justify-between items-start mb-2">
                             <span className="text-sm font-medium text-slate-500">Pendentes</span>
                             <div className="p-2 bg-slate-50 text-slate-600 rounded-xl group-hover:bg-amber-50 group-hover:text-amber-500 transition-colors">
@@ -130,13 +130,13 @@ export const DashboardPage: React.FC = () => {
                             </div>
                         </div>
                         <div>
-                            <h3 className="text-3xl font-bold text-slate-800 tracking-tight">{pendingResponses}</h3>
+                            <h3 className="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight">{pendingResponses}</h3>
                         </div>
                     </div>
                 </div>
 
                 {/* 3. MIDDLE SECTION - Ranking & Charts */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 mb-4 md:mb-8">
                     <div className="lg:col-span-1">
                         <RankingGeralWidget />
                     </div>

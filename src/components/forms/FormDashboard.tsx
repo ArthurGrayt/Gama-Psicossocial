@@ -958,12 +958,12 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
             {/* Header / Actions */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
                 <div>
-                    <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Empresas Monitoradas</h2>
+                    <h2 className="text-xl md:text-2xl font-bold text-slate-800 tracking-tight">Empresas Monitoradas</h2>
                 </div>
 
-                <div className="flex items-center gap-3 w-full md:w-auto">
-                    <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-slate-200 shadow-sm flex-1 md:w-[480px] h-11">
-                        <div className="relative flex-1 md:w-[480px]">
+                <div className="flex flex-col gap-3 w-full">
+                    <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-slate-200 shadow-sm w-full h-11">
+                        <div className="relative flex-1">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                             <input
                                 type="text"
@@ -990,8 +990,8 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                 {/* Filter Dropdown */}
                                 {showFilterDropdown && (
                                     <>
-                                        <div className="fixed inset-0 z-40" onClick={() => setShowFilterDropdown(false)} />
-                                        <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-slate-100 z-50 animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
+                                        <div className="fixed inset-0 z-40 bg-black/30 md:bg-transparent" onClick={() => setShowFilterDropdown(false)} />
+                                        <div className="fixed inset-x-0 bottom-0 md:absolute md:inset-auto md:right-0 md:top-full md:mt-2 w-full md:w-80 bg-white rounded-t-2xl md:rounded-2xl shadow-2xl border border-slate-100 z-50 animate-in slide-in-from-bottom-4 md:fade-in md:zoom-in-95 duration-200 overflow-hidden max-h-[85vh] md:max-h-none">
                                             {/* Header */}
                                             <div className="px-4 py-3 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
                                                 <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Filtros</span>
@@ -1005,7 +1005,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                                 )}
                                             </div>
 
-                                            <div className="p-4 space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                                            <div className="p-4 space-y-4 overflow-y-auto custom-scrollbar" style={{ maxHeight: 'calc(85vh - 7rem)' }}>
                                                 {/* Sort */}
                                                 <div>
                                                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-2">
@@ -1030,8 +1030,8 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                                                     }
                                                                 }}
                                                                 className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1 ${sortBy === opt.value
-                                                                        ? 'bg-[#35b6cf]/10 text-[#35b6cf] border border-[#35b6cf]/20'
-                                                                        : 'bg-slate-50 text-slate-500 border border-slate-100 hover:bg-slate-100'
+                                                                    ? 'bg-[#35b6cf]/10 text-[#35b6cf] border border-[#35b6cf]/20'
+                                                                    : 'bg-slate-50 text-slate-500 border border-slate-100 hover:bg-slate-100'
                                                                     }`}
                                                             >
                                                                 {opt.label}
@@ -1171,30 +1171,32 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                         </div>
                     </div>
 
-                    <button
-                        onClick={() => setInfoModalCompany({ isNew: true })}
-                        className="flex items-center justify-center gap-2 px-6 bg-[#35b6cf] text-white rounded-xl font-bold hover:bg-[#2ca3bc] transition-all shadow-lg shadow-[#35b6cf]/20 shrink-0 md:w-48 h-11"
-                    >
-                        <Plus size={18} />
-                        <span>Empresa</span>
-                    </button>
+                    <div className="flex items-center gap-2 w-full md:w-auto">
+                        <button
+                            onClick={() => setInfoModalCompany({ isNew: true })}
+                            className="flex items-center justify-center gap-2 px-4 md:px-6 bg-[#35b6cf] text-white rounded-xl font-bold hover:bg-[#2ca3bc] transition-all shadow-lg shadow-[#35b6cf]/20 shrink-0 flex-1 md:flex-none md:w-48 h-11 text-sm"
+                        >
+                            <Plus size={18} />
+                            <span>Empresa</span>
+                        </button>
 
-                    <button
-                        onClick={() => {
-                            setManagingCompany(null); // Global mode
-                            setShowCollaboratorManager(true);
-                        }}
-                        className="flex items-center justify-center gap-2 px-6 bg-white text-[#35b6cf] border border-[#35b6cf] rounded-xl font-bold hover:bg-[#35b6cf]/5 transition-all shadow-sm shrink-0 md:w-48 h-11"
-                    >
-                        <Plus size={18} />
-                        <span>Colaborador</span>
-                    </button>
+                        <button
+                            onClick={() => {
+                                setManagingCompany(null); // Global mode
+                                setShowCollaboratorManager(true);
+                            }}
+                            className="flex items-center justify-center gap-2 px-4 md:px-6 bg-white text-[#35b6cf] border border-[#35b6cf] rounded-xl font-bold hover:bg-[#35b6cf]/5 transition-all shadow-sm shrink-0 flex-1 md:flex-none md:w-48 h-11 text-sm"
+                        >
+                            <Plus size={18} />
+                            <span>Colaborador</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
             {/* Grid vs List Content */}
             {isLoading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
                     {[1, 2, 3].map(i => (
                         <div key={i} className="bg-white rounded-2xl border border-slate-100 p-6 h-64 animate-pulse">
                             <div className="flex justify-between mb-4">
@@ -1227,7 +1229,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                 </div>
             ) : viewMode === 'grid' ? (
                 <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
                         {filteredCompanies.slice(0, visibleCount).map((company) => (
                             <div
                                 key={company.id}
@@ -1238,7 +1240,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                             >
 
                                 {/* Card Body */}
-                                <div className="p-6 flex-1 flex flex-col">
+                                <div className="p-4 md:p-6 flex-1 flex flex-col">
                                     <div className="flex justify-between items-start mb-4">
                                         <div className="w-12 h-12 rounded-xl bg-[#35b6cf]/10 text-[#35b6cf] flex items-center justify-center overflow-hidden border border-[#35b6cf]/20 group-hover:bg-[#35b6cf] group-hover:text-white transition-all duration-300 shadow-sm shrink-0">
                                             {company.img_url ? (
@@ -1279,7 +1281,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                 </div>
 
                                 {/* Card Footer Actions */}
-                                <div className="px-6 py-4 bg-slate-50/50 border-t border-slate-50 flex items-center justify-between mt-auto">
+                                <div className="px-4 md:px-6 py-3 md:py-4 bg-slate-50/50 border-t border-slate-50 flex items-center justify-between mt-auto">
                                     <button
                                         onClick={(e) => {
                                             e.stopPropagation();
@@ -1340,92 +1342,111 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                     )}
                 </>
             ) : (
-                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead>
-                                <tr className="bg-slate-50/50 border-b border-slate-100">
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Empresa</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">CNPJ</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Unidades</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Colaboradores</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-50">
-                                {filteredCompanies.map((company) => (
-                                    <tr key={company.id} className="hover:bg-slate-50/80 transition-colors group">
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-lg bg-[#35b6cf]/10 text-[#35b6cf] flex items-center justify-center overflow-hidden shrink-0">
-                                                    {company.img_url ? (
-                                                        <img src={company.img_url} alt={company.name} className="w-full h-full object-cover" />
-                                                    ) : (
-                                                        <Building size={16} />
-                                                    )}
-                                                </div>
-                                                <span className="font-bold text-slate-800 group-hover:text-[#35b6cf] transition-colors">{company.name}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-slate-500 font-medium">
-                                            {company.cnpj}
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-center">
-                                            <span className="px-2.5 py-1 bg-slate-50 text-slate-600 rounded-lg text-xs font-bold border border-slate-100">
-                                                {(company.total_units !== undefined ? company.total_units : company.units?.length || 0)}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-center text-slate-600 font-medium">
-                                            {company.total_collaborators}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center justify-end gap-2">
-                                                <button
-                                                    onClick={(e) => openInfoModal(e, company)}
-                                                    className="p-1.5 text-slate-400 hover:text-[#35b6cf] transition-colors"
-                                                    title="Estrutura da empresa"
-                                                >
-                                                    <Settings size={18} />
-                                                </button>
-
-                                                <button
-                                                    onClick={() => handleGerarFormulario(company)}
-                                                    className="p-1.5 text-slate-400 hover:text-[#35b6cf] transition-colors"
-                                                    title="Formulários"
-                                                >
-                                                    <FileText size={18} />
-                                                </button>
-
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setManagingCompany(company);
-                                                        setShowCollaboratorManager(true);
-                                                    }}
-                                                    className="p-1.5 text-slate-400 hover:text-[#35b6cf] transition-colors"
-                                                    title="Colaboradores"
-                                                >
-                                                    <Users size={18} />
-                                                </button>
-
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleDeleteCompany(company);
-                                                    }}
-                                                    className="p-1.5 text-slate-300 hover:text-red-500 transition-colors"
-                                                    title="Excluir"
-                                                >
-                                                    <Trash2 size={18} />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                <>
+                    <div className="space-y-3 md:hidden">
+                        {filteredCompanies.map((company) => (
+                            <div key={company.id} className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 active:bg-slate-50 transition-colors">
+                                <div className="flex items-center gap-3 mb-3">
+                                    <div className="w-10 h-10 rounded-lg bg-[#35b6cf]/10 text-[#35b6cf] flex items-center justify-center overflow-hidden shrink-0">
+                                        {company.img_url ? (
+                                            <img src={company.img_url} alt={company.name} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <Building size={18} />
+                                        )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <h4 className="font-bold text-slate-800 text-sm truncate">{company.name}</h4>
+                                        <p className="text-xs text-slate-400 font-medium">{company.cnpj}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-4 text-xs text-slate-500 mb-3">
+                                    <span className="flex items-center gap-1">
+                                        <Building size={12} className="text-slate-300" />
+                                        {(company.total_units !== undefined ? company.total_units : company.units?.length || 0)} Unid.
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                        <Users size={12} className="text-slate-300" />
+                                        {company.total_collaborators} Colab.
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-end gap-1 border-t border-slate-50 pt-2">
+                                    <button onClick={(e) => openInfoModal(e, company)} className="p-2 text-slate-400 hover:text-[#35b6cf] transition-colors" title="Estrutura">
+                                        <Settings size={16} />
+                                    </button>
+                                    <button onClick={() => handleGerarFormulario(company)} className="p-2 text-slate-400 hover:text-[#35b6cf] transition-colors" title="Formulários">
+                                        <FileText size={16} />
+                                    </button>
+                                    <button onClick={(e) => { e.stopPropagation(); setManagingCompany(company); setShowCollaboratorManager(true); }} className="p-2 text-slate-400 hover:text-[#35b6cf] transition-colors" title="Colaboradores">
+                                        <Users size={16} />
+                                    </button>
+                                    <button onClick={(e) => { e.stopPropagation(); handleDeleteCompany(company); }} className="p-2 text-slate-300 hover:text-red-500 transition-colors" title="Excluir">
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
                     </div>
-                </div>
+                    <div className="hidden md:block bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left">
+                                <thead>
+                                    <tr className="bg-slate-50/50 border-b border-slate-100">
+                                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Empresa</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">CNPJ</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Unidades</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Colaboradores</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {filteredCompanies.map((company) => (
+                                        <tr key={company.id} className="hover:bg-slate-50/80 transition-colors group">
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-lg bg-[#35b6cf]/10 text-[#35b6cf] flex items-center justify-center overflow-hidden shrink-0">
+                                                        {company.img_url ? (
+                                                            <img src={company.img_url} alt={company.name} className="w-full h-full object-cover" />
+                                                        ) : (
+                                                            <Building size={16} />
+                                                        )}
+                                                    </div>
+                                                    <span className="font-bold text-slate-800 group-hover:text-[#35b6cf] transition-colors">{company.name}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-slate-500 font-medium">
+                                                {company.cnpj}
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-center">
+                                                <span className="px-2.5 py-1 bg-slate-50 text-slate-600 rounded-lg text-xs font-bold border border-slate-100">
+                                                    {(company.total_units !== undefined ? company.total_units : company.units?.length || 0)}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-center text-slate-600 font-medium">
+                                                {company.total_collaborators}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <button onClick={(e) => openInfoModal(e, company)} className="p-1.5 text-slate-400 hover:text-[#35b6cf] transition-colors" title="Estrutura da empresa">
+                                                        <Settings size={18} />
+                                                    </button>
+                                                    <button onClick={() => handleGerarFormulario(company)} className="p-1.5 text-slate-400 hover:text-[#35b6cf] transition-colors" title="Formulários">
+                                                        <FileText size={18} />
+                                                    </button>
+                                                    <button onClick={(e) => { e.stopPropagation(); setManagingCompany(company); setShowCollaboratorManager(true); }} className="p-1.5 text-slate-400 hover:text-[#35b6cf] transition-colors" title="Colaboradores">
+                                                        <Users size={18} />
+                                                    </button>
+                                                    <button onClick={(e) => { e.stopPropagation(); handleDeleteCompany(company); }} className="p-1.5 text-slate-300 hover:text-red-500 transition-colors" title="Excluir">
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </>
             )}
 
 
