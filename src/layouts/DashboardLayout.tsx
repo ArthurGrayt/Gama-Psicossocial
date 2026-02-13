@@ -73,15 +73,24 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
 
                 {/* User Profile Snippet */}
                 <div className="p-6 mt-auto">
-                    <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-100 hover:border-slate-200 transition-colors cursor-pointer group">
-                        <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 font-bold text-sm">
-                            AR
+                    <Link
+                        to="/profile"
+                        className="flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-100 hover:border-slate-200 hover:bg-slate-50 transition-all cursor-pointer group mb-2"
+                    >
+                        <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 font-bold text-sm overflow-hidden border-2 border-transparent group-hover:border-[#0f978e]/30 transition-all">
+                            {profile?.img_url ? (
+                                <img src={profile.img_url} alt="User" className="w-full h-full object-cover" />
+                            ) : (
+                                (profile?.username || user?.user_metadata?.username || 'U').charAt(0).toUpperCase()
+                            )}
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-slate-900 truncate">{user?.user_metadata?.username || user?.email || 'Usuário'}</p>
+                            <p className="text-sm font-bold text-slate-900 truncate group-hover:text-[#0f978e] transition-colors">
+                                {profile?.username || user?.user_metadata?.username || user?.email || 'Usuário'}
+                            </p>
                             <p className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Administrador</p>
                         </div>
-                    </div>
+                    </Link>
 
                     <button
                         onClick={() => signOut()}

@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Search, Plus, Save, User, FileSpreadsheet, Filter, Building, Pencil, Trash2 } from 'lucide-react';
 import { supabase } from '../../services/supabase';
 import { ImportCollaboratorsModal } from './ImportCollaboratorsModal';
+import { ConfirmationModal } from '../ui/ConfirmationModal';
 
 interface CollaboratorManagerModalProps {
     isOpen: boolean;
@@ -38,6 +39,11 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
         setor: '',
         unidade_id: ''
     });
+
+    // Delete Confirmation State
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [colabToDelete, setColabToDelete] = useState<any>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // Initialize or Reset
     useEffect(() => {
@@ -419,20 +425,9 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                                                                     <Pencil size={14} />
                                                                 </button>
                                                                 <button
-                                                                    onClick={async () => {
-                                                                        if (!confirm(`Tem certeza que deseja excluir ${colab.nome}?`)) return;
-                                                                        try {
-                                                                            const { error } = await supabase
-                                                                                .from('colaboradores')
-                                                                                .delete()
-                                                                                .eq('id', colab.id);
-                                                                            if (error) throw error;
-                                                                            // Refresh list
-                                                                            fetchInitialData();
-                                                                        } catch (err) {
-                                                                            console.error('Error deleting:', err);
-                                                                            alert('Erro ao excluir colaborador.');
-                                                                        }
+                                                                    onClick={() => {
+                                                                        setColabToDelete(colab);
+                                                                        setShowDeleteConfirm(true);
                                                                     }}
                                                                     className="p-1.5 text-slate-400 hover:text-red-500 bg-slate-50 rounded-lg hover:bg-white border border-transparent hover:border-slate-200 transition-all"
                                                                 >
@@ -640,6 +635,40 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                         handleImportCollaborators(data);
                         setIsImportModalOpen(false);
                     }}
+                />
+
+                <ConfirmationModal
+                    isOpen={showDeleteConfirm}
+                    onClose={() => {
+                        if (!isDeleting) {
+                            setShowDeleteConfirm(false);
+                            setColabToDelete(null);
+                        }
+                    }}
+                    onConfirm={async () => {
+                        if (!colabToDelete) return;
+                        setIsDeleting(true);
+                        try {
+                            const { error } = await supabase
+                                .from('colaboradores')
+                                .delete()
+                                .eq('id', colabToDelete.id);
+                            if (error) throw error;
+                            setShowDeleteConfirm(false);
+                            setColabToDelete(null);
+                            fetchInitialData();
+                        } catch (err) {
+                            console.error('Error deleting:', err);
+                            alert('Erro ao excluir colaborador.');
+                        } finally {
+                            setIsDeleting(false);
+                        }
+                    }}
+                    title="Excluir Colaborador?"
+                    description={`Você tem certeza que deseja excluir o colaborador "${colabToDelete?.nome}"?\n\nEsta ação não poderá ser desfeita.`}
+                    confirmText={isDeleting ? 'Excluindo...' : 'Confirmar Exclusão'}
+                    cancelText="Cancelar"
+                    type="danger"
                 />
             </div>
         </div>

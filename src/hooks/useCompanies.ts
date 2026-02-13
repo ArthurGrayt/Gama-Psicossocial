@@ -44,6 +44,19 @@ export const useCompanies = (user: any) => {
                 return;
             }
 
+            // Fetch img_url separately from the clientes table (not in the view)
+            const companyIds = clientsData.map(c => c.id);
+            let imgMap: Record<number, string | null> = {};
+            if (companyIds.length > 0) {
+                const { data: imgData } = await supabase
+                    .from('clientes')
+                    .select('id, img_url')
+                    .in('id', companyIds);
+                if (imgData) {
+                    imgData.forEach((row: any) => { imgMap[row.id] = row.img_url; });
+                }
+            }
+
             // Map efficiently
             const mappedCompanies = clientsData.map(client => ({
                 id: client.id,
@@ -58,7 +71,8 @@ export const useCompanies = (user: any) => {
                 collaborators: [],
                 setores: [],
                 detailsLoaded: false,
-                total_units: client.total_unidades || 0
+                total_units: client.total_unidades || 0,
+                img_url: imgMap[client.id] || null
             }));
 
             // Update state and cache

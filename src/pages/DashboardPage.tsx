@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { DashboardLayout } from '../layouts/DashboardLayout';
-import { Building, Wallet, ChevronRight, CheckCircle, Clock, Info } from 'lucide-react';
+import { Building, Wallet, ChevronRight, CheckCircle, Clock, Info, TrendingUp, Users, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { PlanSelectionModal } from '../components/modals/PlanSelectionModal';
 import { PaymentModal } from '../components/modals/PaymentModal';
 import { useAuth } from '../contexts/AuthContext';
@@ -44,9 +44,6 @@ export const DashboardPage: React.FC = () => {
                         <h1 className="text-3xl font-bold text-slate-800 tracking-tight">
                             Bom dia, Arthur. <span className="text-2xl">👋</span>
                         </h1>
-                        <p className="text-slate-500 mt-1 text-lg">
-                            Você tem <span className="text-[#35b6cf] font-bold">{pendingResponses} avaliações críticas</span> pendentes hoje.
-                        </p>
                     </div>
                 </div>
 
@@ -143,9 +140,61 @@ export const DashboardPage: React.FC = () => {
                     <div className="lg:col-span-1">
                         <RankingGeralWidget />
                     </div>
-                    {/* Placeholder for future charts/widgets */}
-                    <div className="lg:col-span-2 bg-slate-50 rounded-2xl border border-dashed border-slate-200 flex items-center justify-center p-8 text-slate-400">
-                        <span className="text-sm">Área disponível para gráficos detalhados</span>
+                    {/* Ranking Explanation Card */}
+                    <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 shadow-sm p-6 flex flex-col justify-between overflow-hidden">
+                        {/* Header */}
+                        <div className="flex items-center gap-3 mb-5">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#35b6cf]/20 to-emerald-500/20 flex items-center justify-center shrink-0">
+                                <TrendingUp size={20} className="text-[#35b6cf]" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-slate-800 text-sm">Como funciona o Score Global?</h3>
+                                <p className="text-xs text-slate-400">Entenda o ranking de desempenho das suas empresas</p>
+                            </div>
+                        </div>
+
+                        {/* Explanation */}
+                        <p className="text-sm text-slate-500 leading-relaxed mb-5">
+                            O <strong className="text-slate-700">Score Global</strong> é calculado com base nas respostas dos colaboradores aos questionários psicossociais da plataforma. Ele avalia fatores de <strong className="text-slate-700">risco e proteção</strong> no ambiente de trabalho, gerando uma nota que representa a saúde organizacional da empresa.
+                        </p>
+
+                        {/* Classification Tiers */}
+                        <div className="mb-5">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Classificações</p>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div className="flex items-start gap-3 p-3 rounded-xl bg-emerald-50/70 border border-emerald-100/70">
+                                    <ShieldCheck size={18} className="text-emerald-600 shrink-0 mt-0.5" />
+                                    <div>
+                                        <span className="text-xs font-bold text-emerald-700">Excelente</span>
+                                        <p className="text-[11px] text-emerald-600/80 leading-snug mt-0.5">Ambiente saudável com baixo risco psicossocial.</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-start gap-3 p-3 rounded-xl bg-blue-50/70 border border-blue-100/70">
+                                    <Users size={18} className="text-blue-600 shrink-0 mt-0.5" />
+                                    <div>
+                                        <span className="text-xs font-bold text-blue-700">Bom</span>
+                                        <p className="text-[11px] text-blue-600/80 leading-snug mt-0.5">Alguns pontos de atenção, mas dentro do esperado.</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-start gap-3 p-3 rounded-xl bg-red-50/70 border border-red-100/70">
+                                    <AlertTriangle size={18} className="text-red-500 shrink-0 mt-0.5" />
+                                    <div>
+                                        <span className="text-xs font-bold text-red-600">Risco</span>
+                                        <p className="text-[11px] text-red-500/80 leading-snug mt-0.5">Fatores críticos identificados que exigem intervenção.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer Insight */}
+                        <div className="flex items-center gap-2 p-3 bg-gradient-to-r from-[#35b6cf]/5 to-emerald-500/5 rounded-xl border border-[#35b6cf]/10">
+                            <Info size={14} className="text-[#35b6cf] shrink-0" />
+                            <p className="text-xs text-slate-500">
+                                Quanto <strong className="text-slate-700">maior</strong> o score, melhor a saúde organizacional da empresa. Use este ranking para priorizar ações de melhoria.
+                            </p>
+                        </div>
                     </div>
                 </div>
 

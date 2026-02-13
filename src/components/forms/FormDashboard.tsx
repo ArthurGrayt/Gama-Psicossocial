@@ -5,6 +5,8 @@ import { CollaboratorManagerModal } from './CollaboratorManagerModal';
 import { FormsListModal } from '../modals/FormsListModal';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
+import { ConfirmationModal } from '../ui/ConfirmationModal';
+import gamaLogo from '../../assets/logo.png';
 
 // --- Form Dashboard: Main component for managing forms and companies ---
 import { useCompanies } from '../../hooks/useCompanies';
@@ -75,6 +77,11 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
 
     const [loadingDetailsFor, setLoadingDetailsFor] = useState<string | number | null>(null);
     const [visibleCount, setVisibleCount] = useState(12); // Pagination limit
+
+    // Delete Confirmation State
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [companyToDelete, setCompanyToDelete] = useState<any>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
 
 
@@ -397,7 +404,8 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                             bairro: formData.bairro,
                             cidade: formData.cidade,
                             uf: formData.uf
-                        }
+                        },
+                        img_url: formData.img_url
                     })
                     .select('id')
                     .single();
@@ -427,7 +435,8 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                             bairro: formData.bairro,
                             cidade: formData.cidade,
                             uf: formData.uf
-                        }
+                        },
+                        img_url: formData.img_url
                     })
                     .eq('id', companyId);
 
@@ -757,6 +766,119 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
         }
     };
 
+    const handleDeleteCompany = (company: any) => {
+        if (!company) return;
+        setCompanyToDelete(company);
+        setShowDeleteConfirm(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!companyToDelete) return;
+
+        setIsDeleting(true);
+        const company = companyToDelete;
+
+        try {
+            console.log('[DELETE] Initiating deletion for company:', { id: company.id, name: company.name });
+
+            // 1. Get accurate data before deletion
+            console.log('[DELETE] Step 1: Fetching company details for ID:', company.id);
+            const { data: clientData, error: clientFetchError } = await supabase
+                .from('clientes')
+                .select('cliente_uuid')
+                .eq('id', company.id)
+                .single();
+
+            if (clientFetchError) {
+                console.error('[DELETE] Error fetching company data:', clientFetchError);
+                throw new Error(`Empresa não encontrada: ${clientFetchError.message}`);
+            }
+            const parentUuid = clientData.cliente_uuid;
+            console.log('[DELETE] Parent UUID:', parentUuid);
+
+            // 2. Get associated Units
+            console.log('[DELETE] Step 2: Fetching units...');
+            const { data: units, error: unitsError } = await supabase
+                .from('unidades')
+                .select('id, setores, cargos')
+                .eq('empresa_mae', parentUuid);
+
+            if (unitsError) {
+                console.error('[DELETE] Error fetching units:', unitsError);
+                throw unitsError;
+            }
+
+            const unitIds = units?.map(u => u.id) || [];
+            console.log('[DELETE] Found unitIds:', unitIds);
+
+            if (unitIds.length > 0) {
+                // 3. Delete Forms
+                console.log('[DELETE] Step 3: Deleting associated forms...');
+                const { error: formsError } = await supabase
+                    .from('forms')
+                    .delete()
+                    .in('unidade_id', unitIds);
+
+                if (formsError) {
+                    console.error('[DELETE] Error deleting forms:', formsError);
+                }
+
+                // 4. Delete Collaborators
+                console.log('[DELETE] Step 4: Deleting collaborators...');
+                const { error: colabError } = await supabase
+                    .from('colaboradores')
+                    .delete()
+                    .in('unidade_id', unitIds);
+
+                if (colabError) {
+                    console.error('[DELETE] Error deleting collaborators:', colabError);
+                    throw colabError;
+                }
+
+                // 5. Delete Units
+                console.log('[DELETE] Step 5: Deleting units...');
+                const { error: unitDeleteError } = await supabase
+                    .from('unidades')
+                    .delete()
+                    .in('id', unitIds);
+
+                if (unitDeleteError) {
+                    console.error('[DELETE] Error deleting units:', unitDeleteError);
+                    throw unitDeleteError;
+                }
+            }
+
+            // 6. Delete Company with Verification
+            console.log('[DELETE] Step 6: Deleting final company row ID:', company.id);
+            const { data: deletedResult, error: finalError } = await supabase
+                .from('clientes')
+                .delete()
+                .eq('id', company.id)
+                .select();
+
+            if (finalError) {
+                console.error('[DELETE] Final delete error:', finalError);
+                throw finalError;
+            }
+
+            if (!deletedResult || deletedResult.length === 0) {
+                console.warn('[DELETE] No rows were deleted from clientes table!');
+                throw new Error("A empresa não foi excluída. Verifique se você tem permissão ou se ela já foi removida.");
+            }
+
+            console.log('[DELETE] Successfully deleted company:', deletedResult[0]);
+            setShowDeleteConfirm(false);
+            setCompanyToDelete(null);
+            alert('Empresa e todos os dados associados foram excluídos com sucesso!');
+            refetch();
+        } catch (error: any) {
+            console.error('[DELETE] Cascading delete failed:', error);
+            alert(`Erro na exclusão: ${error.message || 'Erro inesperado'}`);
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
             {/* Header / Actions */}
@@ -867,8 +989,21 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                 {/* Card Body */}
                                 <div className="p-6 flex-1 flex flex-col">
                                     <div className="flex justify-between items-start mb-4">
-                                        <div className="p-3 bg-[#35b6cf]/10 text-[#35b6cf] rounded-xl group-hover:bg-[#35b6cf] group-hover:text-white transition-colors duration-300 shadow-sm">
-                                            <Building size={24} />
+                                        <div className="w-12 h-12 rounded-xl bg-[#35b6cf]/10 text-[#35b6cf] flex items-center justify-center overflow-hidden border border-[#35b6cf]/20 group-hover:bg-[#35b6cf] group-hover:text-white transition-all duration-300 shadow-sm shrink-0">
+                                            {company.img_url ? (
+                                                <img
+                                                    src={company.img_url}
+                                                    alt={company.name}
+                                                    className="w-full h-full object-cover"
+                                                    onError={(e) => {
+                                                        // Fallback icon if image fails to load
+                                                        (e.target as HTMLImageElement).style.display = 'none';
+                                                        (e.target as HTMLElement).parentElement?.classList.add('p-3');
+                                                    }}
+                                                />
+                                            ) : (
+                                                <Building size={24} />
+                                            )}
                                         </div>
                                         <div className="px-2.5 py-1 bg-slate-50 text-slate-500 rounded-lg text-xs font-bold border border-slate-100 flex items-center gap-2">
                                             {loadingDetailsFor === company.id && <div className="w-3 h-3 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />}
@@ -893,36 +1028,49 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                 </div>
 
                                 {/* Card Footer Actions */}
-                                <div className="px-6 py-4 bg-slate-50/50 border-t border-slate-50 flex items-center justify-end gap-x-1 mt-auto">
+                                <div className="px-6 py-4 bg-slate-50/50 border-t border-slate-50 flex items-center justify-between mt-auto">
                                     <button
-                                        onClick={(e) => openInfoModal(e, company)}
-                                        className="p-2 text-slate-400 hover:text-[#35b6cf] hover:bg-white rounded-lg transition-all"
-                                        title="Estrutura da empresa"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteCompany(company);
+                                        }}
+                                        className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                        title="Excluir Empresa"
                                     >
-                                        <Settings size={18} />
+                                        <Trash2 size={18} />
                                     </button>
 
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleGerarFormulario(company);
-                                        }}
-                                        className="p-2 text-slate-400 hover:text-[#35b6cf] hover:bg-white rounded-lg transition-all"
-                                        title="Formulários"
-                                    >
-                                        <FileText size={18} />
-                                    </button>
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setManagingCompany(company);
-                                            setShowCollaboratorManager(true);
-                                        }}
-                                        className="p-2 text-slate-400 hover:text-[#35b6cf] hover:bg-white rounded-lg transition-all"
-                                        title="Colaboradores"
-                                    >
-                                        <Users size={18} />
-                                    </button>
+                                    <div className="flex items-center gap-x-1">
+                                        <button
+                                            onClick={(e) => openInfoModal(e, company)}
+                                            className="p-2 text-slate-400 hover:text-[#35b6cf] hover:bg-white rounded-lg transition-all"
+                                            title="Estrutura da empresa"
+                                        >
+                                            <Settings size={18} />
+                                        </button>
+
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleGerarFormulario(company);
+                                            }}
+                                            className="p-2 text-slate-400 hover:text-[#35b6cf] hover:bg-white rounded-lg transition-all"
+                                            title="Formulários"
+                                        >
+                                            <FileText size={18} />
+                                        </button>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setManagingCompany(company);
+                                                setShowCollaboratorManager(true);
+                                            }}
+                                            className="p-2 text-slate-400 hover:text-[#35b6cf] hover:bg-white rounded-lg transition-all"
+                                            title="Colaboradores"
+                                        >
+                                            <Users size={18} />
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         ))}
@@ -958,8 +1106,12 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                     <tr key={company.id} className="hover:bg-slate-50/80 transition-colors group">
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-[#35b6cf]/10 text-[#35b6cf] rounded-lg">
-                                                    <Building size={16} />
+                                                <div className="w-8 h-8 rounded-lg bg-[#35b6cf]/10 text-[#35b6cf] flex items-center justify-center overflow-hidden shrink-0">
+                                                    {company.img_url ? (
+                                                        <img src={company.img_url} alt={company.name} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <Building size={16} />
+                                                    )}
                                                 </div>
                                                 <span className="font-bold text-slate-800 group-hover:text-[#35b6cf] transition-colors">{company.name}</span>
                                             </div>
@@ -1003,6 +1155,17 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                                     title="Colaboradores"
                                                 >
                                                     <Users size={18} />
+                                                </button>
+
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDeleteCompany(company);
+                                                    }}
+                                                    className="p-1.5 text-slate-300 hover:text-red-500 transition-colors"
+                                                    title="Excluir"
+                                                >
+                                                    <Trash2 size={18} />
                                                 </button>
                                             </div>
                                         </td>
@@ -1232,6 +1395,16 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                             <p className="text-sm text-slate-500 mt-1 leading-relaxed line-clamp-2">
                                                 {summaryData.formDesc}
                                             </p>
+                                        </div>
+
+                                        {/* Uso de Tokens */}
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Uso de Tokens</label>
+                                            <div className="flex items-center gap-2 mt-1.5 p-3 bg-amber-50 border border-amber-100 rounded-xl">
+                                                <span className="text-2xl font-black text-amber-600">{selectedCollaborators.size}</span>
+                                                <img src={gamaLogo} alt="Token" className="w-5 h-5 object-contain" />
+                                            </div>
+                                            <p className="text-[10px] text-slate-400 mt-1">1 token por colaborador selecionado</p>
                                         </div>
                                     </div>
                                 </div>
@@ -1583,6 +1756,23 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                 company={selectedCompanyForForms}
                 onCreateNew={handleCreateNewForm}
             />
-        </div >
+
+            {/* Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={showDeleteConfirm}
+                onClose={() => {
+                    if (!isDeleting) {
+                        setShowDeleteConfirm(false);
+                        setCompanyToDelete(null);
+                    }
+                }}
+                onConfirm={confirmDelete}
+                title="Excluir Empresa?"
+                description={`Você tem certeza que deseja excluir a empresa "${companyToDelete?.name}"?\n\nEsta ação excluirá permanentemente todas as unidades, colaboradores e formulários associados. Esta operação não pode ser desfeita.`}
+                confirmText={isDeleting ? 'Excluindo...' : 'Confirmar Exclusão'}
+                cancelText="Cancelar"
+                type="danger"
+            />
+        </div>
     );
 };

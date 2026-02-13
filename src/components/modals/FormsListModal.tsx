@@ -5,6 +5,7 @@ import { X, FileText, Plus, Calendar, BarChart2, Copy, ExternalLink, Pencil, Tra
 import { HSEReportModal } from '../reports/HSEReportModal';
 import type { HSEReportData } from '../reports/HSEReportModal';
 import { generateHSEReport } from '../../utils/reportGenerator';
+import { ConfirmationModal } from '../ui/ConfirmationModal';
 
 interface Company {
     id: number;
@@ -66,6 +67,11 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
     const [isReportOpen, setIsReportOpen] = useState(false);
     const [reportData, setReportData] = useState<HSEReportData | null>(null);
     const [reportLoading, setReportLoading] = useState(false);
+
+    // Deletion Modal State
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [formToDeleteId, setFormToDeleteId] = useState<number | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     useEffect(() => {
         const fetchForms = async () => {
@@ -150,19 +156,29 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
         };
     }, [openDropdownId]);
 
-    const handleDeleteForm = async (id: number) => {
-        if (!window.confirm('Tem certeza que deseja excluir este formulário? Esta ação não pode ser desfeita.')) return;
+    const handleDeleteForm = (id: number) => {
+        setFormToDeleteId(id);
+        setShowDeleteConfirm(true);
+    };
+
+    const confirmDeleteForm = async () => {
+        if (formToDeleteId === null) return;
+        setIsDeleting(true);
 
         try {
-            const { error } = await supabase.from('forms').delete().eq('id', id);
+            const { error } = await supabase.from('forms').delete().eq('id', formToDeleteId);
             if (error) throw error;
 
-            setForms(prev => prev.filter(f => f.id !== id));
+            setForms(prev => prev.filter(f => f.id !== formToDeleteId));
+            setShowDeleteConfirm(false);
+            setFormToDeleteId(null);
             setOpenDropdownId(null);
             setDropdownPosition(null);
         } catch (err) {
             console.error('Error deleting form:', err);
             alert('Erro ao excluir formulário.');
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -426,6 +442,22 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
                     data={reportData}
                 />
             )}
+
+            <ConfirmationModal
+                isOpen={showDeleteConfirm}
+                onClose={() => {
+                    if (!isDeleting) {
+                        setShowDeleteConfirm(false);
+                        setFormToDeleteId(null);
+                    }
+                }}
+                onConfirm={confirmDeleteForm}
+                title="Excluir Formulário?"
+                description={`Você tem certeza que deseja excluir o formulário "${forms.find(f => f.id === formToDeleteId)?.title}"? Esta ação não pode ser desfeita e removerá todos os dados associados.`}
+                confirmText={isDeleting ? 'Excluindo...' : 'Excluir'}
+                cancelText="Cancelar"
+                type="danger"
+            />
         </div>,
         document.body
     );

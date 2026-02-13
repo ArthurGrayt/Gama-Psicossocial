@@ -9,12 +9,14 @@
  */
 
 // Importa as ferramentas básicas do React para criar componentes e gerenciar estados (memória local)
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
-import { X, Building, Camera, ChevronRight, Check, Plus, Trash2, Pencil, Users, LayoutGrid, Briefcase, Search, Filter, MoreVertical, AlertTriangle, FileSpreadsheet } from 'lucide-react';
+import { X, Building, Camera, ChevronRight, Check, Plus, Trash2, Pencil, Users, LayoutGrid, Briefcase, Search, Filter, MoreVertical, AlertTriangle, FileSpreadsheet, Loader2 } from 'lucide-react';
+import { supabase } from '../../services/supabase';
 // Importa um componente de botão padronizado do próprio projeto
 import { Button } from '../ui/Button';
 import { ImportCollaboratorsModal } from './ImportCollaboratorsModal';
+import { ConfirmationModal } from '../ui/ConfirmationModal';
 
 // Define quais informações o componente (janela) precisa receber para funcionar
 interface CompanyRegistrationModalProps {
@@ -90,6 +92,7 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
         bairro: '',
         cidade: '',
         uf: '',
+        img_url: '',
         isMultiUnit: false, // Indica se a empresa tem mais de uma filial
 
         // Listas que guardam os setores e cargos cadastrados
@@ -169,7 +172,7 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                     bairro: initialData.bairro || '',
                     cidade: initialData.cidade || '',
                     uf: initialData.uf || '',
-
+                    img_url: initialData.img_url || '',
                     isMultiUnit: sanitizedUnits.length > 1,
 
                     setores: allSectorsConsolidated,
@@ -202,9 +205,61 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
     const [selectedSectorForRole, setSelectedSectorForRole] = useState(''); // Guarda qual setor foi escolhido para o novo cargo
     const [newUnitName, setNewUnitName] = useState(''); // Guarda o nome de uma nova unidade (filial)
 
+    // Logotipo Upload State
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isUploading, setIsUploading] = useState(false);
+
     // --- Auxiliares (Helpers) ---
     // Função que limpa o texto (remove espaços e deixa tudo em minúsculo) para facilitar comparações
     const normalizeText = (text: string) => text.trim().toLowerCase();
+
+    // --- Lógica de Logotipo ---
+    const handleUploadClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        // Validar tipo de arquivo
+        if (!file.type.startsWith('image/')) {
+            alert('Por favor, selecione uma imagem válida.');
+            return;
+        }
+
+        setIsUploading(true);
+
+        try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `company_${Date.now()}.${fileExt}`;
+            const filePath = `enterp_prof_pics/${fileName}`;
+
+            // 1. Upload para o Bucket 'data'
+            const { error: uploadError } = await supabase.storage
+                .from('data')
+                .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            // 2. Obter URL Pública
+            const { data: { publicUrl } } = supabase.storage
+                .from('data')
+                .getPublicUrl(filePath);
+
+            // 3. Atualizar Estado Local
+            setFormData(prev => ({ ...prev, img_url: publicUrl }));
+
+            console.log('[UPLOAD] Company logo uploaded:', publicUrl);
+
+        } catch (err: any) {
+            console.error('Error uploading company logo:', err);
+            alert('Erro ao enviar imagem: ' + (err.message || 'Erro desconhecido'));
+        } finally {
+            setIsUploading(false);
+            if (event.target) event.target.value = '';
+        }
+    };
 
     // --- Lógica de Unidades (Filiais) ---
     // Função chamada quando o usuário troca de unidade no seletor (dropdown)
@@ -808,12 +863,36 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                             <div className="absolute top-0 left-0 w-full h-1.5 bg-[#35b6cf]" />
 
                             {/* Logo ou Iniciais da Empresa */}
-                            <div className="w-20 h-20 rounded-2xl bg-slate-100 mx-auto mb-4 flex items-center justify-center text-slate-300 group-hover:scale-105 transition-transform border border-slate-100">
-                                {formData.nomeFantasia ? (
+                            <div
+                                onClick={handleUploadClick}
+                                className={`w-20 h-20 rounded-2xl bg-slate-100 mx-auto mb-4 flex items-center justify-center text-slate-300 group-hover:scale-105 transition-all border border-slate-100 overflow-hidden relative cursor-pointer group/logo ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}
+                            >
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    onChange={handleFileChange}
+                                    className="hidden"
+                                    accept="image/*"
+                                />
+
+                                {isUploading ? (
+                                    <Loader2 size={24} className="text-[#35b6cf] animate-spin" />
+                                ) : formData.img_url ? (
+                                    <img
+                                        src={formData.img_url}
+                                        alt="Logo"
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : formData.nomeFantasia ? (
                                     <span className="text-2xl font-bold text-slate-400">{formData.nomeFantasia.substring(0, 2).toUpperCase()}</span>
                                 ) : (
                                     <Building size={32} />
                                 )}
+
+                                {/* Overlay on hover */}
+                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover/logo:opacity-100 transition-opacity">
+                                    <Camera size={20} className="text-white" />
+                                </div>
                             </div>
 
                             {/* Nome e CNPJ da Empresa */}
@@ -899,16 +978,6 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                         />
                     </div>
 
-                    {/* Rodapé da Barra Lateral: Botão Cancelar */}
-                    <div className="p-6 border-t border-slate-200 bg-slate-50">
-                        <button
-                            onClick={onClose}
-                            className="w-full py-3 px-4 rounded-xl text-slate-500 font-bold hover:bg-slate-200/50 hover:text-slate-700 transition-colors flex items-center justify-center gap-2"
-                        >
-                            <X size={18} />
-                            Cancelar Edição
-                        </button>
-                    </div>
                 </div>
 
                 {/* --- Conteúdo Principal (Lado Direito) --- */}
@@ -983,13 +1052,6 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                    {/* Espaço para Logo da Empresa */}
-                                    <div className="w-full sm:w-auto flex flex-col items-center space-y-3 pt-6">
-                                        <div className="w-32 h-32 rounded-full bg-slate-100 border-4 border-white shadow-lg overflow-hidden flex items-center justify-center text-slate-300">
-                                            <Camera size={40} />
-                                        </div>
-                                        <span className="text-xs font-bold text-slate-500">Logo</span>
                                     </div>
                                 </div>
 
@@ -1610,36 +1672,16 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
             </div>
 
             {/* Delete Confirmation Modal */}
-            {
-                deleteConfirmationIndex !== null && (
-                    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-                        <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setDeleteConfirmationIndex(null)} />
-                        <div className="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm animate-in fade-in zoom-in-95 duration-200">
-                            <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-500 flex items-center justify-center mb-4 mx-auto">
-                                <AlertTriangle size={24} />
-                            </div>
-                            <h3 className="text-lg font-bold text-slate-800 text-center mb-2">Excluir Colaborador?</h3>
-                            <p className="text-sm text-slate-500 text-center mb-6">
-                                Tem certeza que deseja remover este colaborador? Esta ação não pode ser desfeita.
-                            </p>
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={() => setDeleteConfirmationIndex(null)}
-                                    className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition-colors"
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    onClick={confirmDeleteCollaborator}
-                                    className="flex-1 py-2.5 rounded-xl bg-rose-500 text-white font-semibold hover:bg-rose-600 shadow-lg shadow-rose-200 transition-colors"
-                                >
-                                    Excluir
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )
-            }
+            <ConfirmationModal
+                isOpen={deleteConfirmationIndex !== null}
+                onClose={() => setDeleteConfirmationIndex(null)}
+                onConfirm={confirmDeleteCollaborator}
+                title="Excluir Colaborador?"
+                description={`Você tem certeza que deseja remover o colaborador "${deleteConfirmationIndex !== null ? formData.colaboradores[deleteConfirmationIndex]?.nome : ''}"? Esta ação não pode ser desfeita.`}
+                confirmText="Excluir"
+                cancelText="Cancelar"
+                type="danger"
+            />
 
             {/* Edit Collaborator Modal */}
             {

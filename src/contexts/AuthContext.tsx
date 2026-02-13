@@ -10,6 +10,10 @@ interface UserProfile {
     email: string;
     img_url: string;
     primeiro_acesso: boolean;
+    subscription_plan: string;
+    tokens: number;
+    subscription_start_date: string;
+    subscription_end_date: string;
 }
 
 interface AuthContextType {
