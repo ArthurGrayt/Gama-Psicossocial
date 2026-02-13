@@ -44,16 +44,16 @@ export const useCompanies = (user: any) => {
                 return;
             }
 
-            // Fetch img_url separately from the clientes table (not in the view)
+            // Fetch img_url and created_at separately from the clientes table (not in the view)
             const companyIds = clientsData.map(c => c.id);
-            let imgMap: Record<number, string | null> = {};
+            let extraMap: Record<number, { img_url: string | null; created_at: string | null }> = {};
             if (companyIds.length > 0) {
-                const { data: imgData } = await supabase
+                const { data: extraData } = await supabase
                     .from('clientes')
-                    .select('id, img_url')
+                    .select('id, img_url, created_at')
                     .in('id', companyIds);
-                if (imgData) {
-                    imgData.forEach((row: any) => { imgMap[row.id] = row.img_url; });
+                if (extraData) {
+                    extraData.forEach((row: any) => { extraMap[row.id] = { img_url: row.img_url, created_at: row.created_at }; });
                 }
             }
 
@@ -72,7 +72,8 @@ export const useCompanies = (user: any) => {
                 setores: [],
                 detailsLoaded: false,
                 total_units: client.total_unidades || 0,
-                img_url: imgMap[client.id] || null
+                img_url: extraMap[client.id]?.img_url || null,
+                created_at: extraMap[client.id]?.created_at || null
             }));
 
             // Update state and cache

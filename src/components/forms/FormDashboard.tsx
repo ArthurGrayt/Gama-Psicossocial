@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Building, Search, Filter, Trash2, Users, FileText, ChevronRight, Edit, X, LayoutGrid, List, LayoutTemplate, Settings, FilePlus, Copy, ExternalLink, Check, HelpCircle, Plus } from 'lucide-react';
+import { Building, Search, Filter, Trash2, Users, FileText, ChevronRight, Edit, X, LayoutGrid, List, LayoutTemplate, Settings, FilePlus, Copy, ExternalLink, Check, HelpCircle, Plus, CalendarDays, ChevronDown, ArrowUpDown } from 'lucide-react';
 import { CompanyRegistrationModal } from './CompanyRegistrationModal';
 import { CollaboratorManagerModal } from './CollaboratorManagerModal';
 import { FormsListModal } from '../modals/FormsListModal';
@@ -82,6 +82,30 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [companyToDelete, setCompanyToDelete] = useState<any>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+
+    // Filter Dropdown State
+    const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+    const [sortBy, setSortBy] = useState<'name' | 'date' | 'collaborators' | 'units'>('name');
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+    const [minCollaborators, setMinCollaborators] = useState<string>('');
+    const [maxCollaborators, setMaxCollaborators] = useState<string>('');
+    const [minUnits, setMinUnits] = useState<string>('');
+    const [maxUnits, setMaxUnits] = useState<string>('');
+    const [dateFrom, setDateFrom] = useState<string>('');
+    const [dateTo, setDateTo] = useState<string>('');
+
+    const hasActiveFilters = minCollaborators || maxCollaborators || minUnits || maxUnits || dateFrom || dateTo || sortBy !== 'name';
+
+    const clearAllFilters = () => {
+        setSortBy('name');
+        setSortOrder('asc');
+        setMinCollaborators('');
+        setMaxCollaborators('');
+        setMinUnits('');
+        setMaxUnits('');
+        setDateFrom('');
+        setDateTo('');
+    };
 
 
 
@@ -242,10 +266,60 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
         }
     };
 
-    const filteredCompanies = React.useMemo(() => companies.filter(c =>
-        c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.cnpj.includes(searchTerm)
-    ), [companies, searchTerm]);
+    const filteredCompanies = React.useMemo(() => {
+        let result = companies.filter(c =>
+            c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            c.cnpj.includes(searchTerm)
+        );
+
+        // Filter by collaborator count
+        if (minCollaborators) {
+            result = result.filter(c => c.total_collaborators >= Number(minCollaborators));
+        }
+        if (maxCollaborators) {
+            result = result.filter(c => c.total_collaborators <= Number(maxCollaborators));
+        }
+
+        // Filter by unit count
+        if (minUnits) {
+            result = result.filter(c => c.total_units >= Number(minUnits));
+        }
+        if (maxUnits) {
+            result = result.filter(c => c.total_units <= Number(maxUnits));
+        }
+
+        // Filter by date range
+        if (dateFrom) {
+            result = result.filter(c => c.created_at && new Date(c.created_at) >= new Date(dateFrom));
+        }
+        if (dateTo) {
+            const endDate = new Date(dateTo);
+            endDate.setHours(23, 59, 59, 999);
+            result = result.filter(c => c.created_at && new Date(c.created_at) <= endDate);
+        }
+
+        // Sort
+        result.sort((a, b) => {
+            let comparison = 0;
+            switch (sortBy) {
+                case 'name':
+                    comparison = a.name.localeCompare(b.name);
+                    break;
+                case 'date':
+                    comparison = (new Date(a.created_at || 0).getTime()) - (new Date(b.created_at || 0).getTime());
+                    break;
+                case 'collaborators':
+                    comparison = a.total_collaborators - b.total_collaborators;
+                    break;
+                case 'units':
+                    comparison = a.total_units - b.total_units;
+                    break;
+            }
+            return sortOrder === 'asc' ? comparison : -comparison;
+        });
+
+        return result;
+    }, [companies, searchTerm, minCollaborators, maxCollaborators, minUnits, maxUnits, dateFrom, dateTo, sortBy, sortOrder]);
 
 
 
@@ -901,9 +975,186 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                         </div>
                         <div className="w-px h-6 bg-slate-200 mx-1 hidden md:block"></div>
                         <div className="flex items-center gap-1">
-                            <button className="p-2 text-slate-400 hover:text-[#35b6cf] hover:bg-slate-50 rounded-lg transition-all" title="Filtros">
-                                <Filter size={18} />
-                            </button>
+                            <div className="relative">
+                                <button
+                                    onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+                                    className={`p-2 rounded-lg transition-all relative ${showFilterDropdown || hasActiveFilters ? 'text-[#35b6cf] bg-[#35b6cf]/10' : 'text-slate-400 hover:text-[#35b6cf] hover:bg-slate-50'}`}
+                                    title="Filtros"
+                                >
+                                    <Filter size={18} />
+                                    {hasActiveFilters && (
+                                        <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-[#35b6cf] rounded-full border-2 border-white" />
+                                    )}
+                                </button>
+
+                                {/* Filter Dropdown */}
+                                {showFilterDropdown && (
+                                    <>
+                                        <div className="fixed inset-0 z-40" onClick={() => setShowFilterDropdown(false)} />
+                                        <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-slate-100 z-50 animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
+                                            {/* Header */}
+                                            <div className="px-4 py-3 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                                                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Filtros</span>
+                                                {hasActiveFilters && (
+                                                    <button
+                                                        onClick={clearAllFilters}
+                                                        className="text-[10px] font-bold text-rose-500 hover:text-rose-600 uppercase tracking-wider"
+                                                    >
+                                                        Limpar Tudo
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            <div className="p-4 space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                                                {/* Sort */}
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-2">
+                                                        <ArrowUpDown size={12} />
+                                                        Ordenar por
+                                                    </label>
+                                                    <div className="grid grid-cols-2 gap-1.5">
+                                                        {[
+                                                            { value: 'name', label: 'Nome' },
+                                                            { value: 'date', label: 'Data' },
+                                                            { value: 'collaborators', label: 'Colaboradores' },
+                                                            { value: 'units', label: 'Unidades' },
+                                                        ].map(opt => (
+                                                            <button
+                                                                key={opt.value}
+                                                                onClick={() => {
+                                                                    if (sortBy === opt.value) {
+                                                                        setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+                                                                    } else {
+                                                                        setSortBy(opt.value as any);
+                                                                        setSortOrder('asc');
+                                                                    }
+                                                                }}
+                                                                className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1 ${sortBy === opt.value
+                                                                        ? 'bg-[#35b6cf]/10 text-[#35b6cf] border border-[#35b6cf]/20'
+                                                                        : 'bg-slate-50 text-slate-500 border border-slate-100 hover:bg-slate-100'
+                                                                    }`}
+                                                            >
+                                                                {opt.label}
+                                                                {sortBy === opt.value && (
+                                                                    <span className="text-[10px]">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                                                                )}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                <hr className="border-slate-100" />
+
+                                                {/* Date Range */}
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-2">
+                                                        <CalendarDays size={12} />
+                                                        Data de Adição
+                                                    </label>
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <div>
+                                                            <label className="text-[10px] text-slate-400 mb-1 block">De</label>
+                                                            <input
+                                                                type="date"
+                                                                value={dateFrom}
+                                                                onChange={(e) => setDateFrom(e.target.value)}
+                                                                className="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-lg text-xs text-slate-700 outline-none focus:border-[#35b6cf] focus:ring-2 focus:ring-[#35b6cf]/10 transition-all"
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label className="text-[10px] text-slate-400 mb-1 block">Até</label>
+                                                            <input
+                                                                type="date"
+                                                                value={dateTo}
+                                                                onChange={(e) => setDateTo(e.target.value)}
+                                                                className="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-lg text-xs text-slate-700 outline-none focus:border-[#35b6cf] focus:ring-2 focus:ring-[#35b6cf]/10 transition-all"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <hr className="border-slate-100" />
+
+                                                {/* Collaborator Count Range */}
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-2">
+                                                        <Users size={12} />
+                                                        Qtd. de Colaboradores
+                                                    </label>
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <div>
+                                                            <label className="text-[10px] text-slate-400 mb-1 block">Mínimo</label>
+                                                            <input
+                                                                type="number"
+                                                                min="0"
+                                                                placeholder="0"
+                                                                value={minCollaborators}
+                                                                onChange={(e) => setMinCollaborators(e.target.value)}
+                                                                className="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-lg text-xs text-slate-700 outline-none focus:border-[#35b6cf] focus:ring-2 focus:ring-[#35b6cf]/10 transition-all"
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label className="text-[10px] text-slate-400 mb-1 block">Máximo</label>
+                                                            <input
+                                                                type="number"
+                                                                min="0"
+                                                                placeholder="∞"
+                                                                value={maxCollaborators}
+                                                                onChange={(e) => setMaxCollaborators(e.target.value)}
+                                                                className="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-lg text-xs text-slate-700 outline-none focus:border-[#35b6cf] focus:ring-2 focus:ring-[#35b6cf]/10 transition-all"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <hr className="border-slate-100" />
+
+                                                {/* Unit Count Range */}
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-2">
+                                                        <Building size={12} />
+                                                        Qtd. de Unidades
+                                                    </label>
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <div>
+                                                            <label className="text-[10px] text-slate-400 mb-1 block">Mínimo</label>
+                                                            <input
+                                                                type="number"
+                                                                min="0"
+                                                                placeholder="0"
+                                                                value={minUnits}
+                                                                onChange={(e) => setMinUnits(e.target.value)}
+                                                                className="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-lg text-xs text-slate-700 outline-none focus:border-[#35b6cf] focus:ring-2 focus:ring-[#35b6cf]/10 transition-all"
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label className="text-[10px] text-slate-400 mb-1 block">Máximo</label>
+                                                            <input
+                                                                type="number"
+                                                                min="0"
+                                                                placeholder="∞"
+                                                                value={maxUnits}
+                                                                onChange={(e) => setMaxUnits(e.target.value)}
+                                                                className="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-lg text-xs text-slate-700 outline-none focus:border-[#35b6cf] focus:ring-2 focus:ring-[#35b6cf]/10 transition-all"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Footer */}
+                                            <div className="px-4 py-3 bg-slate-50 border-t border-slate-100 flex justify-end">
+                                                <button
+                                                    onClick={() => setShowFilterDropdown(false)}
+                                                    className="px-4 py-2 bg-[#35b6cf] text-white rounded-lg text-xs font-bold hover:bg-[#2ca3bc] transition-all shadow-sm"
+                                                >
+                                                    Aplicar
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                             <div className="w-px h-6 bg-slate-200 mx-1 hidden md:block"></div>
                             <button
                                 onClick={() => setViewMode('grid')}
@@ -1298,9 +1549,11 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                         <FileText size={20} className="text-[#35b6cf]" />
                                         Resumo do Formulário
                                     </h3>
-                                    <button onClick={() => setSummaryModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100">
-                                        <X size={20} />
-                                    </button>
+                                    {expandedView === 'none' && (
+                                        <button onClick={() => setSummaryModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100">
+                                            <X size={20} />
+                                        </button>
+                                    )}
                                 </div>
 
                                 <div className="flex-1 overflow-auto p-6 space-y-6">
@@ -1436,9 +1689,14 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                                     <Users size={18} className="text-[#35b6cf]" />
                                                     Colaboradores Selecionados
                                                 </h3>
-                                                <span className="text-xs font-semibold bg-slate-100 px-2 py-1 rounded-md text-slate-500">
-                                                    {summaryData.company.units.flatMap((u: any) => u.collaborators).length || 0} Total
-                                                </span>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-semibold bg-slate-100 px-2 py-1 rounded-md text-slate-500">
+                                                        {summaryData.company.units.flatMap((u: any) => u.collaborators).length || 0} Total
+                                                    </span>
+                                                    <button onClick={() => setSummaryModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100">
+                                                        <X size={18} />
+                                                    </button>
+                                                </div>
                                             </div>
                                             <div className="flex flex-col md:flex-row gap-4">
                                                 <div className="relative flex-1">
@@ -1566,9 +1824,14 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                                     <HelpCircle size={18} className="text-[#35b6cf]" />
                                                     Perguntas do Formulário
                                                 </h3>
-                                                <span className="text-xs font-semibold bg-slate-100 px-2 py-1 rounded-md text-slate-500">
-                                                    {filteredQuestions.length}
-                                                </span>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-semibold bg-slate-100 px-2 py-1 rounded-md text-slate-500">
+                                                        {filteredQuestions.length}
+                                                    </span>
+                                                    <button onClick={() => setSummaryModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100">
+                                                        <X size={18} />
+                                                    </button>
+                                                </div>
                                             </div>
                                             <div className="flex gap-2">
                                                 <div className="relative flex-1">
@@ -1626,7 +1889,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                                 Descrição Completa
                                             </h3>
                                             <button
-                                                onClick={() => setExpandedView('none')}
+                                                onClick={() => setSummaryModalOpen(false)}
                                                 className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-400"
                                             >
                                                 <X size={18} />
