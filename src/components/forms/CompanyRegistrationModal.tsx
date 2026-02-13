@@ -40,7 +40,7 @@ interface SectionButtonProps {
     badge?: number;
 }
 
-const SectionButton: React.FC<SectionButtonProps> = ({ id, label, icon: Icon, active, onClick, completed, badge }) => (
+const SectionButton: React.FC<SectionButtonProps> = ({ label, icon: Icon, active, onClick, completed, badge }) => (
     <button
         onClick={onClick}
         className={`w-full flex items-center justify-between p-3 rounded-xl transition-all ${active
