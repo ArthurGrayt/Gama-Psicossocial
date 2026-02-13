@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 import type { Form, FormQuestion, Collaborator } from '../types';
-import { CheckCircle, User, Hash, ChevronDown } from 'lucide-react';
+import { CheckCircle, User, Hash, ChevronDown, FileText } from 'lucide-react';
 import logo from '../assets/logo.png';
 
 // --- Componentes Visuais ---
@@ -66,55 +66,45 @@ export const FormularioPublico: React.FC = () => {
     const fetchForm = async () => {
         setLoading(true);
         setError(null);
-        console.log(`[FORM ACCESS v2] Fetching form for slug: "${slug}"`);
+        console.log(`[FORM ACCESS v3] Fetching form and questions in parallel for slug: "${slug}"`);
 
         try {
             if (!slug) throw new Error('Link inválido: ID do formulário não fornecido.');
 
-            // Busca mais flexível: tenta encontrar qualquer link que contenha o slug
-            const { data: formData, error: formError } = await supabase
-                .from('forms')
-                .select('*')
-                .ilike('link', `%${slug}%`)
-                .maybeSingle();
+            // Parallel Execution: Fetch form and all questions library simultaneously
+            const [formResult, questionsResult] = await Promise.all([
+                supabase
+                    .from('forms')
+                    .select('*')
+                    .ilike('link', `%${slug}%`)
+                    .maybeSingle(),
+                supabase
+                    .from('form_questions')
+                    .select('*')
+                    .order('question_order', { ascending: true })
+            ]);
 
-            console.log(`[FORM ACCESS] Database result:`, formData);
-
-            if (formError) {
-                console.error("[FORM ACCESS] Database error:", formError);
-                throw formError;
-            }
-
-            if (!formData) {
-                console.warn(`[FORM ACCESS] No form matches search: %${slug}%`);
+            // Handle Form Result
+            if (formResult.error) throw formResult.error;
+            if (!formResult.data) {
                 setError('Formulário não encontrado. Verifique se o link está correto.');
-                setLoading(false);
                 return;
             }
+            setForm(formResult.data);
 
-            setForm(formData);
-
-            // 2. Busca Perguntas (Schema atual não possui form_id, busca todas as perguntas da biblioteca)
-            console.log(`[FORM ACCESS] Fetching questions...`);
-            const { data: questionData, error: qError } = await supabase
-                .from('form_questions')
-                .select('*')
-                .order('question_order', { ascending: true });
-
-            if (qError) {
-                console.error('[FORM ACCESS] Error fetching questions:', qError);
-                setError('Erro ao carregar perguntas.');
-            } else {
-                console.log(`[FORM ACCESS] Fetched ${questionData?.length || 0} questions.`);
-                setQuestions(questionData || []);
+            // Handle Questions Result
+            if (questionsResult.error) {
+                console.error('[FORM ACCESS] Error fetching questions:', questionsResult.error);
+                // We show an error but maybe we could show the form cover first? 
+                // However, without questions, the form is unusable.
+                throw new Error('Erro ao carregar perguntas.');
             }
+            setQuestions(questionsResult.data || []);
 
         } catch (err: any) {
-            // Ignora AbortError que pode ocorrer em hot-reload
             if (err.name === 'AbortError' || err.message?.includes('AbortError')) return;
-
-            console.error('Erro geral:', err);
-            setError('Erro ao carregar formulário.');
+            console.error('Erro geral ao carregar formulário:', err);
+            setError(err.message || 'Erro ao carregar formulário.');
         } finally {
             setLoading(false);
         }
@@ -318,211 +308,267 @@ export const FormularioPublico: React.FC = () => {
         </div>
     );
 
-    const FORM_WIDTH = "w-full max-w-[640px]";
+    const FORM_WIDTH = "w-full max-w-[800px]";
 
     return (
-        <div className="bg-slate-50 min-h-screen flex flex-col items-center font-sans px-3 sm:px-0 py-8 pb-20">
-            {/* DEBUG BADGE */}
-            <div className="fixed bottom-2 right-2 bg-red-500 text-white text-[10px] px-2 py-1 rounded-full z-[9999] opacity-50 font-mono">
-                FP_V2_FIX
-            </div>
-            {/* PASSO 1: CAPA */}
-            {step === 'cover' && (
-                <div className={`${FORM_WIDTH} bg-white p-10 rounded-2xl shadow-sm border border-slate-200 border-t-[12px] border-t-[#35b6cf] animate-in fade-in zoom-in-95 duration-500`}>
-                    <h1 className="text-3xl font-black text-slate-800 mb-6 leading-tight">{form?.title}</h1>
-                    <div className="prose prose-slate max-w-none mb-10">
-                        <p className="text-slate-600 text-lg leading-relaxed whitespace-pre-wrap">{form?.description}</p>
-                    </div>
-                    <button
-                        onClick={() => setStep('cpf_check')}
-                        className="bg-[#35b6cf] text-white px-8 py-4 rounded-xl w-full font-bold text-lg hover:bg-[#2ca1b7] hover:shadow-lg active:scale-[0.98] transition-all"
-                    >
-                        Começar Levantamento
-                    </button>
-                    <div className="flex justify-center mt-8 opacity-30">
-                        <img src={logo} alt="Logo" className="h-6" />
-                    </div>
-                </div>
-            )}
-
-            {/* PASSO 2: IDENTIFICAÇÃO */}
-            {step === 'cpf_check' && (
-                <div className={`${FORM_WIDTH} bg-white p-10 rounded-2xl shadow-xl border border-slate-100 animate-in slide-in-from-bottom-8 duration-500`}>
-                    <div className="text-center mb-8">
-                        <div className="w-20 h-20 bg-cyan-50 text-[#35b6cf] rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
-                            <User size={40} />
+        <div className="bg-slate-50 h-screen h-[100dvh] overflow-hidden flex flex-col font-sans">
+            {/* NOVO CABEÇALHO FIXO PREMIUM COM TÍTULO E DESCRIÇÃO - HIDDEN ON COVER */}
+            {step !== 'cover' && (
+                <header className="bg-white border-b border-slate-200 px-6 py-4 flex flex-col gap-3 shrink-0 z-50 shadow-sm relative animate-in fade-in duration-500">
+                    <div className="max-w-[1200px] mx-auto w-full flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <img src={logo} alt="Logo" className="h-6 sm:h-8" />
+                            <div className="h-6 w-px bg-slate-200"></div>
+                            <div className="flex flex-col">
+                                <h2 className="text-slate-800 font-black text-sm sm:text-base truncate max-w-[300px] sm:max-w-[600px]">
+                                    {form?.title}
+                                </h2>
+                                <p className="text-slate-400 text-[10px] sm:text-xs font-medium line-clamp-1 max-w-[300px] sm:max-w-[800px]">
+                                    {form?.description}
+                                </p>
+                            </div>
                         </div>
-                        <h2 className="text-2xl font-black text-slate-800">Identificação do Colaborador</h2>
-                        <p className="text-slate-500 mt-2 text-base">Para continuar, informe seu CPF cadastrado.</p>
-                    </div>
 
-                    <div className="relative mb-6">
-                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-                            <Hash size={20} />
-                        </div>
-                        <input
-                            type="text"
-                            placeholder="000.000.000-00"
-                            className={`w-full pl-12 pr-4 py-4 bg-slate-50 border-2 ${cpfError ? 'border-red-300 bg-red-50' : 'border-slate-100 focus:border-[#35b6cf]'} rounded-xl outline-none transition-all text-lg font-medium tracking-wider`}
-                            value={cpf}
-                            onChange={e => {
-                                setCpf(e.target.value);
-                                setCpfError(null);
-                            }}
-                            onKeyDown={(e) => e.key === 'Enter' && handleCheckCPF()}
-                        />
-                    </div>
-                    {cpfError && (
-                        <div className="flex items-center gap-2 text-red-500 text-sm mb-6 bg-red-50 p-3 rounded-lg border border-red-100">
-                            <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
-                            {cpfError}
-                        </div>
-                    )}
-
-                    <button
-                        onClick={handleCheckCPF}
-                        disabled={checkingCpf}
-                        className="bg-[#35b6cf] text-white w-full py-4 rounded-xl font-bold text-lg hover:bg-[#2ca1b7] disabled:opacity-50 shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
-                    >
-                        {checkingCpf ? (
-                            <>
-                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                Verificando...
-                            </>
-                        ) : 'Confirmar e Abrir Formulário'}
-                    </button>
-                    <button onClick={() => setStep('cover')} className="w-full mt-6 text-slate-400 text-sm font-medium hover:text-slate-600 transition-colors uppercase tracking-widest">Voltar</button>
-                </div>
-            )}
-            {step === 'form' && validQuestions.length > 0 && (
-                <div className={`${FORM_WIDTH} space-y-6 animate-in fade-in duration-700`}>
-                    {/* Header Principal */}
-                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 border-t-[8px] border-t-[#35b6cf] overflow-hidden">
-                        <div className="p-8">
-                            <div className="flex items-center justify-between mb-4">
-                                <span className="text-xs font-black text-[#35b6cf] uppercase tracking-widest bg-cyan-50 px-3 py-1 rounded-full border border-cyan-100">
-                                    Questão {currentQuestionIndex + 1} de {validQuestions.length}
+                        {step === 'form' && (
+                            <div className="flex items-center gap-3">
+                                <div className="text-[10px] font-black text-slate-300 uppercase tracking-widest hidden md:block">
+                                    Progresso
+                                </div>
+                                <div className="w-20 sm:w-32 h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-100">
+                                    <div
+                                        className="h-full bg-[#35b6cf] transition-all duration-500 ease-out"
+                                        style={{ width: `${Math.round(((currentQuestionIndex + 1) / validQuestions.length) * 100)}%` }}
+                                    ></div>
+                                </div>
+                                <span className="text-[10px] sm:text-xs font-black text-[#35b6cf] tabular-nums">
+                                    {currentQuestionIndex + 1}/{validQuestions.length}
                                 </span>
-                                <div className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">
-                                    Progresso: {Math.round(((currentQuestionIndex + 1) / validQuestions.length) * 100)}%
+                            </div>
+                        )}
+                    </div>
+                </header>
+            )}
+
+            <main className="flex-1 overflow-y-auto w-full flex flex-col items-center custom-scrollbar">
+                <div className="w-full max-w-[800px] px-4 pt-10 sm:pt-16 pb-20">
+                    <div className="w-full flex flex-col items-center justify-center">
+                        {/* DEBUG BADGE */}
+                        <div className="fixed bottom-2 right-2 bg-red-500 text-white text-[10px] px-2 py-1 rounded-full z-[9999] opacity-50 font-mono">
+                            FP_V2_FIX
+                        </div>
+                        {/* PASSO 1: CAPA REFINADA */}
+                        {step === 'cover' && (
+                            <>
+                                <div className="w-full bg-white rounded-xl shadow-xl border border-slate-100 flex flex-col animate-in fade-in zoom-in-95 duration-500 overflow-hidden border-t-[8px] border-t-[#35b6cf]">
+                                    <div className="p-8 sm:p-12">
+                                        <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 mb-8 leading-tight">
+                                            {form?.title}
+                                        </h1>
+
+                                        <div className="space-y-6 text-slate-600 text-base sm:text-lg leading-relaxed whitespace-pre-wrap mb-10 max-h-[500px] overflow-y-auto pr-4 custom-scrollbar">
+                                            {form?.description}
+                                        </div>
+
+                                        <div className="pt-8 border-t border-slate-100">
+                                            <button
+                                                onClick={() => setStep('cpf_check')}
+                                                className="bg-[#35b6cf] text-white px-8 py-3.5 rounded-xl font-bold text-base hover:bg-[#2ca3bc] transition-all shadow-sm active:scale-[0.98] flex items-center gap-2"
+                                            >
+                                                Iniciar Formulário
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex justify-center mt-6 opacity-30">
+                                    <img src={logo} alt="Logo" className="h-5" />
+                                </div>
+                            </>
+                        )}
+
+                        {/* PASSO 2: IDENTIFICAÇÃO */}
+                        {step === 'cpf_check' && (
+                            <div className={`${FORM_WIDTH} bg-white p-6 sm:p-10 rounded-3xl shadow-xl border border-slate-100 animate-in slide-in-from-bottom-8 duration-500`}>
+                                <div className="text-center mb-8">
+                                    <div className="w-16 h-16 sm:w-20 sm:h-20 bg-cyan-50 text-[#35b6cf] rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                                        <User className="size-8 sm:size-10" />
+                                    </div>
+                                    <h2 className="text-xl sm:text-2xl font-black text-slate-800">Identificação</h2>
+                                    <p className="text-slate-500 mt-2 text-sm sm:text-base">Informe seu CPF cadastrado para continuar.</p>
+                                </div>
+
+                                <div className="relative mb-6">
+                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                                        <Hash size={20} />
+                                    </div>
+                                    <input
+                                        type="text"
+                                        placeholder="000.000.000-00"
+                                        className={`w-full pl-12 pr-4 py-4 bg-slate-50 border-2 ${cpfError ? 'border-red-300 bg-red-50' : 'border-slate-100 focus:border-[#35b6cf]'} rounded-2xl outline-none transition-all text-lg font-bold tracking-wider sm:text-xl`}
+                                        value={cpf}
+                                        onChange={e => {
+                                            setCpf(e.target.value);
+                                            setCpfError(null);
+                                        }}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleCheckCPF()}
+                                    />
+                                </div>
+                                {cpfError && (
+                                    <div className="flex items-center gap-2 text-red-500 text-sm mb-6 bg-red-50 p-3 rounded-lg border border-red-100">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
+                                        {cpfError}
+                                    </div>
+                                )}
+
+                                <button
+                                    onClick={handleCheckCPF}
+                                    disabled={checkingCpf}
+                                    className="bg-[#35b6cf] text-white w-full py-5 rounded-2xl font-black text-lg hover:bg-[#2ca1b7] disabled:opacity-50 shadow-lg shadow-cyan-200/50 hover:shadow-cyan-200 transition-all flex items-center justify-center gap-2"
+                                >
+                                    {checkingCpf ? (
+                                        <>
+                                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                            Verificando...
+                                        </>
+                                    ) : 'ACESSAR AGORA'}
+                                </button>
+                                <button onClick={() => setStep('cover')} className="w-full mt-6 text-slate-400 text-xs font-bold hover:text-slate-600 transition-colors uppercase tracking-widest">Voltar para Início</button>
+                            </div>
+                        )}
+                        {step === 'form' && validQuestions.length > 0 && (
+                            <div className={`${FORM_WIDTH} flex flex-col gap-6 animate-in fade-in duration-700`}>
+                                {/* Header da Pergunta (Opcional se já tem o fixo, mas mantendo para contexto local) */}
+                                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hidden sm:block">
+                                    <div className="px-8 py-4 bg-slate-50/50 border-b border-slate-200 flex items-center justify-between">
+                                        <span className="text-[10px] font-black text-[#35b6cf] uppercase tracking-widest flex items-center gap-2">
+                                            <FileText size={14} /> Levantamento Ativo
+                                        </span>
+                                        {collaborator && (
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                                Colaborador: <span className="text-slate-600">{collaborator.nome}</span>
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Questão Única */}
+                                {(() => {
+                                    const q = validQuestions[currentQuestionIndex];
+                                    const optionsList = getOptions(q);
+                                    const currentVal = answers[q.id!];
+
+                                    return (
+                                        <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-6 sm:p-12 hover:border-[#35b6cf]/30 transition-all duration-300">
+                                            <label className="block text-xl sm:text-2xl font-black text-slate-800 mb-8 sm:mb-10 leading-relaxed text-center">
+                                                {q.label} {q.required && <span className="text-red-500 ml-1">*</span>}
+                                            </label>
+
+                                            {/* SHORT TEXT */}
+                                            {q.question_type === 'short_text' && (
+                                                <div className="relative">
+                                                    <input
+                                                        type="text"
+                                                        className="w-full border-b-4 border-slate-100 focus:border-[#35b6cf] outline-none py-4 text-2xl bg-transparent transition-all placeholder:text-slate-200 font-bold"
+                                                        placeholder="Sua resposta..."
+                                                        value={currentVal || ''}
+                                                        onChange={(e) => handleAnswerChange(q.id!, e.target.value)}
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {/* LONG TEXT */}
+                                            {q.question_type === 'long_text' && (
+                                                <textarea
+                                                    className="w-full border-2 border-slate-100 bg-slate-50/30 rounded-2xl focus:border-[#35b6cf] focus:bg-white outline-none p-6 text-xl resize-none transition-all placeholder:text-slate-300 font-medium"
+                                                    placeholder="Descreva sua resposta detalhadamente..."
+                                                    rows={4}
+                                                    value={currentVal || ''}
+                                                    onChange={(e) => handleAnswerChange(q.id!, e.target.value)}
+                                                />
+                                            )}
+
+                                            {/* SELECT (SIDE-BY-SIDE ON DESKTOP) */}
+                                            {(q.question_type === 'select' || q.question_type === 'choice') && (
+                                                <div className="flex flex-col sm:flex-row sm:flex-nowrap justify-center gap-3 sm:gap-4 overflow-x-auto sm:overflow-visible pb-2 sm:pb-0">
+                                                    {optionsList.map((opt, oIdx) => {
+                                                        const isSelected = currentVal === opt;
+                                                        return (
+                                                            <div
+                                                                key={oIdx}
+                                                                onClick={() => handleAnswerChange(q.id!, opt)}
+                                                                className={`group/option flex-1 min-w-full sm:min-w-0 flex flex-row sm:flex-col items-center gap-4 sm:gap-6 p-5 sm:p-8 rounded-[24px] border-2 cursor-pointer transition-all duration-300 ${isSelected
+                                                                    ? 'border-[#35b6cf] bg-cyan-50/50 shadow-xl shadow-cyan-100/50 transform scale-[1.02]'
+                                                                    : 'border-slate-100 bg-white hover:border-[#35b6cf]/30 hover:bg-slate-50/50 hover:shadow-lg hover:shadow-slate-100'
+                                                                    }`}
+                                                            >
+                                                                <div className={`shrink-0 w-6 h-6 sm:w-9 sm:h-9 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${isSelected
+                                                                    ? 'border-[#35b6cf] bg-[#35b6cf] ring-4 ring-cyan-100'
+                                                                    : 'border-slate-200 bg-white group-hover/option:border-[#35b6cf]/50'
+                                                                    }`}>
+                                                                    {isSelected && <div className="w-2 h-2 sm:w-3.5 sm:h-3.5 rounded-full bg-white animate-in zoom-in-50 duration-300"></div>}
+                                                                </div>
+                                                                <span className={`text-sm sm:text-base font-bold text-left sm:text-center leading-tight tracking-tight transition-colors duration-300 ${isSelected ? 'text-[#086a82]' : 'text-slate-600 group-hover/option:text-slate-900'}`}>
+                                                                    {opt}
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+
+                                            {/* RATING / SCALE */}
+                                            {(q.question_type === 'rating' || q.question_type === 'scale') && (
+                                                <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
+                                                    {Array.from({ length: (q.max_value || 5) - (q.min_value || 1) + 1 }, (_, i) => (q.min_value || 1) + i).map((val) => {
+                                                        const isSelected = currentVal === val;
+                                                        return (
+                                                            <button
+                                                                key={val}
+                                                                onClick={() => handleAnswerChange(q.id!, val)}
+                                                                className={`w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl border-2 font-black text-lg sm:text-xl flex items-center justify-center transition-all ${isSelected
+                                                                    ? 'bg-[#35b6cf] text-white border-[#35b6cf] shadow-xl scale-110'
+                                                                    : 'bg-white text-slate-300 border-slate-100 hover:border-[#35b6cf] hover:text-[#35b6cf]'
+                                                                    }`}
+                                                            >
+                                                                {val}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })()}
+
+                                {/* Navegação Inferior */}
+                                <div className="flex items-center justify-between pt-6 sm:pt-8">
+                                    {currentQuestionIndex === 0 ? (
+                                        <button
+                                            onClick={handleBack}
+                                            className="flex items-center gap-2 px-4 sm:px-6 py-3 rounded-xl font-bold text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 transition-all text-sm sm:text-base"
+                                        >
+                                            <ChevronDown className="rotate-90" size={18} />
+                                            Voltar
+                                        </button>
+                                    ) : (
+                                        <div></div>
+                                    )}
+
+                                    <button
+                                        onClick={handleNext}
+                                        className={`flex items-center gap-2 sm:gap-3 px-8 sm:px-12 py-4 sm:py-5 rounded-2xl font-black text-lg sm:text-xl transition-all shadow-xl hover:shadow-[#35b6cf]/20 active:scale-95 ${currentQuestionIndex === validQuestions.length - 1
+                                            ? 'bg-[#35b6cf] text-white hover:bg-[#2ca1b7]'
+                                            : 'bg-slate-800 text-white hover:bg-slate-900'
+                                            }`}
+                                    >
+                                        {currentQuestionIndex === validQuestions.length - 1 ? 'Finalizar' : 'Próxima'}
+                                        {currentQuestionIndex < validQuestions.length - 1 && <ChevronDown className="-rotate-90 size-5 sm:size-6" />}
+                                    </button>
                                 </div>
                             </div>
-                            <h1 className="text-xl font-black text-slate-800 leading-tight">
-                                {form?.title}
-                            </h1>
-                        </div>
-                    </div>
-
-                    {/* Questão Única */}
-                    {(() => {
-                        const q = validQuestions[currentQuestionIndex];
-                        const optionsList = getOptions(q);
-                        const currentVal = answers[q.id!];
-
-                        return (
-                            <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-8 sm:p-12 hover:border-[#35b6cf]/30 transition-all duration-300">
-                                <label className="block text-2xl font-black text-slate-800 mb-10 leading-relaxed text-center">
-                                    {q.label} {q.required && <span className="text-red-500 ml-1">*</span>}
-                                </label>
-
-                                {/* SHORT TEXT */}
-                                {q.question_type === 'short_text' && (
-                                    <div className="relative">
-                                        <input
-                                            type="text"
-                                            className="w-full border-b-4 border-slate-100 focus:border-[#35b6cf] outline-none py-4 text-2xl bg-transparent transition-all placeholder:text-slate-200 font-bold"
-                                            placeholder="Sua resposta..."
-                                            value={currentVal || ''}
-                                            onChange={(e) => handleAnswerChange(q.id!, e.target.value)}
-                                        />
-                                    </div>
-                                )}
-
-                                {/* LONG TEXT */}
-                                {q.question_type === 'long_text' && (
-                                    <textarea
-                                        className="w-full border-2 border-slate-100 bg-slate-50/30 rounded-2xl focus:border-[#35b6cf] focus:bg-white outline-none p-6 text-xl resize-none transition-all placeholder:text-slate-300 font-medium"
-                                        placeholder="Descreva sua resposta detalhadamente..."
-                                        rows={4}
-                                        value={currentVal || ''}
-                                        onChange={(e) => handleAnswerChange(q.id!, e.target.value)}
-                                    />
-                                )}
-
-                                {/* SELECT (HORIZONTAL RADIO BUTTONS) */}
-                                {(q.question_type === 'select' || q.question_type === 'choice') && (
-                                    <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-3 sm:gap-2">
-                                        {optionsList.map((opt, oIdx) => {
-                                            const isSelected = currentVal === opt;
-                                            return (
-                                                <div
-                                                    key={oIdx}
-                                                    onClick={() => handleAnswerChange(q.id!, opt)}
-                                                    className={`flex-1 min-w-[120px] flex flex-col items-center gap-3 p-6 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${isSelected
-                                                        ? 'border-[#35b6cf] bg-cyan-50 shadow-md transform scale-[1.02]'
-                                                        : 'border-slate-100 bg-slate-50/50 hover:border-slate-200 hover:bg-slate-50'
-                                                        }`}
-                                                >
-                                                    <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all ${isSelected ? 'border-[#35b6cf] bg-[#35b6cf]' : 'border-slate-300 bg-white'
-                                                        }`}>
-                                                        {isSelected && <div className="w-3 h-3 rounded-full bg-white animate-in zoom-in-50 duration-200"></div>}
-                                                    </div>
-                                                    <span className={`text-sm font-black text-center uppercase tracking-tight ${isSelected ? 'text-slate-900' : 'text-slate-400'}`}>
-                                                        {opt}
-                                                    </span>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-
-                                {/* RATING / SCALE */}
-                                {(q.question_type === 'rating' || q.question_type === 'scale') && (
-                                    <div className="flex flex-wrap justify-center gap-3">
-                                        {Array.from({ length: (q.max_value || 5) - (q.min_value || 1) + 1 }, (_, i) => (q.min_value || 1) + i).map((val) => {
-                                            const isSelected = currentVal === val;
-                                            return (
-                                                <button
-                                                    key={val}
-                                                    onClick={() => handleAnswerChange(q.id!, val)}
-                                                    className={`w-16 h-16 rounded-2xl border-2 font-black text-xl flex items-center justify-center transition-all ${isSelected
-                                                        ? 'bg-[#35b6cf] text-white border-[#35b6cf] shadow-xl scale-110'
-                                                        : 'bg-white text-slate-300 border-slate-100 hover:border-[#35b6cf] hover:text-[#35b6cf]'
-                                                        }`}
-                                                >
-                                                    {val}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })()}
-
-                    {/* Navegação Inferior */}
-                    <div className="flex items-center justify-between pt-8">
-                        <button
-                            onClick={handleBack}
-                            className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 transition-all"
-                        >
-                            <ChevronDown className="rotate-90" size={20} />
-                            Voltar
-                        </button>
-
-                        <button
-                            onClick={handleNext}
-                            className={`flex items-center gap-3 px-12 py-5 rounded-2xl font-black text-xl transition-all shadow-xl hover:shadow-[#35b6cf]/20 active:scale-95 ${currentQuestionIndex === validQuestions.length - 1
-                                ? 'bg-[#35b6cf] text-white hover:bg-[#2ca1b7]'
-                                : 'bg-slate-800 text-white hover:bg-slate-900'
-                                }`}
-                        >
-                            {currentQuestionIndex === validQuestions.length - 1 ? 'Finalizar' : 'Próxima'}
-                            {currentQuestionIndex < validQuestions.length - 1 && <ChevronDown className="-rotate-90" size={24} />}
-                        </button>
+                        )}
                     </div>
                 </div>
-            )}
+            </main>
         </div>
     );
 };

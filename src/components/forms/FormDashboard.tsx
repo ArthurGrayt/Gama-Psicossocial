@@ -38,7 +38,7 @@ const MOCK_QUESTIONS = [
 
 export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEditForm, onAnalyzeForm }) => {
     const { user } = useAuth();
-    const { companies, loading: isLoading, refetch, updateCompanyInCache } = useCompanies(user);
+    const { companies, loading: isLoading, refetch } = useCompanies(user);
     const [searchTerm, setSearchTerm] = useState('');
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     // const [companies, setCompanies] = useState<any[]>([]); // REPLACED BY HOOK
@@ -712,7 +712,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                         }}
                         className="flex items-center justify-center gap-2 px-6 bg-white text-[#35b6cf] border border-[#35b6cf] rounded-xl font-bold hover:bg-[#35b6cf]/5 transition-all shadow-sm shrink-0 md:w-48 h-11"
                     >
-                        <Users size={18} />
+                        <Plus size={18} />
                         <span>Novo Colaborador</span>
                     </button>
                 </div>

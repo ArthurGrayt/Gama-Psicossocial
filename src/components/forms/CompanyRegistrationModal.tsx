@@ -1235,9 +1235,7 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                                             className="w-full flex items-center justify-between p-6 hover:bg-slate-100 transition-colors text-left"
                                         >
                                             <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                                                <div className="p-1 rounded bg-[#35b6cf]/10 text-[#35b6cf]">
-                                                    <Plus size={18} />
-                                                </div>
+                                                <Plus size={18} className="text-[#35b6cf]" />
                                                 Novo Colaborador
                                             </h3>
                                             <ChevronRight

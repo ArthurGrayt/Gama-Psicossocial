@@ -4,6 +4,7 @@ import { ArrowLeft, Copy, Search, FileText, X } from 'lucide-react';
 import { SegmentedControl } from '../ui/SegmentedControl';
 import type { Form } from '../../types';
 import { DimensionAnalysisSection } from './DimensionAnalysisSection';
+import { ActionPlansSection } from './ActionPlansSection';
 
 interface SurveyDetailsProps {
     form: Form;
@@ -487,7 +488,7 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
     const tabs = [
         { value: 'overview', label: 'Visão Geral' },
         { value: 'analysis', label: 'Análise Interpretativa' },
-        { value: 'recorte', label: 'Recorte Interpretativo' },
+        { value: 'recorte', label: 'Planos de ação' },
     ];
 
     return (
@@ -673,6 +674,15 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
                     )}
 
 
+
+                    {/* --- TAB C: PLANOS DE AÇÃO --- */}
+                    {activeTab === 'recorte' && (
+                        <ActionPlansSection
+                            unidadeId={selectedUnit ? Number(selectedUnit) : (form.unidade_id || null)}
+                            setorId={selectedSector ? sectors.find(s => s.nome === selectedSector)?.id || null : null}
+                            formIds={formIds}
+                        />
+                    )}
 
                 </div >
 

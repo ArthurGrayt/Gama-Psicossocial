@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 
 interface DimensionData {
+    id: number;
     name: string;
     value: number;
     fill: string; // Color based on value/risk
@@ -19,33 +20,6 @@ export const useDimensionAnalysis = ({ unidadeId, setorId, formIds }: UseDimensi
     const [chartData, setChartData] = useState<DimensionData[]>([]);
     const [positiveDimensions, setPositiveDimensions] = useState<DimensionData[]>([]);
     const [negativeDimensions, setNegativeDimensions] = useState<DimensionData[]>([]);
-
-    // Helper for colors
-    const getColorForValue = (value: number) => {
-        // High Risk (Red) -> Low Score
-        // Low Risk (Green) -> High Score
-        // Wait, for "Negative" dimensions (e.g. Demand), High Score = High Risk.
-        // For "Positive" dimensions (e.g. Support), Low Score = High Risk.
-
-        // However, the previous code just used value magnitude:
-        // >= 3.0: Red (High)
-        // >= 2.0: Orange (Moderate)
-        // >= 1.0: Orange-Light
-        // < 1.0: Blue/Green?
-
-        // Let's stick to the REFERENCE IMAGE colors for now:
-        // Red = Alto Risco
-        // Blue/Indigo = Risk? 
-
-        // The previous implementation had:
-        // if (value >= 3.0) return '#f43f5e'; // Rose-500
-        // if (value >= 2.0) return '#ea580c'; // Orange-600
-        // ...
-
-        return value >= 3.0 ? '#f43f5e' :
-            value >= 2.0 ? '#ea580c' :
-                value >= 1.0 ? '#6366f1' : '#10b981'; // Just a placeholder logic, will refine
-    };
 
     // Correct Logic from Reference Image:
     // "Quanto MAIOR a média, MAIOR o risco" (implied for Negative dims like Demand)
@@ -110,29 +84,32 @@ export const useDimensionAnalysis = ({ unidadeId, setorId, formIds }: UseDimensi
                 const { data: rawData, error } = await query;
                 if (error) throw error;
 
-                const groups: Record<string, { total: number; count: number; is_positive: boolean }> = {};
+                const groups: Record<number, { name: string; total: number; count: number; is_positive: boolean }> = {};
 
                 rawData?.forEach((row: any) => {
                     if (typeof row.answer_number !== 'number') return;
                     const dimData = row.form_questions?.form_hse_dimensions;
+                    const dimId = dimData?.id;
                     const dimName = dimData?.name;
-                    if (!dimName) return;
+                    if (!dimId || !dimName) return;
 
-                    if (!groups[dimName]) {
-                        groups[dimName] = {
+                    if (!groups[dimId]) {
+                        groups[dimId] = {
+                            name: dimName,
                             total: 0,
                             count: 0,
                             is_positive: dimData.is_positive === true
                         };
                     }
-                    groups[dimName].total += row.answer_number;
-                    groups[dimName].count += 1;
+                    groups[dimId].total += row.answer_number;
+                    groups[dimId].count += 1;
                 });
 
-                const processedData = Object.entries(groups).map(([name, stats]) => {
+                const processedData = Object.entries(groups).map(([id, stats]) => {
                     const avg = stats.total / stats.count;
                     return {
-                        name,
+                        id: Number(id),
+                        name: stats.name,
                         value: Number(avg.toFixed(1)),
                         fill: getRiskColor(avg, stats.is_positive),
                         is_positive: stats.is_positive
