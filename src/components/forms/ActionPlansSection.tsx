@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../services/supabase';
-import { useDimensionAnalysis } from '../../hooks/useDimensionAnalysis';
-import { AlertTriangle, Info, ChevronRight, ShieldAlert } from 'lucide-react';
+import { Info } from 'lucide-react';
 
 interface ActionPlansSectionProps {
     unidadeId: number | null;
@@ -19,63 +18,113 @@ interface RiskRule {
 }
 
 export const ActionPlansSection: React.FC<ActionPlansSectionProps> = ({ unidadeId, setorId, formIds }) => {
-    const { loading: dataLoading, chartData } = useDimensionAnalysis({
-        unidadeId,
-        setorId,
-        formIds
-    });
-
-    const [rules, setRules] = useState<RiskRule[]>([]);
-    const [loadingRules, setLoadingRules] = useState(true);
+    const [actionPlans, setActionPlans] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchRules = async () => {
-            setLoadingRules(true);
-            try {
-                const { data, error } = await supabase
-                    .from('form_hse_rules')
-                    .select('*');
+        const calculateActionPlans = async () => {
+            if (!formIds || formIds.length === 0) {
+                setLoading(false);
+                return;
+            }
 
-                if (error) throw error;
-                setRules(data || []);
+            setLoading(true);
+            try {
+                // 1. Fetch rules
+                const { data: rulesData } = await supabase.from('form_hse_rules').select('*');
+                const rules: RiskRule[] = rulesData || [];
+
+                // 2. Fetch answers grouped by question
+                let query = supabase
+                    .from('form_answers')
+                    .select('answer_number, question_id')
+                    .in('form_id', formIds)
+                    .not('answer_number', 'is', null);
+
+                if (unidadeId) query = query.eq('unidade_colaborador', unidadeId);
+                if (setorId) {
+                    // Filter by sector via collaborator's cargo
+                    const { data: roles } = await supabase.from('cargos').select('id').eq('setor_id', setorId);
+                    const roleIds = (roles || []).map(r => r.id);
+                    if (roleIds.length > 0) query = query.in('cargo', roleIds);
+                    else {
+                        setLoading(false);
+                        return;
+                    }
+                }
+
+                const { data: answersData } = await query;
+                if (!answersData) {
+                    setLoading(false);
+                    return;
+                }
+
+                // Aggregate average per question
+                const questionStats: Record<number, { total: number, count: number }> = {};
+                answersData.forEach(ans => {
+                    if (!questionStats[ans.question_id]) questionStats[ans.question_id] = { total: 0, count: 0 };
+                    questionStats[ans.question_id].total += Number(ans.answer_number);
+                    questionStats[ans.question_id].count += 1;
+                });
+
+                const questionAverages = Object.entries(questionStats).map(([id, stats]) => ({
+                    questionId: Number(id),
+                    avg: stats.total / stats.count
+                }));
+
+                // 3. Fetch question details for these questions
+                const questionIds = questionAverages.map(q => q.questionId);
+                const { data: questionsData } = await supabase
+                    .from('form_questions')
+                    .select('id, label, hse_dimension_id, plano_acao_item, titulo_relatorio')
+                    .in('id', questionIds);
+
+                const questionsMap: Record<number, any> = {};
+                questionsData?.forEach(q => { questionsMap[q.id] = q; });
+
+                // 4. Combine and Filter by Risk
+                const plans: any[] = [];
+                questionAverages.forEach(qAvg => {
+                    const question = questionsMap[qAvg.questionId];
+                    if (!question || !question.hse_dimension_id) return;
+
+                    // Find matching rule for this question's dimension and score
+                    const rule = rules.find(r =>
+                        r.dimension_id === question.hse_dimension_id &&
+                        qAvg.avg >= r.min_val &&
+                        qAvg.avg <= r.max_val
+                    );
+
+                    if (rule && !rule.is_ponto_forte && (rule.risk_label.includes('Moderado') || rule.risk_label.includes('Alto'))) {
+                        plans.push({
+                            id: qAvg.questionId,
+                            title: question.titulo_relatorio || question.label, // Fallback to label if title is missing
+                            text: question.plano_acao_item || "Nenhuma recomendação cadastrada para este item.",
+                            riskLabel: rule.risk_label,
+                            score: qAvg.avg,
+                        });
+                    }
+                });
+
+                setActionPlans(plans);
             } catch (err) {
-                console.error('Error fetching risk rules:', err);
+                console.error('Error calculating action plans:', err);
             } finally {
-                setLoadingRules(false);
+                setLoading(false);
             }
         };
 
-        fetchRules();
-    }, []);
+        calculateActionPlans();
+    }, [unidadeId, setorId, JSON.stringify(formIds)]);
 
-    if (dataLoading || loadingRules) {
+    if (loading) {
         return (
             <div className="flex flex-col items-center justify-center py-20 text-slate-400">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#35b6cf] mb-4"></div>
-                <p>Analisando riscos e gerando planos de ação...</p>
+                <p>Analisando itens e gerando planos de ação...</p>
             </div>
         );
     }
-
-    // Filter dimensions that match "Moderado" or "Alto" risk rules
-    const actionPlans = chartData.flatMap(dim => {
-        // Find the rule that matches this dimension's score
-        const matchingRule = rules.find(rule =>
-            rule.dimension_id === dim.id &&
-            dim.value >= rule.min_val &&
-            dim.value <= rule.max_val
-        );
-
-        // Only include if it's Moderate or High risk (usually not a "ponto forte")
-        if (matchingRule && !matchingRule.is_ponto_forte && (matchingRule.risk_label.includes('Moderado') || matchingRule.risk_label.includes('Alto'))) {
-            return [{
-                ...matchingRule,
-                dimensionName: dim.name,
-                score: dim.value
-            }];
-        }
-        return [];
-    });
 
     if (actionPlans.length === 0) {
         return (
@@ -85,78 +134,48 @@ export const ActionPlansSection: React.FC<ActionPlansSectionProps> = ({ unidadeI
                 </div>
                 <h3 className="text-xl font-bold text-slate-800 mb-2">Excelente!</h3>
                 <p className="text-slate-500">
-                    Nenhuma dimensão foi classificada com risco moderado ou alto sob os filtros selecionados. Sua equipe apresenta indicadores saudáveis nestas áreas.
+                    Nenhum item individual foi classificado com risco moderado ou alto sob os filtros selecionados.
                 </p>
             </div>
         );
     }
 
     return (
-        <div className="max-w-7xl mx-auto space-y-6">
-            <div className="flex items-center justify-between mb-8">
-                <div>
-                    <h3 className="text-2xl font-bold text-slate-800">Planos de Ação Recomendados</h3>
-                    <p className="text-slate-500 mt-1">Baseado nos indicadores de risco moderado e alto identificados.</p>
-                </div>
-                <div className="px-4 py-2 bg-rose-50 border border-rose-100 rounded-xl flex items-center gap-2">
-                    <ShieldAlert size={18} className="text-rose-500" />
-                    <span className="text-sm font-bold text-rose-600">{actionPlans.length} Demandas Críticas</span>
-                </div>
-            </div>
-
+        <div className="max-w-7xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {actionPlans.map((plan, idx) => (
                     <div
                         key={idx}
-                        className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col group"
+                        className="bg-white rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col group"
                     >
-                        {/* Card Header */}
-                        <div className="p-6 pb-4 flex items-start justify-between gap-4">
-                            <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md border ${plan.risk_label.includes('Alto')
-                                            ? 'bg-rose-50 text-rose-500 border-rose-100'
-                                            : 'bg-orange-50 text-orange-600 border-orange-100'
-                                        }`}>
-                                        {plan.risk_label}
-                                    </span>
-                                    <span className="text-xs font-bold text-slate-400">•</span>
-                                    <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">{plan.dimensionName}</span>
+                        {/* Card Header & Content unified */}
+                        <div className="p-6 flex-1">
+                            <div className="flex items-start justify-between gap-4 mb-4">
+                                <div className="flex-1">
+                                    <h4 className="text-lg font-black text-slate-800 leading-tight">
+                                        {plan.riskLabel} em {plan.title}
+                                    </h4>
                                 </div>
-                                <h4 className="text-lg font-bold text-slate-800 group-hover:text-[#35b6cf] transition-colors">
-                                    {plan.risk_label} em {plan.dimensionName}
-                                </h4>
-                            </div>
-                            <div className="w-12 h-12 rounded-xl bg-slate-50 flex flex-col items-center justify-center border border-slate-100 shrink-0">
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter leading-none mb-1">Média</span>
-                                <span className="text-lg font-bold text-slate-700 leading-none">{plan.score.toFixed(1)}</span>
-                            </div>
-                        </div>
-
-                        {/* Card Content */}
-                        <div className="px-6 py-4 flex-1">
-                            <div className="bg-slate-50 rounded-xl p-4 border border-slate-100/50">
-                                <div className="flex gap-3">
-                                    <div className="shrink-0 mt-0.5">
-                                        <AlertTriangle size={16} className={plan.risk_label.includes('Alto') ? 'text-rose-400' : 'text-orange-400'} />
-                                    </div>
-                                    <p className="text-sm text-slate-600 leading-relaxed font-medium italic">
-                                        "{plan.texto_analise}"
-                                    </p>
+                                <div
+                                    className={`rounded-xl px-3 py-2 text-center shrink-0 border transition-colors ${plan.riskLabel.includes('Alto')
+                                        ? 'bg-rose-50 border-rose-100 text-rose-600'
+                                        : 'bg-orange-50 border-orange-100 text-orange-600'
+                                        }`}
+                                >
+                                    <p className="text-[9px] font-bold uppercase tracking-widest mb-0.5 opacity-70">Média</p>
+                                    <p className="text-lg font-black leading-none">{plan.score.toFixed(1)}</p>
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Card Footer */}
-                        <div className="px-6 py-4 bg-slate-50/50 border-t border-slate-50 flex items-center justify-between">
-                            <button className="text-xs font-bold text-[#35b6cf] hover:text-[#2ca3bc] flex items-center gap-1 transition-colors">
-                                Detalhar plano completo
-                                <ChevronRight size={14} />
-                            </button>
-                            <div className="flex gap-1">
-                                <div className="w-1.5 h-1.5 rounded-full bg-slate-200"></div>
-                                <div className="w-1.5 h-1.5 rounded-full bg-slate-200"></div>
-                                <div className="w-1.5 h-1.5 rounded-full bg-slate-200"></div>
+                            <div className="relative">
+                                <div className="absolute -left-3 top-0 bottom-0 w-0.5 bg-gradient-to-b from-[#35b6cf] to-transparent rounded-full opacity-20"></div>
+                                <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                    <Info size={12} className="text-[#35b6cf]" />
+                                    Plano Recomendado
+                                </h5>
+                                <p className="text-slate-600 leading-relaxed font-medium text-[14px]">
+                                    {plan.text}
+                                </p>
                             </div>
                         </div>
                     </div>

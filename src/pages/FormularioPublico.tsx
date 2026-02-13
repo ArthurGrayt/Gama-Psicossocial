@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 import type { Form, FormQuestion, Collaborator } from '../types';
-import { CheckCircle, User, Hash, ChevronDown, FileText } from 'lucide-react';
+import { CheckCircle, User, ChevronDown, FileText } from 'lucide-react';
 import logo from '../assets/logo.png';
 
 // --- Componentes Visuais ---
@@ -398,7 +398,7 @@ export const FormularioPublico: React.FC = () => {
 
                                 <div className="relative mb-6">
                                     <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-                                        <Hash size={20} />
+                                        <User size={20} />
                                     </div>
                                     <input
                                         type="text"
@@ -406,7 +406,13 @@ export const FormularioPublico: React.FC = () => {
                                         className={`w-full pl-12 pr-4 py-4 bg-slate-50 border-2 ${cpfError ? 'border-red-300 bg-red-50' : 'border-slate-100 focus:border-[#35b6cf]'} rounded-2xl outline-none transition-all text-lg font-bold tracking-wider sm:text-xl`}
                                         value={cpf}
                                         onChange={e => {
-                                            setCpf(e.target.value);
+                                            const val = e.target.value.replace(/\D/g, ''); // Remove não números
+                                            const formatted = val
+                                                .replace(/(\d{3})(\d)/, '$1.$2')
+                                                .replace(/(\d{3})(\d)/, '$1.$2')
+                                                .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+                                                .replace(/(-\d{2})\d+?$/, '$1'); // Limita em 11 dígitos reais + máscara
+                                            setCpf(formatted);
                                             setCpfError(null);
                                         }}
                                         onKeyDown={(e) => e.key === 'Enter' && handleCheckCPF()}
@@ -568,7 +574,7 @@ export const FormularioPublico: React.FC = () => {
                         )}
                     </div>
                 </div>
-            </main>
-        </div>
+            </main >
+        </div >
     );
 };
