@@ -658,10 +658,9 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
             {/* Header / Actions */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-2">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
                 <div>
                     <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Empresas Monitoradas</h2>
-                    <p className="text-slate-500 mt-1">Gerencie formulários e levantamentos</p>
                 </div>
 
                 <div className="flex items-center gap-3 w-full md:w-auto">

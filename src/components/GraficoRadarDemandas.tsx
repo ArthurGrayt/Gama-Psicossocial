@@ -13,7 +13,7 @@ interface GraficoRadarDemandasProps {
     loading?: boolean;
 }
 
-const RADIAN = Math.PI / 180;
+
 
 export const GraficoRadarDemandas: React.FC<GraficoRadarDemandasProps> = ({ data, loading }) => {
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
@@ -43,15 +43,14 @@ export const GraficoRadarDemandas: React.FC<GraficoRadarDemandasProps> = ({ data
         const isHovered = index === hoveredIndex;
 
         // --- POSIÇÃO DA NOTA INTERNA (Dentro da barra) ---
-        const textRadius = innerRadius + (r - innerRadius) * 0.85;
+        // Centralizamos exatamente no meio da barra (0.5)
+        const textRadius = innerRadius + (r - innerRadius) * 0.5;
         const textX = cx + textRadius * Math.cos(angleRad);
         const textY = cy + textRadius * Math.sin(angleRad);
 
         // --- POSIÇÃO DO RÓTULO EXTERNO (Nome da Demanda) ---
         // Definimos uma distância fixa fora da barra máxima para alinhar tudo em círculo
-        // ou usamos 'r + 20' se quiser que o texto acompanhe a altura da barra.
-        // Vamos usar outerRadius fixo + espaço para ficar alinhado e bonito:
-        const labelRadius = outerRadius + 20;
+        const labelRadius = outerRadius + 22;
         const labelX = cx + labelRadius * Math.cos(angleRad);
         const labelY = cy + labelRadius * Math.sin(angleRad);
 
@@ -72,22 +71,35 @@ export const GraficoRadarDemandas: React.FC<GraficoRadarDemandasProps> = ({ data
                     fill={fill}
                     stroke={isHovered ? "#fff" : "none"}
                     strokeWidth={2}
-                    style={{ filter: isHovered ? 'brightness(1.1)' : 'none', transition: 'all 0.3s ease' }}
+                    style={{
+                        filter: isHovered ? 'brightness(1.1) drop-shadow(0 4px 6px rgba(0,0,0,0.1))' : 'none',
+                        transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
+                    }}
                 />
 
-                {/* 2. A Nota Interna (Sem condicional, aparece sempre) */}
-                <text
-                    x={textX}
-                    y={textY}
-                    textAnchor="middle"
-                    dominantBaseline="central"
-                    fill="#fff"
-                    fontSize={12}
-                    fontWeight="bold"
-                    style={{ pointerEvents: 'none', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}
-                >
-                    {value.toFixed(1)}
-                </text>
+                {/* 2. A Nota Interna (Centralizada e Suave) */}
+                <g style={{ pointerEvents: 'none' }}>
+                    {/* Efeito de brilho/suavização atrás do número */}
+                    <circle
+                        cx={textX}
+                        cy={textY}
+                        r={11}
+                        fill="rgba(255,255,255,0.15)"
+                        style={{ filter: 'blur(2px)' }}
+                    />
+                    <text
+                        x={textX}
+                        y={textY}
+                        textAnchor="middle"
+                        dominantBaseline="central"
+                        fill="#fff"
+                        fontSize={10}
+                        fontWeight="900"
+                        style={{ textShadow: '0 1px 3px rgba(0,0,0,0.2)' }}
+                    >
+                        {value.toFixed(1)}
+                    </text>
+                </g>
 
                 {/* 3. O Rótulo Externo + Linha (Desenhado manualmente para nunca sumir) */}
                 <path

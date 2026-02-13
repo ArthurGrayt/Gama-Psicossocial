@@ -17,11 +17,11 @@ const LoadingScreen = () => (
 
 const getOptions = (question: FormQuestion): string[] => {
     return [
+        question.option_0,
         question.option_1,
         question.option_2,
         question.option_3,
-        question.option_4,
-        question.option_5
+        question.option_4
     ]
         .filter((opt) => opt !== null && opt !== undefined && String(opt).trim() !== '')
         .map(String);
@@ -260,7 +260,7 @@ export const FormularioPublico: React.FC = () => {
                     const opts = getOptions(q);
                     const idx = opts.findIndex(opt => opt === rawValue);
                     if (idx !== -1) {
-                        answerNumber = idx + 1; // 1-based index (Option 1 -> 1, Option 2 -> 2...)
+                        answerNumber = idx; // 0-based index (Option 0 -> 0, Option 1 -> 1...)
                     }
                 }
             }
@@ -308,7 +308,7 @@ export const FormularioPublico: React.FC = () => {
         </div>
     );
 
-    const FORM_WIDTH = "w-full max-w-[800px]";
+    const FORM_WIDTH = "w-full max-w-[1000px]";
 
     return (
         <div className="bg-slate-50 h-screen h-[100dvh] overflow-hidden flex flex-col font-sans">
@@ -349,8 +349,8 @@ export const FormularioPublico: React.FC = () => {
                 </header>
             )}
 
-            <main className="flex-1 overflow-y-auto w-full flex flex-col items-center custom-scrollbar">
-                <div className="w-full max-w-[800px] px-4 pt-10 sm:pt-16 pb-20">
+            <main className="flex-1 overflow-y-auto sm:overflow-y-auto w-full flex flex-col items-center custom-scrollbar">
+                <div className="w-full max-w-[1000px] px-4 pt-4 sm:pt-16 pb-10 sm:pb-20">
                     <div className="w-full flex flex-col items-center justify-center">
                         {/* DEBUG BADGE */}
                         <div className="fixed bottom-2 right-2 bg-red-500 text-white text-[10px] px-2 py-1 rounded-full z-[9999] opacity-50 font-mono">
@@ -463,8 +463,8 @@ export const FormularioPublico: React.FC = () => {
                                     const currentVal = answers[q.id!];
 
                                     return (
-                                        <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-6 sm:p-12 hover:border-[#35b6cf]/30 transition-all duration-300">
-                                            <label className="block text-xl sm:text-2xl font-black text-slate-800 mb-8 sm:mb-10 leading-relaxed text-center">
+                                        <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-5 sm:p-12 hover:border-[#35b6cf]/30 transition-all duration-300">
+                                            <label className="block text-lg sm:text-2xl font-black text-slate-800 mb-6 sm:mb-10 leading-relaxed text-center">
                                                 {q.label} {q.required && <span className="text-red-500 ml-1">*</span>}
                                             </label>
 
@@ -492,27 +492,27 @@ export const FormularioPublico: React.FC = () => {
                                                 />
                                             )}
 
-                                            {/* SELECT (SIDE-BY-SIDE ON DESKTOP) */}
+                                            {/* SELECT (ADAPTIVE LAYOUT) */}
                                             {(q.question_type === 'select' || q.question_type === 'choice') && (
-                                                <div className="flex flex-col sm:flex-row sm:flex-nowrap justify-center gap-3 sm:gap-4 overflow-x-auto sm:overflow-visible pb-2 sm:pb-0">
+                                                <div className="flex flex-col sm:flex-row sm:flex-wrap lg:flex-nowrap justify-center gap-3 sm:gap-4 pb-2 sm:pb-0">
                                                     {optionsList.map((opt, oIdx) => {
                                                         const isSelected = currentVal === opt;
                                                         return (
                                                             <div
                                                                 key={oIdx}
                                                                 onClick={() => handleAnswerChange(q.id!, opt)}
-                                                                className={`group/option flex-1 min-w-full sm:min-w-0 flex flex-row sm:flex-col items-center gap-4 sm:gap-6 p-5 sm:p-8 rounded-[24px] border-2 cursor-pointer transition-all duration-300 ${isSelected
+                                                                className={`group/option flex-1 min-w-full sm:min-w-[45%] lg:min-w-0 flex flex-row sm:flex-col items-center gap-4 sm:gap-6 p-5 sm:p-6 rounded-[24px] border-2 cursor-pointer transition-all duration-300 ${isSelected
                                                                     ? 'border-[#35b6cf] bg-cyan-50/50 shadow-xl shadow-cyan-100/50 transform scale-[1.02]'
                                                                     : 'border-slate-100 bg-white hover:border-[#35b6cf]/30 hover:bg-slate-50/50 hover:shadow-lg hover:shadow-slate-100'
                                                                     }`}
                                                             >
-                                                                <div className={`shrink-0 w-6 h-6 sm:w-9 sm:h-9 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${isSelected
+                                                                <div className={`shrink-0 w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${isSelected
                                                                     ? 'border-[#35b6cf] bg-[#35b6cf] ring-4 ring-cyan-100'
                                                                     : 'border-slate-200 bg-white group-hover/option:border-[#35b6cf]/50'
                                                                     }`}>
-                                                                    {isSelected && <div className="w-2 h-2 sm:w-3.5 sm:h-3.5 rounded-full bg-white animate-in zoom-in-50 duration-300"></div>}
+                                                                    {isSelected && <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-white animate-in zoom-in-50 duration-300"></div>}
                                                                 </div>
-                                                                <span className={`text-sm sm:text-base font-bold text-left sm:text-center leading-tight tracking-tight transition-colors duration-300 ${isSelected ? 'text-[#086a82]' : 'text-slate-600 group-hover/option:text-slate-900'}`}>
+                                                                <span className={`text-sm sm:text-base font-bold text-left sm:text-center leading-tight tracking-tight whitespace-nowrap transition-colors duration-300 ${isSelected ? 'text-[#086a82]' : 'text-slate-600 group-hover/option:text-slate-900'}`}>
                                                                     {opt}
                                                                 </span>
                                                             </div>
