@@ -13,30 +13,55 @@ interface GraficoRadarDemandasProps {
     loading?: boolean;
 }
 
+const RADIAN = Math.PI / 180;
+
 export const GraficoRadarDemandas: React.FC<GraficoRadarDemandasProps> = ({ data, loading }) => {
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
-    // Sort data for the chart: Positive First (Right Hemisphere), Negative Second (Left Hemisphere)
-    // We create a copy to avoid mutating props
-    const chartData = [...data].sort((a, b) => {
-        // Positive first
-        if (a.is_positive && !b.is_positive) return -1;
-        if (!a.is_positive && b.is_positive) return 1;
-        // Then Alphabetical
-        return a.name.localeCompare(b.name);
-    });
+    // Ordenação: Positivos (Direita), Negativos (Esquerda)
+    const chartData = [...data]
+        .sort((a, b) => {
+            if (a.is_positive && !b.is_positive) return -1;
+            if (!a.is_positive && b.is_positive) return 1;
+            return a.name.localeCompare(b.name);
+        })
+        .map(d => ({ ...d, share: 1 })); // Fatias iguais
 
     const renderCustomPolarSector = (props: any) => {
-        const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, value, index } = props;
+        const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, index } = props;
+        const value = payload.value;
         const maxValue = 4;
         const safeValue = Math.min(value, maxValue);
-        // Calculate dynamic radius based on value relative to maxValue
-        // Base innerRadius is preserved, we extend outwards
+
+        // Calcula o ângulo médio para posicionar os textos
+        const midAngle = (startAngle + endAngle) / 2;
+        const RADIAN = Math.PI / 180;
+        const angleRad = -midAngle * RADIAN;
+
+        // Raio da barra colorida
         const r = innerRadius + (outerRadius - innerRadius) * (safeValue / maxValue);
         const isHovered = index === hoveredIndex;
 
+        // --- POSIÇÃO DA NOTA INTERNA (Dentro da barra) ---
+        const textRadius = innerRadius + (r - innerRadius) * 0.85;
+        const textX = cx + textRadius * Math.cos(angleRad);
+        const textY = cy + textRadius * Math.sin(angleRad);
+
+        // --- POSIÇÃO DO RÓTULO EXTERNO (Nome da Demanda) ---
+        // Definimos uma distância fixa fora da barra máxima para alinhar tudo em círculo
+        // ou usamos 'r + 20' se quiser que o texto acompanhe a altura da barra.
+        // Vamos usar outerRadius fixo + espaço para ficar alinhado e bonito:
+        const labelRadius = outerRadius + 20;
+        const labelX = cx + labelRadius * Math.cos(angleRad);
+        const labelY = cy + labelRadius * Math.sin(angleRad);
+
+        // Alinhamento do texto externo (Esquerda ou Direita do gráfico)
+        const textAnchor = labelX > cx ? 'start' : 'end';
+        const labelOffsetX = labelX > cx ? 5 : -5;
+
         return (
             <g>
+                {/* 1. A Barra (Sector) */}
                 <Sector
                     cx={cx}
                     cy={cy}
@@ -49,25 +74,49 @@ export const GraficoRadarDemandas: React.FC<GraficoRadarDemandasProps> = ({ data
                     strokeWidth={2}
                     style={{ filter: isHovered ? 'brightness(1.1)' : 'none', transition: 'all 0.3s ease' }}
                 />
-                {isHovered && (
-                    <text
-                        x={cx + (innerRadius + (r - innerRadius) * 0.55) * Math.cos(-((startAngle + endAngle) / 2) * Math.PI / 180)}
-                        y={cy + (innerRadius + (r - innerRadius) * 0.55) * Math.sin(-((startAngle + endAngle) / 2) * Math.PI / 180)}
-                        textAnchor="middle"
-                        dominantBaseline="central"
-                        fill="#fff"
-                        className="text-base font-bold drop-shadow-md pointer-events-none"
-                    >
-                        {value.toFixed(1)}
-                    </text>
-                )}
+
+                {/* 2. A Nota Interna (Sem condicional, aparece sempre) */}
+                <text
+                    x={textX}
+                    y={textY}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fill="#fff"
+                    fontSize={12}
+                    fontWeight="bold"
+                    style={{ pointerEvents: 'none', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}
+                >
+                    {value.toFixed(1)}
+                </text>
+
+                {/* 3. O Rótulo Externo + Linha (Desenhado manualmente para nunca sumir) */}
+                <path
+                    d={`M${cx + r * Math.cos(angleRad)},${cy + r * Math.sin(angleRad)}L${labelX},${labelY}`}
+                    stroke="#94a3b8"
+                    strokeWidth={1}
+                    fill="none"
+                    opacity={0.5}
+                />
+                <circle cx={cx + r * Math.cos(angleRad)} cy={cy + r * Math.sin(angleRad)} r={2} fill="#94a3b8" />
+                <text
+                    x={labelX + labelOffsetX}
+                    y={labelY}
+                    dominantBaseline="central"
+                    textAnchor={textAnchor}
+                    fill="#64748b"
+                    fontSize={11}
+                    fontWeight="bold"
+                    style={{ pointerEvents: 'none' }}
+                >
+                    {payload.name}
+                </text>
             </g>
         );
     };
 
     if (loading) {
         return (
-            <div className="w-full h-[400px] flex items-center justify-center">
+            <div className="w-full h-[500px] flex items-center justify-center">
                 <div className="w-8 h-8 border-4 border-slate-200 border-t-[#35b6cf] rounded-full animate-spin" />
             </div>
         );
@@ -75,53 +124,30 @@ export const GraficoRadarDemandas: React.FC<GraficoRadarDemandasProps> = ({ data
 
     if (data.length === 0) {
         return (
-            <div className="w-full h-[400px] flex flex-col items-center justify-center text-slate-400">
+            <div className="w-full h-[500px] flex flex-col items-center justify-center text-slate-400">
                 <p>Sem dados suficientes para análise.</p>
             </div>
         );
     }
 
     return (
-        <div className="relative w-full h-[400px] flex justify-center items-center">
+        <div className="relative w-full h-[500px] flex justify-center items-center">
             <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
+                <PieChart margin={{ top: 40, right: 80, bottom: 40, left: 80 }}>
                     <Pie
                         data={chartData}
-                        dataKey="value"
+                        dataKey="share"
                         cx="50%"
                         cy="50%"
-                        innerRadius={30}
-                        outerRadius={150} // Increased size as requested implicitly by "exact dimension"
-                        startAngle={90}   // Start at Top
-                        endAngle={-270}   // Full circle clockwise
-                        shape={renderCustomPolarSector}
+                        innerRadius={40}
+                        outerRadius={120}
+                        startAngle={90}
+                        endAngle={-270}
+                        activeShape={renderCustomPolarSector}
+                        shape={renderCustomPolarSector} // Isso garante o desenho customizado
+                        isAnimationActive={false} // Desligue a animação para garantir renderização imediata das posições
                         onMouseEnter={(_, index) => setHoveredIndex(index)}
                         onMouseLeave={() => setHoveredIndex(null)}
-                        isAnimationActive={true}
-                        label={({ cx, cy, midAngle, outerRadius, value, name }) => {
-                            const RADIAN = Math.PI / 180;
-                            const angle = -(midAngle || 0) * RADIAN;
-                            // Labels positioned outside
-                            const radius = outerRadius * 1.15;
-                            const x = cx + radius * Math.cos(angle);
-                            const y = cy + radius * Math.sin(angle);
-
-                            const textAnchor = Math.abs(x - cx) < 10 ? 'middle' : (x > cx ? 'start' : 'end');
-
-                            return (
-                                <text
-                                    x={x}
-                                    y={y}
-                                    fill="#64748b"
-                                    textAnchor={textAnchor}
-                                    dominantBaseline="central"
-                                    className="text-xs font-bold"
-                                    style={{ pointerEvents: 'none' }}
-                                >
-                                    {name}
-                                </text>
-                            );
-                        }}
                     >
                         {chartData.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={entry.fill} />
@@ -130,12 +156,10 @@ export const GraficoRadarDemandas: React.FC<GraficoRadarDemandasProps> = ({ data
                 </PieChart>
             </ResponsiveContainer>
 
-            {/* Center Global Average */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
-                <div className="w-16 h-16 rounded-full bg-white shadow-sm flex items-center justify-center border border-slate-100">
-                    <span className="text-xl font-bold text-slate-700">
-                        {(data.reduce((acc, curr) => acc + curr.value, 0) / data.length).toFixed(1)}
-                    </span>
+            {/* Centro com Média Global (Decorativo) */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+                <div className="w-20 h-20 rounded-full bg-white shadow-sm flex items-center justify-center border border-slate-100">
+                    <div className="w-3 h-3 rounded-full bg-slate-200" />
                 </div>
             </div>
         </div>

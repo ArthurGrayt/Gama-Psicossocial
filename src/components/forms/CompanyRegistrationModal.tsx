@@ -10,7 +10,7 @@
 
 // Importa as ferramentas básicas do React para criar componentes e gerenciar estados (memória local)
 import React, { useState, useEffect } from 'react';
-// Importa ícones da biblioteca lucide-react para deixar a interface visualmente amigável
+import ReactDOM from 'react-dom';
 import { X, Building, Camera, ChevronRight, Check, Plus, Trash2, Pencil, Users, LayoutGrid, Briefcase, Search, Filter, MoreVertical, AlertTriangle, FileSpreadsheet } from 'lucide-react';
 // Importa um componente de botão padronizado do próprio projeto
 import { Button } from '../ui/Button';
@@ -26,7 +26,50 @@ interface CompanyRegistrationModalProps {
 }
 
 // Define as abas de navegação que aparecem no lado esquerdo da janela
+// Define as abas de navegação que aparecem no lado esquerdo da janela
 type Section = 'dados' | 'unidades' | 'setores' | 'cargos' | 'colaboradores';
+
+// Componente auxiliar para os botões da sidebar
+interface SectionButtonProps {
+    id: string;
+    label: string;
+    icon: React.ElementType;
+    active: boolean;
+    onClick: () => void;
+    completed?: boolean;
+    badge?: number;
+}
+
+const SectionButton: React.FC<SectionButtonProps> = ({ id, label, icon: Icon, active, onClick, completed, badge }) => (
+    <button
+        onClick={onClick}
+        className={`w-full flex items-center justify-between p-3 rounded-xl transition-all ${active
+            ? 'bg-white shadow-md text-[#35b6cf] border border-slate-100 ring-2 ring-[#35b6cf]/10'
+            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-transparent'
+            }`}
+    >
+        <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-lg transition-colors ${active ? 'bg-[#35b6cf]/10 text-[#35b6cf]' : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200'
+                }`}>
+                <Icon size={18} />
+            </div>
+            <div className="flex flex-col items-start">
+                <span className={`text-sm font-bold ${active ? 'text-slate-800' : 'text-slate-600'}`}>{label}</span>
+                {completed && <span className="text-[10px] font-bold text-emerald-500 flex items-center gap-0.5">Concluído <Check size={10} /></span>}
+            </div>
+        </div>
+
+        {active && <ChevronRight size={16} className="text-[#35b6cf]" />}
+
+        {badge !== undefined && badge > 0 && !active && (
+            <span className="bg-slate-100 text-slate-500 text-xs font-bold px-2 py-0.5 rounded-full border border-slate-200 min-w-[1.5rem] text-center">
+                {badge}
+            </span>
+        )}
+    </button>
+);
+
+
 
 // Início da definição principal do componente
 export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> = ({ isOpen, onClose, onSave, initialData, isLoading }) => {
@@ -744,16 +787,17 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
     };
 
     // --- PARTE VISUAL (O QUE APARECE NA TELA) ---
-    return (
+    // Renderiza o modal via Portal no final do body para evitar problemas de z-index e overflow
+    return ReactDOM.createPortal(
         // Fundo escurecido atrás da janela (Modal)
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6">
             <div
                 className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
                 onClick={onClose}
             />
 
             {/* Janela Principal do Modal */}
-            <div className="relative w-full max-w-[90rem] bg-white rounded-[2rem] shadow-2xl overflow-hidden flex h-[85vh] animate-in fade-in zoom-in-95 duration-300">
+            <div className="relative w-full max-w-[90rem] bg-white rounded-[2.5rem] shadow-2xl overflow-hidden flex h-[96vh] animate-in fade-in zoom-in-95 duration-300">
 
                 {/* --- Barra Lateral Esquerda (Sidebar) --- */}
                 <div className="w-1/3 bg-slate-50 border-r border-slate-200 flex flex-col">
@@ -800,107 +844,84 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                                             <option key={unit.id} value={unit.id}>{unit.name}</option>
                                         ))}
                                     </select>
-                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[#35b6cf]">
-                                        <ChevronRight className="rotate-90" size={18} />
-                                    </div>
+                                    <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none rotate-90" size={18} />
                                 </div>
                             </div>
                         )}
                     </div>
 
-                    {/* Menu de Navegação entre as Abas (Dados, Unidades, Setores, etc) */}
-                    <nav className="flex-1 px-6 space-y-2 overflow-y-auto">
-                        <p className="px-4 text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 mt-4">Gerenciamento</p>
-
-                        {/* Botão: Dados Gerais */}
-                        <button
+                    {/* Menu de Navegação (Abas) */}
+                    <div className="flex-1 px-6 space-y-1 overflow-y-auto custom-scrollbar">
+                        <SectionButton
+                            id="dados"
+                            label="Dados Gerais"
+                            icon={Building}
+                            active={activeSection === 'dados'}
                             onClick={() => setActiveSection('dados')}
-                            className={`w-full flex items-center justify-between p-4 rounded-xl transition-all ${activeSection === 'dados' ? 'bg-white shadow-md text-[#35b6cf] border border-slate-100' : 'text-slate-600 hover:bg-slate-100'}`}
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className={`p-2 rounded-lg ${activeSection === 'dados' ? 'bg-[#35b6cf]/10' : 'bg-slate-100'}`}>
-                                    <Building size={20} />
-                                </div>
-                                <span className="font-semibold">Dados Gerais</span>
-                            </div>
-                            {activeSection === 'dados' && <ChevronRight size={18} />}
-                        </button>
+                            completed={!!formData.nomeFantasia && !!formData.cnpj}
+                        />
 
-                        {/* Botão: Unidades (Filiais) */}
-                        <button
+                        {/* Separador visual */}
+                        <div className="my-2 border-t border-slate-100 mx-4" />
+
+                        {/* Botões de navegação com contadores (badges) */}
+                        <SectionButton
+                            id="unidades"
+                            label="Unidades"
+                            icon={LayoutGrid}
+                            active={activeSection === 'unidades'}
                             onClick={() => setActiveSection('unidades')}
-                            className={`w-full flex items-center justify-between p-4 rounded-xl transition-all ${activeSection === 'unidades' ? 'bg-white shadow-md text-[#35b6cf] border border-slate-100' : 'text-slate-600 hover:bg-slate-100'}`}
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className={`p-2 rounded-lg ${activeSection === 'unidades' ? 'bg-[#35b6cf]/10' : 'bg-slate-100'}`}>
-                                    <Building size={20} />
-                                </div>
-                                <span className="font-semibold">Unidades</span>
-                            </div>
-                            <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2 py-1 rounded-full min-w-[1.5rem]">{formData.units.length}</span>
-                        </button>
-
-                        {/* Botão: Setores (Exibe a quantidade filtrada pela unidade ativa) */}
-                        <button
+                            badge={formData.units.length}
+                        />
+                        <SectionButton
+                            id="setores"
+                            label="Setores"
+                            icon={LayoutGrid}
+                            active={activeSection === 'setores'}
                             onClick={() => setActiveSection('setores')}
-                            className={`w-full flex items-center justify-between p-4 rounded-xl transition-all ${activeSection === 'setores' ? 'bg-white shadow-md text-[#35b6cf] border border-slate-100' : 'text-slate-600 hover:bg-slate-100'}`}
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className={`p-2 rounded-lg ${activeSection === 'setores' ? 'bg-[#35b6cf]/10' : 'bg-slate-100'}`}>
-                                    <LayoutGrid size={20} />
-                                </div>
-                                <span className="font-semibold">Setores</span>
-                            </div>
-                            <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2 py-1 rounded-full min-w-[1.5rem]">
-                                {filteredSectors.length}
-                            </span>
-                        </button>
-
-                        <button
+                            badge={formData.setores.length}
+                        />
+                        <SectionButton
+                            id="cargos"
+                            label="Cargos"
+                            icon={Briefcase}
+                            active={activeSection === 'cargos'}
                             onClick={() => setActiveSection('cargos')}
-                            className={`w-full flex items-center justify-between p-4 rounded-xl transition-all ${activeSection === 'cargos' ? 'bg-white shadow-md text-[#35b6cf] border border-slate-100' : 'text-slate-600 hover:bg-slate-100'}`}
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className={`p-2 rounded-lg ${activeSection === 'cargos' ? 'bg-[#35b6cf]/10' : 'bg-slate-100'}`}>
-                                    <Briefcase size={20} />
-                                </div>
-                                <span className="font-semibold">Cargos</span>
-                            </div>
-                            <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2 py-1 rounded-full min-w-[1.5rem]">
-                                {filteredCargos.length}
-                            </span>
-                        </button>
-
-                        <button
+                            badge={formData.cargos.length}
+                        />
+                        <SectionButton
+                            id="colaboradores"
+                            label="Colaboradores"
+                            icon={Users}
+                            active={activeSection === 'colaboradores'}
                             onClick={() => setActiveSection('colaboradores')}
-                            className={`w-full flex items-center justify-between p-4 rounded-xl transition-all ${activeSection === 'colaboradores' ? 'bg-white shadow-md text-[#35b6cf] border border-slate-100' : 'text-slate-600 hover:bg-slate-100'}`}
+                            badge={formData.colaboradores.length}
+                        />
+                    </div>
+
+                    {/* Rodapé da Barra Lateral: Botão Cancelar */}
+                    <div className="p-6 border-t border-slate-200 bg-slate-50">
+                        <button
+                            onClick={onClose}
+                            className="w-full py-3 px-4 rounded-xl text-slate-500 font-bold hover:bg-slate-200/50 hover:text-slate-700 transition-colors flex items-center justify-center gap-2"
                         >
-                            <div className="flex items-center gap-3">
-                                <div className={`p-2 rounded-lg ${activeSection === 'colaboradores' ? 'bg-[#35b6cf]/10' : 'bg-slate-100'}`}>
-                                    <Users size={20} />
-                                </div>
-                                <span className="font-semibold">Colaboradores</span>
-                            </div>
-                            <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2 py-1 rounded-full min-w-[1.5rem]">
-                                {filteredCollaborators.length}
-                            </span>
+                            <X size={18} />
+                            Cancelar Edição
                         </button>
-                    </nav>
+                    </div>
                 </div>
 
-
-
-                {/* --- Right Content --- */}
-                <div className="flex-1 flex flex-col bg-white w-2/3">
-                    {/* Header */}
-                    <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between">
+                {/* --- Conteúdo Principal (Lado Direito) --- */}
+                <div className="flex-1 bg-white flex flex-col min-w-0">
+                    {/* Cabeçalho do Conteúdo */}
+                    <div className="px-10 py-8 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
                         <div>
                             <h2 className="text-2xl font-bold text-slate-800">
                                 {activeSection === 'dados' && 'Dados da Empresa'}
                                 {activeSection === 'unidades' && 'Gerenciar Unidades'}
-                                {activeSection === 'setores' && 'Gerenciar Setores'}
-                                {activeSection === 'cargos' && 'Gerenciar Cargos'}
-                                {activeSection === 'colaboradores' && 'Gerenciar Colaboradores'}
+                                {activeSection === 'setores' && 'Setores e Departamentos'}
+                                {activeSection === 'cargos' && 'Cargos e Funções'}
+                                {activeSection === 'colaboradores' && 'Colaboradores'}
                             </h2>
                             <p className="text-slate-500 text-sm">
                                 {activeSection === 'dados' && 'Visualize e edite as informações principais.'}
@@ -1746,8 +1767,11 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                         </div>
 
                         <div className="p-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50/50">
-                            <Button variant="ghost" onClick={() => setIsEditModalOpen(false)}>Cancelar</Button>
-                            <Button onClick={saveEditCollaborator} className="bg-[#35b6cf] text-white hover:bg-[#2ca3bc]">Salvar Alterações</Button>
+
+                            <div className="p-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50/50">
+                                <Button variant="ghost" onClick={() => setIsEditModalOpen(false)}>Cancelar</Button>
+                                <Button onClick={saveEditCollaborator} className="bg-[#35b6cf] text-white hover:bg-[#2ca3bc]">Salvar Alterações</Button>
+                            </div>
                         </div>
                     </div>
                 )
@@ -1760,38 +1784,49 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
             />
 
             {/* Geral Sector Warning Modal */}
-            {isGeralSectorWarningOpen && (
-                <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsGeralSectorWarningOpen(false)} />
-                    <div className="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm animate-in fade-in zoom-in-95 duration-200">
-                        <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-500 flex items-center justify-center mb-4 mx-auto">
-                            <AlertTriangle size={24} />
-                        </div>
-                        <h3 className="text-lg font-bold text-slate-800 text-center mb-2">Atenção!</h3>
-                        <p className="text-sm text-slate-500 text-center mb-6">
-                            Você tem <span className="font-bold text-slate-700">{geralSectorCount}</span> colaborador(es) no setor <span className="font-bold text-slate-700">"Geral"</span>.
-                            <br /><br />
-                            Deseja salvar assim mesmo? Você poderá alterar o setor deles posteriormente.
-                        </p>
-                        <div className="flex gap-3">
-                            <button
-                                onClick={() => setIsGeralSectorWarningOpen(false)}
-                                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition-colors"
-                            >
-                                Cancelar
-                            </button>
-                            <button
-                                onClick={confirmSaveGeral}
-                                className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-white font-semibold hover:bg-emerald-600 shadow-lg shadow-emerald-200 transition-colors"
-                            >
-                                Salvar
-                            </button>
+            {
+                isGeralSectorWarningOpen && (
+                    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+                        <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsGeralSectorWarningOpen(false)} />
+                        <div className="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm animate-in fade-in zoom-in-95 duration-200">
+                            <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-500 flex items-center justify-center mb-4 mx-auto">
+                                <AlertTriangle size={24} />
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-800 text-center mb-2">Atenção!</h3>
+                            <p className="text-sm text-slate-500 text-center mb-6">
+                                Você tem <span className="font-bold text-slate-700">{geralSectorCount}</span> colaborador(es) no setor <span className="font-bold text-slate-700">"Geral"</span>.
+                                <br /><br />
+                                Deseja salvar assim mesmo? Você poderá alterar o setor deles posteriormente.
+                            </p>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setIsGeralSectorWarningOpen(false)}
+                                    className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={confirmSaveGeral}
+                                    className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-white font-semibold hover:bg-emerald-600 shadow-lg shadow-emerald-200 transition-colors"
+                                >
+                                    Salvar
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )}
+
+            {/* Modal de Importação */}
+            <ImportCollaboratorsModal
+                isOpen={isImportModalOpen}
+                onClose={() => setIsImportModalOpen(false)}
+                onImport={(collaborators) => {
+                    handleImportCollaborators(collaborators);
+                    setIsImportModalOpen(false);
+                }}
+            />
+
+        </div>,
+        document.body
     );
 };
-
-

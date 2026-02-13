@@ -27,14 +27,15 @@ export const RankingGeralWidget: React.FC = () => {
         try {
             // Create a timeout promise
             const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Fetch timeout')), 5000)
+                setTimeout(() => reject(new Error('Fetch timeout')), 15000)
             );
 
             // Create the fetch promise
             const fetchPromise = supabase
                 .from('vw_dashboard_ranking_geral')
-                .select('*')
-                .order('score_global', { ascending: false });
+                .select('empresa, score_global, total_colaboradores, status_classificacao')
+                .order('score_global', { ascending: false })
+                .limit(5);
 
             // Race them
             setDebugMsg('Sending request to Supabase...');

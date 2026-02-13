@@ -491,382 +491,384 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
     ];
 
     return (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 min-h-[calc(100vh-140px)] flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-500">
-            {/* HERDER */}
-            <div className="border-b border-slate-100 p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white sticky top-0 z-10">
-                <div className="flex items-center gap-4">
-                    <button
-                        onClick={onBack}
-                        className="p-2 hover:bg-slate-50 rounded-xl text-slate-400 hover:text-slate-600 transition-colors"
-                    >
-                        <ArrowLeft size={20} />
-                    </button>
-                    <div>
-                        <div className="flex items-center gap-3">
-                            <h2 className="font-bold text-xl text-slate-800 tracking-tight">
-                                {form.title || (form as any).name || 'Detalhes do Levantamento'}
-                            </h2>
-                        </div>
-                        {/* Sector Dropdown Replacement */}
-                        <div className="mt-1 flex items-center gap-2">
-                            {/* Unit Dropdown (Only show if we have units) */}
-                            {units.length > 0 && (
+        <>
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 min-h-[calc(100vh-140px)] flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-500">
+                {/* HERDER */}
+                <div className="border-b border-slate-100 p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white sticky top-0 z-10">
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={onBack}
+                            className="p-2 hover:bg-slate-50 rounded-xl text-slate-400 hover:text-slate-600 transition-colors"
+                        >
+                            <ArrowLeft size={20} />
+                        </button>
+                        <div>
+                            <div className="flex items-center gap-3">
+                                <h2 className="font-bold text-xl text-slate-800 tracking-tight">
+                                    {form.title || (form as any).name || 'Detalhes do Levantamento'}
+                                </h2>
+                            </div>
+                            {/* Sector Dropdown Replacement */}
+                            <div className="mt-1 flex items-center gap-2">
+                                {/* Unit Dropdown (Only show if we have units) */}
+                                {units.length > 0 && (
+                                    <select
+                                        value={selectedUnit}
+                                        onChange={(e) => {
+                                            setSelectedUnit(e.target.value);
+                                            setSelectedSector(''); // Reset sector when unit changes
+                                        }}
+                                        className="bg-slate-50 border-none text-sm text-slate-500 font-medium focus:ring-0 cursor-pointer hover:text-slate-700 py-0 pl-0 pr-8 transition-colors outline-none"
+                                    >
+                                        <option value="">Todas as Unidades</option>
+                                        {units.map(unit => (
+                                            <option key={unit.id} value={unit.id}>{unit.nome}</option>
+                                        ))}
+                                    </select>
+                                )}
+
+                                {units.length > 0 && <span className="text-slate-300">|</span>}
+
                                 <select
-                                    value={selectedUnit}
-                                    onChange={(e) => {
-                                        setSelectedUnit(e.target.value);
-                                        setSelectedSector(''); // Reset sector when unit changes
-                                    }}
+                                    value={selectedSector}
+                                    onChange={(e) => setSelectedSector(e.target.value)}
                                     className="bg-slate-50 border-none text-sm text-slate-500 font-medium focus:ring-0 cursor-pointer hover:text-slate-700 py-0 pl-0 pr-8 transition-colors outline-none"
                                 >
-                                    <option value="">Todas as Unidades</option>
-                                    {units.map(unit => (
-                                        <option key={unit.id} value={unit.id}>{unit.nome}</option>
+                                    <option value="">Todos os Setores</option>
+                                    {distinctSectors.map(sector => (
+                                        <option key={sector} value={sector}>{sector}</option>
                                     ))}
                                 </select>
-                            )}
-
-                            {units.length > 0 && <span className="text-slate-300">|</span>}
-
-                            <select
-                                value={selectedSector}
-                                onChange={(e) => setSelectedSector(e.target.value)}
-                                className="bg-slate-50 border-none text-sm text-slate-500 font-medium focus:ring-0 cursor-pointer hover:text-slate-700 py-0 pl-0 pr-8 transition-colors outline-none"
-                            >
-                                <option value="">Todos os Setores</option>
-                                {distinctSectors.map(sector => (
-                                    <option key={sector} value={sector}>{sector}</option>
-                                ))}
-                            </select>
+                            </div>
                         </div>
+                    </div>
+
+                    <div className="flex items-center gap-4 w-full md:w-auto">
+                        <SegmentedControl
+                            options={tabs}
+                            value={activeTab}
+                            onChange={setActiveTab}
+                            className="flex-1 md:flex-none"
+                        />
+                        {(form as any).slug && (
+                            <button className="flex items-center gap-2 bg-[#35b6cf] hover:bg-[#2ca1b7] text-white px-4 py-2 rounded-lg transition-colors font-medium shadow-sm active:scale-95">
+                                <Copy size={16} />
+                                <span className="hidden sm:inline">Copiar Link</span>
+                            </button>
+                        )}
                     </div>
                 </div>
 
-                <div className="flex items-center gap-4 w-full md:w-auto">
-                    <SegmentedControl
-                        options={tabs}
-                        value={activeTab}
-                        onChange={setActiveTab}
-                        className="flex-1 md:flex-none"
-                    />
-                    {(form as any).slug && (
-                        <button className="flex items-center gap-2 bg-[#35b6cf] hover:bg-[#2ca1b7] text-white px-4 py-2 rounded-lg transition-colors font-medium shadow-sm active:scale-95">
-                            <Copy size={16} />
-                            <span className="hidden sm:inline">Copiar Link</span>
-                        </button>
-                    )}
-                </div>
-            </div>
+                {/* CONTENT AREA */}
+                <div className="flex-1 p-8 bg-slate-50/50 overflow-y-auto">
 
-            {/* CONTENT AREA */}
-            <div className="flex-1 p-8 bg-slate-50/50 overflow-y-auto">
-
-                {/* --- TAB A: VISÃO GERAL --- */}
-                {activeTab === 'overview' && (
-                    <div className="space-y-8 max-w-7xl mx-auto">
-                        {/* Status Cards Row (New Design) */}
-                        <div className="bg-white rounded-xl border border-slate-200 shadow-sm grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-100">
-                            {/* Participação */}
-                            <div
-                                onClick={handleOpenParticipation}
-                                className="p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-slate-50 transition-colors group relative"
-                            >
-                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <Search size={16} className="text-slate-400" />
+                    {/* --- TAB A: VISÃO GERAL --- */}
+                    {activeTab === 'overview' && (
+                        <div className="space-y-8 max-w-7xl mx-auto">
+                            {/* Status Cards Row (New Design) */}
+                            <div className="bg-white rounded-xl border border-slate-200 shadow-sm grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-100">
+                                {/* Participação */}
+                                <div
+                                    onClick={handleOpenParticipation}
+                                    className="p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-slate-50 transition-colors group relative"
+                                >
+                                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Search size={16} className="text-slate-400" />
+                                    </div>
+                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Participação</p>
+                                    <div className="flex items-baseline gap-1">
+                                        <span className="text-3xl font-bold text-slate-900">
+                                            {totalResponses}
+                                        </span>
+                                        <span className="text-lg text-slate-400 font-medium">
+                                            /{totalColabs}
+                                        </span>
+                                    </div>
                                 </div>
-                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Participação</p>
-                                <div className="flex items-baseline gap-1">
+
+                                {/* Total de Perguntas */}
+                                <div className="p-6 flex flex-col items-center justify-center text-center">
+                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Total de Perguntas</p>
                                     <span className="text-3xl font-bold text-slate-900">
-                                        {totalResponses}
-                                    </span>
-                                    <span className="text-lg text-slate-400 font-medium">
-                                        /{totalColabs}
+                                        {form.questions?.length || questions.length || 0}
                                     </span>
                                 </div>
-                            </div>
 
-                            {/* Total de Perguntas */}
-                            <div className="p-6 flex flex-col items-center justify-center text-center">
-                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Total de Perguntas</p>
-                                <span className="text-3xl font-bold text-slate-900">
-                                    {form.questions?.length || questions.length || 0}
-                                </span>
-                            </div>
-
-                            {/* Tempo Médio */}
-                            <div className="p-6 flex flex-col items-center justify-center text-center">
-                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Tempo Médio</p>
-                                <div className="flex items-baseline gap-1">
-                                    <span className="text-3xl font-bold text-slate-900">--</span>
-                                    <span className="text-lg text-slate-900 font-bold">min</span>
+                                {/* Tempo Médio */}
+                                <div className="p-6 flex flex-col items-center justify-center text-center">
+                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Tempo Médio</p>
+                                    <div className="flex items-baseline gap-1">
+                                        <span className="text-3xl font-bold text-slate-900">--</span>
+                                        <span className="text-lg text-slate-900 font-bold">min</span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Recent Responses Table (New Design) */}
-                        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                            <div className="px-8 py-6 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4 bg-white">
-                                <h3 className="font-bold text-lg text-slate-800">Respostas Recentes</h3>
-                                <div className="relative w-full md:w-64">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                                    <input
-                                        type="text"
-                                        placeholder="Buscar colaborador..."
-                                        className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf] transition-all"
-                                    />
+                            {/* Recent Responses Table (New Design) */}
+                            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                                <div className="px-8 py-6 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4 bg-white">
+                                    <h3 className="font-bold text-lg text-slate-800">Respostas Recentes</h3>
+                                    <div className="relative w-full md:w-64">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                        <input
+                                            type="text"
+                                            placeholder="Buscar colaborador..."
+                                            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf] transition-all"
+                                        />
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left">
-                                    <thead>
-                                        <tr className="border-b border-slate-100 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                                            <th className="px-8 py-4">Participante</th>
-                                            <th className="px-8 py-4">Data Envio</th>
-                                            <th className="px-8 py-4 text-right">Ações</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100">
-                                        {recentResponses.map((p) => (
-                                            <tr key={p.id} className="hover:bg-slate-50 transition-colors">
-                                                <td className="px-8 py-4">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-sm">
-                                                            {p.name ? p.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : '??'}
-                                                        </div>
-                                                        <div>
-                                                            <p className="font-bold text-slate-700">{p.name || 'Anônimo'}</p>
-                                                            <p className="text-xs text-slate-400">Identificado</p>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-8 py-4">
-                                                    <span className="text-sm text-slate-500 font-medium">
-                                                        {p.submitted_at}
-                                                    </span>
-                                                </td>
-                                                <td className="px-8 py-4 text-right">
-                                                    <button
-                                                        onClick={() => setSelectedParticipant(p)}
-                                                        className="text-slate-400 hover:text-[#35b6cf] transition-colors p-2 hover:bg-slate-50 rounded-lg"
-                                                        title="Ver Respostas"
-                                                    >
-                                                        <FileText size={18} />
-                                                    </button>
-                                                </td>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left">
+                                        <thead>
+                                            <tr className="border-b border-slate-100 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                                <th className="px-8 py-4">Participante</th>
+                                                <th className="px-8 py-4">Data Envio</th>
+                                                <th className="px-8 py-4 text-right">Ações</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* --- TAB B: ANÁLISE INTERPRETATIVA --- */}
-                {activeTab === 'analysis' && (
-                    <DimensionAnalysisSection
-                        unidadeId={selectedUnit ? Number(selectedUnit) : (form.unidade_id || null)}
-                        setorId={selectedSector ? sectors.find(s => s.nome === selectedSector)?.id || null : null}
-                        formIds={formIds}
-                    />
-                )}
-
-
-
-            </div >
-
-            {/* RESPONSE MODAL */}
-            {
-                selectedParticipant && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col m-4 animate-in zoom-in-95 duration-200">
-                            {/* Header */}
-                            <div className="flex items-start justify-between p-6 border-b border-slate-100">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-full bg-[#35b6cf]/10 flex items-center justify-center text-[#35b6cf] font-bold text-lg">
-                                        {selectedParticipant.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
-                                    </div>
-                                    <div>
-                                        <h3 className="font-bold text-lg text-slate-800">{selectedParticipant.name}</h3>
-                                        <div className="flex items-center gap-2 text-sm text-slate-500">
-                                            <span>{selectedParticipant.sector}</span>
-                                            <span>•</span>
-                                            <span>{selectedParticipant.submitted_at}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={() => setSelectedParticipant(null)}
-                                    className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
-                                >
-                                    <X size={20} />
-                                </button>
-                            </div>
-
-                            {/* Content */}
-                            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                                {QUESTIONS_LIST.map((q, idx) => (
-                                    <div key={q.id} className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                                        <div className="flex justify-between items-start mb-2">
-                                            <span className="text-xs font-bold text-[#35b6cf] uppercase tracking-wider">{q.category}</span>
-                                            <span className="text-xs font-bold text-slate-400">#{idx + 1}</span>
-                                        </div>
-                                        <p className="font-medium text-slate-800 mb-3">{q.text}</p>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-sm text-slate-500">Resposta:</span>
-                                            <div className="flex gap-1">
-                                                {[1, 2, 3, 4, 5].map((val) => {
-                                                    // Mock random answer strictly for UI demo based on question ID + participant ID
-                                                    const mockAnswer = ((q.id + selectedParticipant.id) % 5) + 1;
-                                                    const isSelected = val === mockAnswer;
-                                                    return (
-                                                        <div
-                                                            key={val}
-                                                            className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold border ${isSelected
-                                                                ? 'bg-[#35b6cf] border-[#35b6cf] text-white shadow-sm'
-                                                                : 'bg-white border-slate-200 text-slate-300'
-                                                                }`}
-                                                        >
-                                                            {val}
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {recentResponses.map((p) => (
+                                                <tr key={p.id} className="hover:bg-slate-50 transition-colors">
+                                                    <td className="px-8 py-4">
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-sm">
+                                                                {p.name ? p.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : '??'}
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-bold text-slate-700">{p.name || 'Anônimo'}</p>
+                                                                <p className="text-xs text-slate-400">Identificado</p>
+                                                            </div>
                                                         </div>
-                                                    );
-                                                })}
+                                                    </td>
+                                                    <td className="px-8 py-4">
+                                                        <span className="text-sm text-slate-500 font-medium">
+                                                            {p.submitted_at}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-8 py-4 text-right">
+                                                        <button
+                                                            onClick={() => setSelectedParticipant(p)}
+                                                            className="text-slate-400 hover:text-[#35b6cf] transition-colors p-2 hover:bg-slate-50 rounded-lg"
+                                                            title="Ver Respostas"
+                                                        >
+                                                            <FileText size={18} />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* --- TAB B: ANÁLISE INTERPRETATIVA --- */}
+                    {activeTab === 'analysis' && (
+                        <DimensionAnalysisSection
+                            unidadeId={selectedUnit ? Number(selectedUnit) : (form.unidade_id || null)}
+                            setorId={selectedSector ? sectors.find(s => s.nome === selectedSector)?.id || null : null}
+                            formIds={formIds}
+                        />
+                    )}
+
+
+
+                </div >
+
+                {/* RESPONSE MODAL */}
+                {
+                    selectedParticipant && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col m-4 animate-in zoom-in-95 duration-200">
+                                {/* Header */}
+                                <div className="flex items-start justify-between p-6 border-b border-slate-100">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-full bg-[#35b6cf]/10 flex items-center justify-center text-[#35b6cf] font-bold text-lg">
+                                            {selectedParticipant.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+                                        </div>
+                                        <div>
+                                            <h3 className="font-bold text-lg text-slate-800">{selectedParticipant.name}</h3>
+                                            <div className="flex items-center gap-2 text-sm text-slate-500">
+                                                <span>{selectedParticipant.sector}</span>
+                                                <span>•</span>
+                                                <span>{selectedParticipant.submitted_at}</span>
                                             </div>
                                         </div>
                                     </div>
-                                ))}
-                            </div>
-
-                            {/* Footer */}
-                            <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-2xl flex justify-end">
-                                <button
-                                    onClick={() => setSelectedParticipant(null)}
-                                    className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-600 font-medium hover:bg-slate-50 transition-colors shadow-sm"
-                                >
-                                    Fechar
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )
-            }
-
-            {/* --- PARTICIPATION DETAILS MODAL --- */}
-            {
-                showParticipationModal && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 fade-in animate-in duration-200">
-                        <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl scale-in zoom-in-95 duration-200">
-                            {/* Header */}
-                            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
-                                <h3 className="text-lg font-bold text-slate-800">Detalhes de Participação</h3>
-                                <button
-                                    onClick={() => setShowParticipationModal(false)}
-                                    className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 p-2 rounded-full transition-all"
-                                >
-                                    <X size={20} />
-                                </button>
-                            </div>
-
-                            {/* Stats Row */}
-                            <div className="px-6 py-6 grid grid-cols-2 gap-4">
-                                <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-4 flex flex-col">
-                                    <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">Participantes</span>
-                                    <span className="text-3xl font-bold text-emerald-700">{dbStats.participants}</span>
+                                    <button
+                                        onClick={() => setSelectedParticipant(null)}
+                                        className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
+                                    >
+                                        <X size={20} />
+                                    </button>
                                 </div>
-                                <div className="bg-orange-50/50 border border-orange-100 rounded-xl p-4 flex flex-col">
-                                    <span className="text-xs font-bold text-orange-600 uppercase tracking-wider mb-1">Pendentes</span>
-                                    <span className="text-3xl font-bold text-orange-700">{dbStats.pending}</span>
-                                </div>
-                            </div>
 
-                            {/* Tabs */}
-                            <div className="px-6 border-b border-slate-100 flex gap-1 bg-slate-50/50 mx-6 rounded-lg p-1 mb-4">
-                                <button
-                                    onClick={() => setParticipationTab('participants')}
-                                    className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${participationTab === 'participants'
-                                        ? 'bg-white text-emerald-600 shadow-sm'
-                                        : 'text-slate-500 hover:text-slate-700'
-                                        }`}
-                                >
-                                    Participantes
-                                </button>
-                                <button
-                                    onClick={() => setParticipationTab('pending')}
-                                    className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${participationTab === 'pending'
-                                        ? 'bg-white text-orange-600 shadow-sm'
-                                        : 'text-slate-500 hover:text-slate-700'
-                                        }`}
-                                >
-                                    Pendentes
-                                </button>
-                            </div>
-
-                            {/* Search */}
-                            <div className="px-6 pb-4">
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                                    <input
-                                        type="text"
-                                        value={participationSearch}
-                                        onChange={(e) => setParticipationSearch(e.target.value)}
-                                        placeholder="Buscar em participantes..."
-                                        className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf] transition-all"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* List Area */}
-                            <div className="flex-1 overflow-y-auto min-h-[300px] border-t border-slate-100 bg-slate-50/30">
-                                {modalLoading ? (
-                                    <div className="flex items-center justify-center h-full text-slate-400 text-sm">
-                                        Carregando dados...
-                                    </div>
-                                ) : filteredParticipationList.length > 0 ? (
-                                    <div className="divide-y divide-slate-100">
-                                        {/* Header Row for List */}
-                                        <div className="px-6 py-3 bg-slate-50 flex items-center text-xs font-bold text-slate-400 uppercase tracking-wider">
-                                            <div className="flex-1">Colaborador</div>
-                                            <div className="w-40 hidden sm:block">Cargo</div>
-                                            <div className="w-20 hidden sm:block text-center">Sexo</div>
-                                            <div className="w-28 hidden sm:block text-right">Nascimento</div>
-                                        </div>
-                                        {filteredParticipationList.map((p: any) => (
-                                            <div key={p.id} className="px-6 py-3 flex items-center hover:bg-white transition-colors group text-sm">
-                                                {/* Nome */}
-                                                <div className="flex-1 font-bold text-slate-700 truncate pr-4">
-                                                    {p.nome || 'Sem Nome'}
-                                                </div>
-
-                                                {/* Cargo */}
-                                                <div className="w-40 hidden sm:block text-slate-500 truncate pr-2">
-                                                    {/* Try both alias and direct relation, + specific check for cargo_id */}
-                                                    {(p.cargos && p.cargos.nome) ? p.cargos.nome :
-                                                        (p.cargo && p.cargo.nome) ? p.cargo.nome :
-                                                            '-'}
-                                                </div>
-
-                                                {/* Sexo */}
-                                                <div className="w-20 hidden sm:block text-slate-500 text-center">
-                                                    {p.sexo || '-'}
-                                                </div>
-
-                                                {/* Data Nascimento */}
-                                                <div className="w-28 hidden sm:block text-slate-500 text-right">
-                                                    {p.data_nascimento ? new Date(p.data_nascimento).toLocaleDateString() : '-'}
+                                {/* Content */}
+                                <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                                    {QUESTIONS_LIST.map((q, idx) => (
+                                        <div key={q.id} className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <span className="text-xs font-bold text-[#35b6cf] uppercase tracking-wider">{q.category}</span>
+                                                <span className="text-xs font-bold text-slate-400">#{idx + 1}</span>
+                                            </div>
+                                            <p className="font-medium text-slate-800 mb-3">{q.text}</p>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-sm text-slate-500">Resposta:</span>
+                                                <div className="flex gap-1">
+                                                    {[1, 2, 3, 4, 5].map((val) => {
+                                                        // Mock random answer strictly for UI demo based on question ID + participant ID
+                                                        const mockAnswer = ((q.id + selectedParticipant.id) % 5) + 1;
+                                                        const isSelected = val === mockAnswer;
+                                                        return (
+                                                            <div
+                                                                key={val}
+                                                                className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold border ${isSelected
+                                                                    ? 'bg-[#35b6cf] border-[#35b6cf] text-white shadow-sm'
+                                                                    : 'bg-white border-slate-200 text-slate-300'
+                                                                    }`}
+                                                            >
+                                                                {val}
+                                                            </div>
+                                                        );
+                                                    })}
                                                 </div>
                                             </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="flex flex-col items-center justify-center h-full text-slate-400 text-sm p-8">
-                                        <p>Nenhuma resposta ainda.</p>
-                                    </div>
-                                )}
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Footer */}
+                                <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-2xl flex justify-end">
+                                    <button
+                                        onClick={() => setSelectedParticipant(null)}
+                                        className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-600 font-medium hover:bg-slate-50 transition-colors shadow-sm"
+                                    >
+                                        Fechar
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                )
-            }
-        </div >
+                    )
+                }
+
+                {/* --- PARTICIPATION DETAILS MODAL --- */}
+                {
+                    showParticipationModal && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 fade-in animate-in duration-200">
+                            <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl scale-in zoom-in-95 duration-200">
+                                {/* Header */}
+                                <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
+                                    <h3 className="text-lg font-bold text-slate-800">Detalhes de Participação</h3>
+                                    <button
+                                        onClick={() => setShowParticipationModal(false)}
+                                        className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 p-2 rounded-full transition-all"
+                                    >
+                                        <X size={20} />
+                                    </button>
+                                </div>
+
+                                {/* Stats Row */}
+                                <div className="px-6 py-6 grid grid-cols-2 gap-4">
+                                    <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-4 flex flex-col">
+                                        <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">Participantes</span>
+                                        <span className="text-3xl font-bold text-emerald-700">{dbStats.participants}</span>
+                                    </div>
+                                    <div className="bg-orange-50/50 border border-orange-100 rounded-xl p-4 flex flex-col">
+                                        <span className="text-xs font-bold text-orange-600 uppercase tracking-wider mb-1">Pendentes</span>
+                                        <span className="text-3xl font-bold text-orange-700">{dbStats.pending}</span>
+                                    </div>
+                                </div>
+
+                                {/* Tabs */}
+                                <div className="px-6 border-b border-slate-100 flex gap-1 bg-slate-50/50 mx-6 rounded-lg p-1 mb-4">
+                                    <button
+                                        onClick={() => setParticipationTab('participants')}
+                                        className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${participationTab === 'participants'
+                                            ? 'bg-white text-emerald-600 shadow-sm'
+                                            : 'text-slate-500 hover:text-slate-700'
+                                            }`}
+                                    >
+                                        Participantes
+                                    </button>
+                                    <button
+                                        onClick={() => setParticipationTab('pending')}
+                                        className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${participationTab === 'pending'
+                                            ? 'bg-white text-orange-600 shadow-sm'
+                                            : 'text-slate-500 hover:text-slate-700'
+                                            }`}
+                                    >
+                                        Pendentes
+                                    </button>
+                                </div>
+
+                                {/* Search */}
+                                <div className="px-6 pb-4">
+                                    <div className="relative">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                        <input
+                                            type="text"
+                                            value={participationSearch}
+                                            onChange={(e) => setParticipationSearch(e.target.value)}
+                                            placeholder="Buscar em participantes..."
+                                            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf] transition-all"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* List Area */}
+                                <div className="flex-1 overflow-y-auto min-h-[300px] border-t border-slate-100 bg-slate-50/30">
+                                    {modalLoading ? (
+                                        <div className="flex items-center justify-center h-full text-slate-400 text-sm">
+                                            Carregando dados...
+                                        </div>
+                                    ) : filteredParticipationList.length > 0 ? (
+                                        <div className="divide-y divide-slate-100">
+                                            {/* Header Row for List */}
+                                            <div className="px-6 py-3 bg-slate-50 flex items-center text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                                <div className="flex-1">Colaborador</div>
+                                                <div className="w-40 hidden sm:block">Cargo</div>
+                                                <div className="w-20 hidden sm:block text-center">Sexo</div>
+                                                <div className="w-28 hidden sm:block text-right">Nascimento</div>
+                                            </div>
+                                            {filteredParticipationList.map((p: any) => (
+                                                <div key={p.id} className="px-6 py-3 flex items-center hover:bg-white transition-colors group text-sm">
+                                                    {/* Nome */}
+                                                    <div className="flex-1 font-bold text-slate-700 truncate pr-4">
+                                                        {p.nome || 'Sem Nome'}
+                                                    </div>
+
+                                                    {/* Cargo */}
+                                                    <div className="w-40 hidden sm:block text-slate-500 truncate pr-2">
+                                                        {/* Try both alias and direct relation, + specific check for cargo_id */}
+                                                        {(p.cargos && p.cargos.nome) ? p.cargos.nome :
+                                                            (p.cargo && p.cargo.nome) ? p.cargo.nome :
+                                                                '-'}
+                                                    </div>
+
+                                                    {/* Sexo */}
+                                                    <div className="w-20 hidden sm:block text-slate-500 text-center">
+                                                        {p.sexo || '-'}
+                                                    </div>
+
+                                                    {/* Data Nascimento */}
+                                                    <div className="w-28 hidden sm:block text-slate-500 text-right">
+                                                        {p.data_nascimento ? new Date(p.data_nascimento).toLocaleDateString() : '-'}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center h-full text-slate-400 text-sm p-8">
+                                            <p>Nenhuma resposta ainda.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )
+                }
+            </div >
+        </>
     );
 };

@@ -12,7 +12,12 @@ export const useCompanies = (user: any) => {
     const [error, setError] = useState<any>(null);
 
     const fetchCompanies = useCallback(async (force = false) => {
-        if (!user) return;
+        if (!user) {
+            // Clear cache on logout/no-user
+            globalCache = null;
+            setCompanies([]);
+            return;
+        }
 
         // Use cache if available and fresh, unless forced
         const now = Date.now();

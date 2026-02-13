@@ -213,10 +213,11 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                 detailsLoaded: true
             };
 
-            // Update local state so it stays loaded
-            // Update local state so it stays loaded
-            // setCompanies(prev => prev.map(c => c.id === company.id ? updatedCompany : c));
-            updateCompanyInCache(updatedCompany);
+            // PERF FIX: Do NOT update the global cache with this massive object.
+            // It slows down the Dashboard filtering/rendering significantly.
+            // We just return it for the local operation (Modal).
+
+            // updateCompanyInCache(updatedCompany); // DISABLED
 
             return updatedCompany;
 
@@ -228,10 +229,10 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
         }
     };
 
-    const filteredCompanies = companies.filter(c =>
+    const filteredCompanies = React.useMemo(() => companies.filter(c =>
         c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         c.cnpj.includes(searchTerm)
-    );
+    ), [companies, searchTerm]);
 
 
 

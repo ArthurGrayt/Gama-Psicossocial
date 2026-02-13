@@ -148,12 +148,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } = supabase.auth.onAuthStateChange(async (event, session) => {
             console.log('AuthContext: Auth state changed:', event);
             try {
+                // Ignore SIGNED_OUT event here as it's handled by signOut() or session null check
+                if (event === 'SIGNED_OUT') {
+                    setSession(null);
+                    setUser(null);
+                    setProfile(null);
+                    return;
+                }
+
                 if (mounted) {
                     setSession(session);
-                    setUser(session?.user ?? null);
-                    if (session?.user) {
-                        await fetchProfile(session.user.id);
-                    } else {
+                    const newUser = session?.user ?? null;
+
+                    // Only fetch profile if user CHANGED or if we don't have a profile yet
+                    const verifyUserChange = newUser?.id !== user?.id;
+                    const verifyProfileMissing = newUser && !profile;
+
+                    if (newUser && (verifyUserChange || verifyProfileMissing)) {
+                        setUser(newUser);
+                        await fetchProfile(newUser.id);
+                    } else if (!newUser) {
+                        setUser(null);
                         setProfile(null);
                     }
                 }

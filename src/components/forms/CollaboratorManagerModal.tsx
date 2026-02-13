@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Search, Plus, Save, User, AlertCircle, FileSpreadsheet, Filter, Building } from 'lucide-react';
+import { X, Search, Plus, Save, User, FileSpreadsheet, Filter, Building, Pencil, Trash2 } from 'lucide-react';
 import { supabase } from '../../services/supabase';
 import { ImportCollaboratorsModal } from './ImportCollaboratorsModal';
 
@@ -23,7 +23,7 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
     const [units, setUnits] = useState<any[]>([]);
     const [refData, setRefData] = useState<{ sectors: any[], roles: any[] }>({ sectors: [], roles: [] });
     const [filterSector, setFilterSector] = useState('');
-    const [filterRole, setFilterRole] = useState('');
+    const [filterRole] = useState('');
     const [filterUnit, setFilterUnit] = useState('');
 
     // New Colab State
@@ -363,161 +363,155 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                     {!isAdding ? (
                         <>
                             {/* Controls (Manage Mode) */}
-                            <div className="px-8 py-6 bg-slate-50 border-b border-slate-100 space-y-4">
-                                <div className="flex items-center justify-between">
-                                    {/* Form Selection */}
-                                    <div className="flex-1 max-w-sm mr-4">
-                                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Formulário Ativo (Participantes)</label>
-                                        {forms.length > 0 ? (
-                                            <select
-                                                value={selectedFormId || ''}
-                                                onChange={(e) => handleFormChange(Number(e.target.value))}
-                                                className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:border-[#35b6cf] outline-none shadow-sm"
-                                            >
-                                                {forms.map(f => (
-                                                    <option key={f.id} value={f.id}>{f.title}</option>
-                                                ))}
-                                            </select>
-                                        ) : (
-                                            <div className="text-sm text-orange-500 font-medium flex items-center gap-2 bg-orange-50 px-3 py-2 rounded-lg border border-orange-100">
-                                                <AlertCircle size={16} />
-                                                Nenhum formulário encontrado.
-                                            </div>
-                                        )}
+                            <div className="bg-slate-50 border-b border-slate-100">
+                                <div className="px-8 py-6 pb-4">
+                                    <div className="flex items-center justify-between">
+                                        {/* Form Selection */}
+                                        <div className="flex-1 max-w-sm mr-4">
+                                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Formulário Ativo (Participantes)</label>
+                                            {forms.length > 0 ? (
+                                                <select
+                                                    value={selectedFormId || ''}
+                                                    onChange={(e) => handleFormChange(Number(e.target.value))}
+                                                    className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:border-[#35b6cf] outline-none shadow-sm"
+                                                >
+                                                    {forms.map(f => (
+                                                        <option key={f.id} value={f.id}>{f.title}</option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <div className="text-sm text-slate-400 italic">Nenhum formulário disponível</div>
+                                            )}
+                                        </div>
                                     </div>
+                                </div>
 
+                                {/* Toolbar */}
+                                <div className="px-8 py-3 border-t border-slate-100 flex gap-4 bg-white items-center">
+                                    <div className="relative flex-1">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                        <input
+                                            type="text"
+                                            placeholder="Buscar colaborador..."
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-[#35b6cf] transition-all text-sm"
+                                        />
+                                    </div>
                                     <button
                                         onClick={() => setIsAdding(true)}
-                                        disabled={!selectedCompany}
-                                        className={`flex items-center gap-2 text-white font-bold text-sm px-4 py-2.5 rounded-xl transition-all shadow-sm ${!selectedCompany ? 'bg-slate-300 cursor-not-allowed' : 'bg-[#35b6cf] hover:bg-[#2ca3bc]'}`}
+                                        disabled={!selectedCompany || loading}
+                                        className="px-4 py-2 bg-[#35b6cf] text-white rounded-xl font-bold hover:brightness-110 transition-all flex items-center gap-2 shadow-lg shadow-cyan-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                                     >
-                                        <Plus size={18} />
-                                        Novo Colaborador
+                                        <Plus size={16} />
+                                        Novo
                                     </button>
-
                                     <button
                                         onClick={() => setIsImportModalOpen(true)}
-                                        disabled={!selectedCompany}
-                                        className={`flex items-center gap-2 border font-bold text-sm px-4 py-2.5 rounded-xl transition-all shadow-sm ${!selectedCompany ? 'bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed' : 'bg-white text-emerald-600 border-emerald-200 hover:bg-emerald-50'}`}
+                                        disabled={!selectedCompany || loading}
+                                        className="px-4 py-2 bg-emerald-500 text-white rounded-xl font-bold hover:bg-emerald-400 transition-all flex items-center gap-2 shadow-lg shadow-emerald-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                                     >
-                                        <FileSpreadsheet size={18} />
-                                        Importar Planilha
+                                        <FileSpreadsheet size={16} />
+                                        Importar
                                     </button>
                                 </div>
 
-                                <div className="flex items-center gap-2">
-                                    {/* Filters */}
-                                    <div className="relative w-36">
-                                        <Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                                        <select
-                                            className="w-full pl-8 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf] appearance-none cursor-pointer"
-                                            value={filterSector}
-                                            onChange={(e) => setFilterSector(e.target.value)}
-                                        >
-                                            <option value="">Setores</option>
-                                            {refData.sectors.map(s => (
-                                                <option key={s.id} value={s.nome}>{s.nome}</option>
-                                            ))}
-                                        </select>
+                                {/* Filters */}
+                                <div className="px-8 py-2 bg-slate-50/50 border-t border-slate-100 flex gap-3 overflow-x-auto items-center">
+                                    <div className="flex items-center gap-2 text-slate-400 mr-2">
+                                        <Filter size={12} />
+                                        <span className="text-[10px] font-bold uppercase">Filtros</span>
                                     </div>
-                                    <div className="relative w-36">
-                                        <Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                                        <select
-                                            className="w-full pl-8 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf] appearance-none cursor-pointer"
-                                            value={filterUnit}
-                                            onChange={(e) => setFilterUnit(e.target.value)}
-                                        >
-                                            <option value="">Unidades</option>
-                                            {units.map(u => (
-                                                <option key={u.id} value={u.id}>{u.nome}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="relative w-36">
-                                        <Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                                        <select
-                                            className="w-full pl-8 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf] appearance-none cursor-pointer"
-                                            value={filterRole}
-                                            onChange={(e) => setFilterRole(e.target.value)}
-                                        >
-                                            <option value="">Cargos</option>
-                                            {refData.roles.map(r => (
-                                                <option key={r.id} value={r.nome}>{r.nome}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="relative flex-1 min-w-[300px]">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                                        <input
-                                            type="text"
-                                            value={searchTerm}
-                                            onChange={(e) => setSearchTerm(e.target.value)}
-                                            placeholder="Buscar por nome ou email..."
-                                            className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf] shadow-sm"
-                                        />
+                                    <select
+                                        value={filterUnit}
+                                        onChange={(e) => setFilterUnit(e.target.value)}
+                                        className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-600 outline-none focus:border-[#35b6cf]"
+                                    >
+                                        <option value="">Todas Unidades</option>
+                                        {units.map((u: any) => (
+                                            <option key={u.id} value={u.id}>{u.name}</option>
+                                        ))}
+                                    </select>
+                                    <select
+                                        value={filterSector}
+                                        onChange={(e) => setFilterSector(e.target.value)}
+                                        className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-600 outline-none focus:border-[#35b6cf]"
+                                    >
+                                        <option value="">Todos Setores</option>
+                                        {refData.sectors.map((s: any) => (
+                                            <option key={s.id} value={s.id}>{s.name}</option>
+                                        ))}
+                                    </select>
+
+                                    <div className="flex-1"></div>
+                                    <div className="text-xs font-medium text-slate-400 flex items-center gap-1">
+                                        <User size={12} />
+                                        {collaborators.length} Total
                                     </div>
                                 </div>
                             </div>
-
-                            {/* List Table */}
-                            <div className="flex-1 overflow-y-auto bg-slate-50/30">
-                                {loading ? (
-                                    <div className="flex justify-center p-12 text-slate-400 items-center gap-2">
-                                        <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
-                                        Carregando dados...
+                            {/* List */}
+                            <div className="flex-1 overflow-y-auto p-0">
+                                {loading && collaborators.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center p-12 text-slate-400">
+                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#35b6cf] mb-4"></div>
+                                        <p>Carregando colaboradores...</p>
                                     </div>
-                                ) : filteredCollaborators.length > 0 ? (
+                                ) : !selectedCompany ? (
+                                    <div className="flex flex-col items-center justify-center h-full text-slate-400 p-12">
+                                        <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                                            <User size={32} />
+                                        </div>
+                                        <p>Selecione uma empresa para gerenciar</p>
+                                    </div>
+                                ) : collaborators.length > 0 ? (
                                     <table className="w-full text-left border-collapse">
-                                        <thead className="bg-slate-50 sticky top-0 z-10 shadow-sm">
-                                            <tr className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                                                <th className="px-6 py-4 border-b border-slate-100">Colaborador</th>
-                                                <th className="px-6 py-4 border-b border-slate-100">Cargo</th>
-                                                <th className="px-6 py-4 border-b border-slate-100">Setor</th>
-                                                <th className="px-6 py-4 border-b border-slate-100">Sexo</th>
-                                                <th className="px-6 py-4 border-b border-slate-100">Unidade</th>
-                                                <th className="px-6 py-4 border-b border-slate-100 text-center w-32">Participante</th>
+                                        <thead className="bg-slate-50 sticky top-0 z-10 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                            <tr>
+                                                <th className="px-6 py-3 border-b border-slate-100">Nome / Email</th>
+                                                <th className="px-6 py-3 border-b border-slate-100">Cargo / Setor</th>
+                                                <th className="px-6 py-3 border-b border-slate-100">Status</th>
+                                                <th className="px-6 py-3 border-b border-slate-100 text-right">Ações</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-slate-100 bg-white">
-                                            {filteredCollaborators.map(colab => {
-                                                const isIncluded = invitedIds.has(String(colab.id));
-                                                return (
-                                                    <tr key={colab.id} className="hover:bg-slate-50 transition-colors group">
+                                        <tbody className="divide-y divide-slate-100 text-sm">
+                                            {filteredCollaborators
+                                                .map((colab) => (
+                                                    <tr key={colab.id} className="hover:bg-slate-50/80 transition-colors group">
                                                         <td className="px-6 py-4">
-                                                            <p className="font-bold text-slate-700">{colab.nome}</p>
+                                                            <div>
+                                                                <div className="font-bold text-slate-800">{colab.nome}</div>
+                                                                <div className="text-xs text-slate-500">{colab.email || '-'}</div>
+                                                            </div>
                                                         </td>
                                                         <td className="px-6 py-4">
-                                                            <span className="text-sm text-slate-600">{colab.cargo_nome || colab.cargo || '-'}</span>
+                                                            <div>
+                                                                <div className="font-medium text-slate-700">{colab.cargo || '-'}</div>
+                                                                <div className="text-xs text-slate-500 flex items-center gap-1">
+                                                                    <Building size={10} />
+                                                                    {colab.setor || 'Geral'}
+                                                                </div>
+                                                            </div>
                                                         </td>
                                                         <td className="px-6 py-4">
-                                                            <span className="text-sm text-slate-600">{colab.setor || '-'}</span>
+                                                            {colab.data_desligamento ? (
+                                                                <span className="px-2 py-1 bg-red-50 text-red-600 rounded text-xs font-bold">Inativo</span>
+                                                            ) : (
+                                                                <span className="px-2 py-1 bg-emerald-50 text-emerald-600 rounded text-xs font-bold">Ativo</span>
+                                                            )}
                                                         </td>
-                                                        <td className="px-6 py-4">
-                                                            <span className="text-sm text-slate-600">{colab.sexo || '-'}</span>
-                                                        </td>
-                                                        <td className="px-6 py-4">
-                                                            <span className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-md font-medium border border-slate-200">
-                                                                {units.find(u => u.id === colab.unidade_id)?.nome || colab.unidade_id}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-6 py-4 text-center">
-                                                            <button
-                                                                onClick={() => handleToggleParticipant(colab.id, isIncluded)}
-                                                                disabled={!selectedFormId}
-                                                                title={!selectedFormId ? "Selecione um formulário" : isIncluded ? "Remover participação" : "Incluir participação"}
-                                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#35b6cf] focus:ring-offset-2 ${!selectedFormId ? 'bg-slate-100 cursor-not-allowed opacity-50' :
-                                                                    isIncluded ? 'bg-emerald-500' : 'bg-slate-200'
-                                                                    }`}
-                                                            >
-                                                                <span
-                                                                    className={`${isIncluded ? 'translate-x-6' : 'translate-x-1'
-                                                                        } inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 shadow-sm`}
-                                                                />
-                                                            </button>
+                                                        <td className="px-6 py-4 text-right">
+                                                            <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                <button className="p-1.5 text-slate-400 hover:text-[#35b6cf] bg-slate-50 rounded-lg hover:bg-white border border-transparent hover:border-slate-200 transition-all">
+                                                                    <Pencil size={14} />
+                                                                </button>
+                                                                <button className="p-1.5 text-slate-400 hover:text-red-500 bg-slate-50 rounded-lg hover:bg-white border border-transparent hover:border-slate-200 transition-all">
+                                                                    <Trash2 size={14} />
+                                                                </button>
+                                                            </div>
                                                         </td>
                                                     </tr>
-                                                );
-                                            })}
+                                                ))}
                                         </tbody>
                                     </table>
                                 ) : (
@@ -526,53 +520,65 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                                             <User size={32} />
                                         </div>
                                         <h3 className="text-slate-500 font-medium">Nenhum colaborador encontrado</h3>
-                                        <p className="text-sm text-slate-400 mt-2">Adicione novos colaboradores para começar.</p>
+                                        <p className="text-sm text-slate-400 mt-2">Tente ajustar os filtros ou adicionar um novo.</p>
                                     </div>
                                 )}
                             </div>
+
+                            {/* Footer for Manage Mode */}
+                            <div className="px-8 py-4 border-t border-slate-100 bg-slate-50 flex justify-between items-center rounded-b-2xl">
+                                <div className="text-xs text-slate-400">
+                                    Mostrando {collaborators.length} registros
+                                </div>
+                                <button
+                                    onClick={onClose}
+                                    className="px-6 py-2 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-colors"
+                                >
+                                    Fechar
+                                </button>
+                            </div>
                         </>
                     ) : (
-                        /* Add Form */
-                        <div className="bg-white p-6 rounded-xl border-none shadow-none h-full overflow-y-auto">
+                        <div className="flex-1 overflow-y-auto p-8">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                                 <div>
                                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Nome Completo *</label>
                                     <input
-                                        className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf] focus:ring-2 focus:ring-[#35b6cf]/20 transition-all"
+                                        type="text"
+                                        className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf]"
                                         value={newColab.nome}
                                         onChange={e => setNewColab({ ...newColab, nome: e.target.value })}
-                                        placeholder="Ex: Maria Silva"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Email</label>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Email *</label>
                                     <input
-                                        className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf] focus:ring-2 focus:ring-[#35b6cf]/20 transition-all"
+                                        type="email"
+                                        className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf]"
                                         value={newColab.email}
                                         onChange={e => setNewColab({ ...newColab, email: e.target.value })}
-                                        placeholder="email@empresa.com"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">CPF</label>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">CPF *</label>
                                     <input
+                                        type="text"
                                         className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf]"
                                         value={newColab.cpf}
                                         onChange={e => setNewColab({ ...newColab, cpf: e.target.value })}
-                                        placeholder="000.000.000-00"
                                     />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Telefone</label>
                                     <input
+                                        type="text"
                                         className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf]"
                                         value={newColab.telefone}
                                         onChange={e => setNewColab({ ...newColab, telefone: e.target.value })}
-                                        placeholder="(00) 00000-0000"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Nascimento</label>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Data Nascimento</label>
                                     <input
                                         type="date"
                                         className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf]"
@@ -696,13 +702,16 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                         </div>
                     )}
                 </div>
-            </div>
 
-            <ImportCollaboratorsModal
-                isOpen={isImportModalOpen}
-                onClose={() => setIsImportModalOpen(false)}
-                onImport={handleImportCollaborators}
-            />
+                <ImportCollaboratorsModal
+                    isOpen={isImportModalOpen}
+                    onClose={() => setIsImportModalOpen(false)}
+                    onImport={(data) => {
+                        handleImportCollaborators(data);
+                        setIsImportModalOpen(false);
+                    }}
+                />
+            </div>
         </div>
     );
 };
