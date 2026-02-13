@@ -1752,7 +1752,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                         </div>
                                         <div className="p-6 overflow-auto bg-slate-50/50 h-full">
                                             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                                                <table className="w-full text-left text-sm">
+                                                <table className="hidden md:table w-full text-left text-sm">
                                                     <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 font-semibold">
                                                         <tr>
                                                             <th className="px-4 py-3 w-10">
@@ -1818,6 +1818,49 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                                         })}
                                                     </tbody>
                                                 </table>
+
+                                                {/* Mobile Card Layout */}
+                                                <div className="md:hidden space-y-3 pb-6 px-4">
+                                                    {(summaryData.company.collaborators || []).map((colab: any, idx: number) => {
+                                                        const name = colab.nome || `Colaborador ${idx + 1}`;
+                                                        if (collaboratorSearch && !name.toLowerCase().includes(collaboratorSearch.toLowerCase())) return null;
+
+                                                        const isSelected = selectedCollaborators.has(idx);
+
+                                                        return (
+                                                            <div
+                                                                key={idx}
+                                                                onClick={() => toggleCollaborator(idx)}
+                                                                className={`bg-white p-4 rounded-2xl border transition-all ${isSelected ? 'border-[#35b6cf] shadow-md ring-1 ring-[#35b6cf]/10' : 'border-slate-100 opacity-60'}`}
+                                                            >
+                                                                <div className="flex items-center justify-between mb-3">
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${isSelected ? 'bg-[#35b6cf]/10 text-[#35b6cf]' : 'bg-slate-100 text-slate-400'}`}>
+                                                                            {name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+                                                                        </div>
+                                                                        <div className="min-w-0">
+                                                                            <h4 className="font-bold text-slate-800 truncate">{name}</h4>
+                                                                            <p className="text-xs text-slate-500 truncate">{colab.email || '-'}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className={`w-6 h-6 rounded-full border flex items-center justify-center transition-colors ${isSelected ? 'bg-[#35b6cf] border-[#35b6cf] text-white' : 'border-slate-300'}`}>
+                                                                        {isSelected && <Check size={14} />}
+                                                                    </div>
+                                                                </div>
+                                                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                                                    <div className="bg-slate-50/50 p-2 rounded-lg">
+                                                                        <span className="text-slate-400 block mb-0.5">Cargo</span>
+                                                                        <span className="text-slate-700 font-semibold truncate block">{colab.cargo || '-'}</span>
+                                                                    </div>
+                                                                    <div className="bg-slate-50/50 p-2 rounded-lg">
+                                                                        <span className="text-slate-400 block mb-0.5">Setor</span>
+                                                                        <span className="text-slate-700 font-semibold truncate block">{colab.setor || '-'}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
                                                 {/* Empty State for Search */}
                                                 {summaryData.company.roles.filter((role: string, idx: number) => {
                                                     const name = `Colaborador ${idx + 1}`;

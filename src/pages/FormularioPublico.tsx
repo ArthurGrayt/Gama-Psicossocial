@@ -349,8 +349,8 @@ export const FormularioPublico: React.FC = () => {
                 </header>
             )}
 
-            <main className="flex-1 overflow-y-auto sm:overflow-y-auto w-full flex flex-col items-center custom-scrollbar">
-                <div className="w-full max-w-[1000px] px-4 pt-4 sm:pt-16 pb-10 sm:pb-20">
+            <main className="flex-1 overflow-hidden w-full flex flex-col items-center justify-center">
+                <div className="w-full max-w-[1000px] px-3 sm:px-4 py-2 sm:py-16">
                     <div className="w-full flex flex-col items-center justify-center">
                         {/* DEBUG BADGE */}
                         <div className="fixed bottom-2 right-2 bg-red-500 text-white text-[10px] px-2 py-1 rounded-full z-[9999] opacity-50 font-mono">
@@ -360,19 +360,21 @@ export const FormularioPublico: React.FC = () => {
                         {step === 'cover' && (
                             <>
                                 <div className="w-full bg-white rounded-xl shadow-xl border border-slate-100 flex flex-col animate-in fade-in zoom-in-95 duration-500 overflow-hidden border-t-[8px] border-t-[#35b6cf]">
-                                    <div className="p-8 sm:p-12">
-                                        <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 mb-8 leading-tight">
-                                            {form?.title}
-                                        </h1>
+                                    <div className="p-5 sm:p-12 flex flex-col h-full justify-between">
+                                        <div>
+                                            <h1 className="text-xl sm:text-3xl font-bold text-slate-800 mb-4 sm:mb-8 leading-tight">
+                                                {form?.title}
+                                            </h1>
 
-                                        <div className="space-y-6 text-slate-600 text-base sm:text-lg leading-relaxed whitespace-pre-wrap mb-10 max-h-[500px] overflow-y-auto pr-4 custom-scrollbar">
-                                            {form?.description}
+                                            <div className="space-y-4 text-slate-600 text-sm sm:text-lg leading-relaxed whitespace-pre-wrap mb-4 sm:mb-10 max-h-[30vh] sm:max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                                                {form?.description}
+                                            </div>
                                         </div>
 
-                                        <div className="pt-8 border-t border-slate-100">
+                                        <div className="pt-4 sm:pt-8 border-t border-slate-100">
                                             <button
                                                 onClick={() => setStep('cpf_check')}
-                                                className="bg-[#35b6cf] text-white px-8 py-3.5 rounded-xl font-bold text-base hover:bg-[#2ca3bc] transition-all shadow-sm active:scale-[0.98] flex items-center gap-2"
+                                                className="w-full sm:w-auto bg-[#35b6cf] text-white px-8 py-3 rounded-xl font-bold text-sm sm:text-base hover:bg-[#2ca3bc] transition-all shadow-sm active:scale-[0.98] flex items-center justify-center gap-2"
                                             >
                                                 Iniciar Formulário
                                             </button>
@@ -388,22 +390,22 @@ export const FormularioPublico: React.FC = () => {
                         {/* PASSO 2: IDENTIFICAÇÃO */}
                         {step === 'cpf_check' && (
                             <div className={`${FORM_WIDTH} bg-white p-6 sm:p-10 rounded-3xl shadow-xl border border-slate-100 animate-in slide-in-from-bottom-8 duration-500`}>
-                                <div className="text-center mb-8">
-                                    <div className="w-16 h-16 sm:w-20 sm:h-20 bg-cyan-50 text-[#35b6cf] rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
-                                        <User className="size-8 sm:size-10" />
+                                <div className="text-center mb-6">
+                                    <div className="w-12 h-12 sm:w-20 sm:h-20 bg-cyan-50 text-[#35b6cf] rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner">
+                                        <User className="size-6 sm:size-10" />
                                     </div>
-                                    <h2 className="text-xl sm:text-2xl font-black text-slate-800">Identificação</h2>
-                                    <p className="text-slate-500 mt-2 text-sm sm:text-base">Informe seu CPF cadastrado para continuar.</p>
+                                    <h2 className="text-lg sm:text-2xl font-black text-slate-800">Identificação</h2>
+                                    <p className="text-slate-500 mt-1 text-xs sm:text-base">Informe seu CPF cadastrado para continuar.</p>
                                 </div>
 
-                                <div className="relative mb-6">
+                                <div className="relative mb-4">
                                     <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-                                        <User size={20} />
+                                        <User size={18} />
                                     </div>
                                     <input
                                         type="text"
                                         placeholder="000.000.000-00"
-                                        className={`w-full pl-12 pr-4 py-4 bg-slate-50 border-2 ${cpfError ? 'border-red-300 bg-red-50' : 'border-slate-100 focus:border-[#35b6cf]'} rounded-2xl outline-none transition-all text-lg font-bold tracking-wider sm:text-xl`}
+                                        className={`w-full pl-10 pr-4 py-3 bg-slate-50 border-2 ${cpfError ? 'border-red-300 bg-red-50' : 'border-slate-100 focus:border-[#35b6cf]'} rounded-2xl outline-none transition-all text-base font-bold tracking-wider sm:text-xl`}
                                         value={cpf}
                                         onChange={e => {
                                             const val = e.target.value.replace(/\D/g, ''); // Remove não números
@@ -428,7 +430,7 @@ export const FormularioPublico: React.FC = () => {
                                 <button
                                     onClick={handleCheckCPF}
                                     disabled={checkingCpf}
-                                    className="bg-[#35b6cf] text-white w-full py-5 rounded-2xl font-black text-lg hover:bg-[#2ca1b7] disabled:opacity-50 shadow-lg shadow-cyan-200/50 hover:shadow-cyan-200 transition-all flex items-center justify-center gap-2"
+                                    className="bg-[#35b6cf] text-white w-full py-4 sm:py-5 rounded-2xl font-black text-base sm:text-lg hover:bg-[#2ca1b7] disabled:opacity-50 shadow-lg shadow-cyan-200/50 hover:shadow-cyan-200 transition-all flex items-center justify-center gap-2"
                                 >
                                     {checkingCpf ? (
                                         <>
@@ -463,8 +465,8 @@ export const FormularioPublico: React.FC = () => {
                                     const currentVal = answers[q.id!];
 
                                     return (
-                                        <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-5 sm:p-12 hover:border-[#35b6cf]/30 transition-all duration-300">
-                                            <label className="block text-lg sm:text-2xl font-black text-slate-800 mb-6 sm:mb-10 leading-relaxed text-center">
+                                        <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-4 sm:p-12 hover:border-[#35b6cf]/30 transition-all duration-300">
+                                            <label className="block text-base sm:text-2xl font-black text-slate-800 mb-4 sm:mb-10 leading-relaxed text-center">
                                                 {q.label} {q.required && <span className="text-red-500 ml-1">*</span>}
                                             </label>
 
@@ -494,25 +496,25 @@ export const FormularioPublico: React.FC = () => {
 
                                             {/* SELECT (ADAPTIVE LAYOUT) */}
                                             {(q.question_type === 'select' || q.question_type === 'choice') && (
-                                                <div className="flex flex-col sm:flex-row sm:flex-wrap lg:flex-nowrap justify-center gap-3 sm:gap-4 pb-2 sm:pb-0">
+                                                <div className="flex flex-col sm:flex-row sm:flex-wrap lg:flex-nowrap justify-center gap-2 sm:gap-4 pb-2 sm:pb-0 max-h-[40dvh] overflow-y-auto px-1 custom-scrollbar">
                                                     {optionsList.map((opt, oIdx) => {
                                                         const isSelected = currentVal === opt;
                                                         return (
                                                             <div
                                                                 key={oIdx}
                                                                 onClick={() => handleAnswerChange(q.id!, opt)}
-                                                                className={`group/option flex-1 min-w-full sm:min-w-[45%] lg:min-w-0 flex flex-row sm:flex-col items-center gap-4 sm:gap-6 p-5 sm:p-6 rounded-[24px] border-2 cursor-pointer transition-all duration-300 ${isSelected
-                                                                    ? 'border-[#35b6cf] bg-cyan-50/50 shadow-xl shadow-cyan-100/50 transform scale-[1.02]'
-                                                                    : 'border-slate-100 bg-white hover:border-[#35b6cf]/30 hover:bg-slate-50/50 hover:shadow-lg hover:shadow-slate-100'
+                                                                className={`group/option flex-1 min-w-full sm:min-w-[45%] lg:min-w-0 flex flex-row sm:flex-col items-center gap-3 sm:gap-6 p-3 sm:p-6 rounded-2xl sm:rounded-[24px] border-2 cursor-pointer transition-all duration-300 ${isSelected
+                                                                    ? 'border-[#35b6cf] bg-cyan-50/50 shadow-md sm:shadow-xl shadow-cyan-100/50 transform scale-[1.01] sm:scale-[1.02]'
+                                                                    : 'border-slate-100 bg-white hover:border-[#35b6cf]/30 hover:bg-slate-50/50 hover:shadow-lg'
                                                                     }`}
                                                             >
-                                                                <div className={`shrink-0 w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${isSelected
-                                                                    ? 'border-[#35b6cf] bg-[#35b6cf] ring-4 ring-cyan-100'
-                                                                    : 'border-slate-200 bg-white group-hover/option:border-[#35b6cf]/50'
+                                                                <div className={`shrink-0 w-5 h-5 sm:w-8 sm:h-8 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${isSelected
+                                                                    ? 'border-[#35b6cf] bg-[#35b6cf] ring-2 sm:ring-4 ring-cyan-100'
+                                                                    : 'border-slate-200 bg-white'
                                                                     }`}>
-                                                                    {isSelected && <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-white animate-in zoom-in-50 duration-300"></div>}
+                                                                    {isSelected && <div className="w-1.5 h-1.5 sm:w-3 sm:h-3 rounded-full bg-white animate-in zoom-in-50 duration-300"></div>}
                                                                 </div>
-                                                                <span className={`text-sm sm:text-base font-bold text-left sm:text-center leading-tight tracking-tight whitespace-nowrap transition-colors duration-300 ${isSelected ? 'text-[#086a82]' : 'text-slate-600 group-hover/option:text-slate-900'}`}>
+                                                                <span className={`text-xs sm:text-base font-bold text-left sm:text-center leading-tight tracking-tight whitespace-nowrap transition-colors duration-300 ${isSelected ? 'text-[#086a82]' : 'text-slate-600'}`}>
                                                                     {opt}
                                                                 </span>
                                                             </div>
@@ -530,7 +532,7 @@ export const FormularioPublico: React.FC = () => {
                                                             <button
                                                                 key={val}
                                                                 onClick={() => handleAnswerChange(q.id!, val)}
-                                                                className={`w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl border-2 font-black text-lg sm:text-xl flex items-center justify-center transition-all ${isSelected
+                                                                className={`w-10 h-10 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl border-2 font-black text-base sm:text-xl flex items-center justify-center transition-all ${isSelected
                                                                     ? 'bg-[#35b6cf] text-white border-[#35b6cf] shadow-xl scale-110'
                                                                     : 'bg-white text-slate-300 border-slate-100 hover:border-[#35b6cf] hover:text-[#35b6cf]'
                                                                     }`}
@@ -557,10 +559,10 @@ export const FormularioPublico: React.FC = () => {
 
                                     <button
                                         onClick={handleNext}
-                                        className="bg-[#35b6cf] text-white px-8 py-3.5 rounded-xl font-bold text-base hover:bg-[#2ca3bc] transition-all shadow-sm active:scale-[0.98] flex items-center gap-2 sm:gap-3"
+                                        className="bg-[#35b6cf] text-white px-6 py-3 rounded-xl font-bold text-sm sm:text-base hover:bg-[#2ca3bc] transition-all shadow-sm active:scale-[0.98] flex items-center gap-2 sm:gap-3"
                                     >
                                         {currentQuestionIndex === validQuestions.length - 1 ? 'Finalizar' : 'Próxima'}
-                                        {currentQuestionIndex < validQuestions.length - 1 && <ChevronDown className="-rotate-90 size-5" />}
+                                        {currentQuestionIndex < validQuestions.length - 1 && <ChevronDown className="-rotate-90 size-4 sm:size-5" />}
                                     </button>
                                 </div>
                             </div>

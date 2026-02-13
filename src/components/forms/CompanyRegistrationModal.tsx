@@ -1193,7 +1193,7 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                                             className="flex-1 px-4 py-3 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none transition-all placeholder:text-slate-400"
                                             placeholder="Nome da unidade (ex: Matriz, Filial SP)..."
                                         />
-                                        <button onClick={addUnit} className="bg-[#35b6cf] text-white p-3 rounded-xl hover:bg-[#2ca3bc]"><Plus size={24} /></button>
+                                        <button onClick={addUnit} className="bg-[#35b6cf] text-white p-2 md:p-3 rounded-xl hover:bg-[#2ca3bc] shrink-0"><Plus size={20} className="md:w-6 md:h-6" /></button>
                                     </div>
 
                                     {/* Lista das Unidades cadastradas */}
@@ -1249,7 +1249,7 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                                         className="flex-1 px-4 py-3 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none transition-all placeholder:text-slate-400"
                                         placeholder="Nome do novo setor..."
                                     />
-                                    <button onClick={addSector} className="bg-[#35b6cf] text-white p-3 rounded-xl hover:bg-[#2ca3bc]"><Plus size={24} /></button>
+                                    <button onClick={addSector} className="bg-[#35b6cf] text-white p-2 md:p-3 rounded-xl hover:bg-[#2ca3bc] shrink-0"><Plus size={20} className="md:w-6 md:h-6" /></button>
                                 </div>
 
                                 {/* Lista de Setores (Filtrada pela Unidade selecionada na barra lateral) */}
@@ -1513,13 +1513,15 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                                         <FileSpreadsheet size={24} className="text-slate-400 group-hover:text-emerald-500 transition-colors" />
                                         <span className="font-bold text-slate-600 group-hover:text-emerald-600 text-xs text-center leading-tight">Importar</span>
                                     </button>
-                                    <button
-                                        onClick={() => setIsImportModalOpen(true)}
-                                        className="md:hidden p-4 bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 text-slate-600 hover:text-emerald-600 transition-all shrink-0"
-                                        title="Importar Planilha"
-                                    >
-                                        <FileSpreadsheet size={24} />
-                                    </button>
+                                    {!isAddingCollaborator && (
+                                        <button
+                                            onClick={() => setIsImportModalOpen(true)}
+                                            className="md:hidden p-4 bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 text-slate-600 hover:text-emerald-600 transition-all shrink-0"
+                                            title="Importar Planilha"
+                                        >
+                                            <FileSpreadsheet size={24} />
+                                        </button>
+                                    )}
                                 </div>
 
                                 {/* Lista/Tabela de Colaboradores já cadastrados */}
@@ -1625,7 +1627,7 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
 
                                     {/* Tabela de Colaboradores */}
                                     <div className="bg-white rounded-xl border border-slate-200 overflow-visible shadow-sm">
-                                        <table className="w-full text-left text-sm">
+                                        <table className="hidden md:table w-full text-left text-sm">
                                             <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 font-semibold relative z-10">
                                                 <tr>
                                                     <th className="px-3 py-3 rounded-tl-xl w-[20%]">Nome</th>
@@ -1706,6 +1708,64 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                                                 )}
                                             </tbody>
                                         </table>
+                                    </div>
+
+                                    {/* Mobile Card Layout for Collaborators */}
+                                    <div className="md:hidden space-y-3">
+                                        {filteredCollaborators.length === 0 ? (
+                                            <p className="text-center text-slate-400 py-8 bg-white rounded-xl border border-slate-100 shadow-sm">Nenhum colaborador encontrado.</p>
+                                        ) : (
+                                            filteredCollaborators.map((colab, idx) => (
+                                                <div key={idx} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col gap-3 relative">
+                                                    <div className="flex items-start justify-between">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center font-bold text-sm">
+                                                                {colab.nome.charAt(0).toUpperCase()}
+                                                            </div>
+                                                            <div>
+                                                                <h4 className="font-bold text-slate-800 text-sm">{colab.nome}</h4>
+                                                                <p className="text-xs text-slate-500">{colab.email}</p>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Ações Mobile */}
+                                                        <div className="flex items-center gap-1">
+                                                            <button
+                                                                onClick={() => openEditModal(colab, formData.colaboradores.indexOf(colab))}
+                                                                className="p-2 text-slate-400 hover:text-[#35b6cf] hover:bg-slate-50 rounded-lg"
+                                                            >
+                                                                <Pencil size={16} />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => setDeleteConfirmationIndex(formData.colaboradores.indexOf(colab))}
+                                                                className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg"
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-2 gap-2 text-xs">
+                                                        <div className="bg-slate-50 p-2 rounded-lg">
+                                                            <span className="text-slate-400 block mb-0.5 text-[10px] uppercase font-bold">Cargo</span>
+                                                            <span className="text-slate-700 font-semibold">{colab.cargo}</span>
+                                                        </div>
+                                                        <div className="bg-slate-50 p-2 rounded-lg">
+                                                            <span className="text-slate-400 block mb-0.5 text-[10px] uppercase font-bold">Setor</span>
+                                                            <span className="text-slate-700 font-semibold">{colab.setor}</span>
+                                                        </div>
+                                                        <div className="bg-slate-50 p-2 rounded-lg">
+                                                            <span className="text-slate-400 block mb-0.5 text-[10px] uppercase font-bold">Nascimento</span>
+                                                            <span className="text-slate-700 font-semibold">{colab.dataNascimento ? new Date(colab.dataNascimento).toLocaleDateString('pt-BR') : '-'}</span>
+                                                        </div>
+                                                        <div className="bg-slate-50 p-2 rounded-lg">
+                                                            <span className="text-slate-400 block mb-0.5 text-[10px] uppercase font-bold">Sexo</span>
+                                                            <span className="text-slate-700 font-semibold">{colab.sexo || '-'}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
                                     </div>
                                 </div>
                             </div>

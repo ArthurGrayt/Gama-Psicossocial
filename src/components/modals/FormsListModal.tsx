@@ -352,12 +352,15 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
                                         )}
 
                                         <button
-                                            className="px-5 py-2.5 bg-[#35b6cf] text-white rounded-xl font-bold text-xs hover:bg-[#2ca3bc] transition-all flex items-center gap-2 shadow-sm disabled:opacity-50"
+                                            className="p-2.5 md:px-5 md:py-2.5 bg-[#35b6cf] text-white rounded-xl font-bold text-xs hover:bg-[#2ca3bc] transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 min-w-[36px] md:min-w-0"
                                             onClick={() => handleGenerateReport(form.id)}
                                             disabled={reportLoading}
+                                            title="Baixar Relatório"
                                         >
-                                            <Download size={14} />
-                                            {reportLoading ? 'Gerando...' : 'Baixar Relatório'}
+                                            <Download size={14} className="md:w-3.5 md:h-3.5 w-4 h-4" />
+                                            <span className="hidden md:inline">
+                                                {reportLoading ? 'Gerando...' : 'Baixar Relatório'}
+                                            </span>
                                         </button>
 
                                         <button
