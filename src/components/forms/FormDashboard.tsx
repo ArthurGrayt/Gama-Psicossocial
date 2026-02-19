@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Building, Search, Filter, Trash2, Users, FileText, ChevronRight, Edit, X, LayoutGrid, List, LayoutTemplate, Settings, FilePlus, Copy, ExternalLink, Check, HelpCircle, Plus, CalendarDays, ChevronDown, ArrowUpDown } from 'lucide-react';
 import { CompanyRegistrationModal } from './CompanyRegistrationModal';
 import { CollaboratorManagerModal } from './CollaboratorManagerModal';
@@ -146,8 +146,8 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                 .from('colaboradores')
                 .select(`
                     *,
-                    cargo:cargos(id, nome),
-                    setor:setor(id, nome)
+                    cargo_rel:cargos(id, nome),
+                    setor_rel:setor(id, nome)
                 `)
                 .in('unidade_id', unitIds);
 
@@ -213,10 +213,11 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
             // Process Collaborators
             const uiCollaborators = (colaboradoresData || []).map((c: any) => ({
                 ...c,
-                cargo: c.cargo?.nome || '',
-                setor: c.setor?.nome || '',
-                cargo_id: c.cargo?.id,
-                setor_id: c.setor?.id
+                // Prioridade para o nome vindo da relação, fallback para a coluna de texto bruta
+                cargo: c.cargo_rel?.nome || c.cargo || '',
+                setor: c.setor_rel?.nome || c.setor || '',
+                cargo_id: c.cargo_rel?.id || c.cargo_id,
+                setor_id: c.setor_rel?.id || c.setor_id
             }));
 
             // Process Roles & Sectors List
@@ -346,13 +347,23 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
     };
 
     const handleFinishSelection = (company: any, unit: any, sector: string, sectorId: number | null) => {
+        // Filtrar colaboradores por unidade e setor (se setor for diferente de null/Geral)
+        const filteredCollaborators = (company.collaborators || []).filter((c: any) => {
+            const matchUnit = Number(c.unidade_id) === Number(unit.id);
+            const matchSector = sectorId === null || Number(c.setor_id) === Number(sectorId);
+            return matchUnit && matchSector;
+        });
+
         // Instead of directly creating, show the summary modal
         setSummaryData({
-            company: company,
+            company: {
+                ...company,
+                collaborators: filteredCollaborators // Sobrescreve com a lista filtrada para o resumo
+            },
             unit: unit,
             sector: sector,
             sectorId: sectorId,
-            kpiCollaborators: unit.collaborators, // Logic: Use unit collaborators count
+            kpiCollaborators: filteredCollaborators.length,
             kpiQuestions: 15, // Mock
             formTitle: 'Pesquisa de Clima Organizacional 2024',
             formDesc: 'Avaliação completa de engajamento e satisfação dos colaboradores.',
@@ -363,9 +374,9 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
         setExpandedView('none'); // Reset expansion
         setIsEditingTitle(false);
 
-        // Default all collaborators to selected
+        // Default all collaborators to selected (baseado na lista filtrada)
         const allIndices = new Set<number>();
-        (company.collaborators || []).forEach((_: any, idx: number) => allIndices.add(idx));
+        filteredCollaborators.forEach((_: any, idx: number) => allIndices.add(idx));
         setSelectedCollaborators(allIndices);
     };
 
@@ -430,11 +441,11 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
     };
 
     const toggleAllCollaborators = (force?: boolean) => {
-        if (force === false || (force === undefined && selectedCollaborators.size === summaryData.company.roles.length)) {
+        if (force === false || (force === undefined && selectedCollaborators.size === summaryData.company.collaborators.length)) {
             setSelectedCollaborators(new Set());
         } else {
             const allIndices = new Set<number>();
-            summaryData.company.roles.forEach((_: any, idx: number) => allIndices.add(idx));
+            summaryData.company.collaborators.forEach((_: any, idx: number) => allIndices.add(idx));
             setSelectedCollaborators(allIndices);
         }
     };
@@ -666,8 +677,6 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                 // Real ID if it's a valid number AND small enough (not a timestamp)
                 const isRealId = !isNaN(unitIdNum) && unitIdNum < 1000000000000;
                 const isTempId = !isRealId;
-
-                const parentCompanyUuid = infoModalCompany?.cliente_uuid || formData.cliente_uuid;
 
                 if (!parentCompanyUuid && isTempId) {
                     console.error('[ERROR] Missing Parent Company UUID for new unit:', unit.name);
@@ -1036,7 +1045,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                                             >
                                                                 {opt.label}
                                                                 {sortBy === opt.value && (
-                                                                    <span className="text-[10px]">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                                                                    <span className="text-[10px]">{sortOrder === 'asc' ? 'â†‘' : 'â†“'}</span>
                                                                 )}
                                                             </button>
                                                         ))}
@@ -1098,7 +1107,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                                             <input
                                                                 type="number"
                                                                 min="0"
-                                                                placeholder="∞"
+                                                                placeholder="âˆž"
                                                                 value={maxCollaborators}
                                                                 onChange={(e) => setMaxCollaborators(e.target.value)}
                                                                 className="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-lg text-xs text-slate-700 outline-none focus:border-[#35b6cf] focus:ring-2 focus:ring-[#35b6cf]/10 transition-all"
@@ -1132,7 +1141,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                                             <input
                                                                 type="number"
                                                                 min="0"
-                                                                placeholder="∞"
+                                                                placeholder="âˆž"
                                                                 value={maxUnits}
                                                                 onChange={(e) => setMaxUnits(e.target.value)}
                                                                 className="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-lg text-xs text-slate-700 outline-none focus:border-[#35b6cf] focus:ring-2 focus:ring-[#35b6cf]/10 transition-all"
@@ -1609,7 +1618,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                                 <span className="text-2xl font-bold text-slate-700">{selectedCollaborators.size}</span>
                                             </div>
                                             <div className="text-[10px] text-slate-400 mt-2 flex items-center gap-1">
-                                                {selectedCollaborators.size < summaryData.company.roles.length ? 'Ajustar seleção' : 'Ver lista'} <ChevronRight size={10} />
+                                                {selectedCollaborators.size < summaryData.company.collaborators.length ? 'Ajustar seleção' : 'Ver lista'} <ChevronRight size={10} />
                                             </div>
                                         </div>
                                         <div
@@ -1711,7 +1720,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                                 </h3>
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-xs font-semibold bg-slate-100 px-2 py-1 rounded-md text-slate-500">
-                                                        {summaryData.company.units.flatMap((u: any) => u.collaborators).length || 0} Total
+                                                        {summaryData.company.collaborators.length || 0} Total no Setor
                                                     </span>
                                                     <button onClick={() => setSummaryModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100">
                                                         <X size={18} />
@@ -1746,7 +1755,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                             </div>
                                             <div className="mt-4 flex items-center justify-between">
                                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                                    Colaboradores Selecionados: <span className="text-[#35b6cf]">{selectedCollaborators.size}</span> de {summaryData.company.roles.length}
+                                                    Colaboradores Selecionados: <span className="text-[#35b6cf]">{selectedCollaborators.size}</span> de {summaryData.company.collaborators.length}
                                                 </p>
                                             </div>
                                         </div>
@@ -1756,12 +1765,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                                     <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 font-semibold">
                                                         <tr>
                                                             <th className="px-4 py-3 w-10">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    className="rounded border-slate-300 text-[#35b6cf] focus:ring-[#35b6cf]"
-                                                                    checked={selectedCollaborators.size === summaryData.company.roles.length}
-                                                                    onChange={() => toggleAllCollaborators()}
-                                                                />
+                                                                <input type="checkbox" className="rounded border-slate-300 text-[#35b6cf] focus:ring-[#35b6cf]" checked={selectedCollaborators.size === summaryData.company.collaborators.length} onChange={() => toggleAllCollaborators()} />
                                                             </th>
                                                             <th className="px-4 py-3">Nome</th>
                                                             <th className="px-4 py-3">Sexo</th>
@@ -1792,12 +1796,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                                             return (
                                                                 <tr key={colab.id || idx} className={`hover:bg-slate-50 transition-colors ${!isSelected ? 'opacity-60 bg-slate-50/30' : ''}`}>
                                                                     <td className="px-4 py-3">
-                                                                        <input
-                                                                            type="checkbox"
-                                                                            className="rounded border-slate-300 text-[#35b6cf] focus:ring-[#35b6cf]"
-                                                                            checked={isSelected}
-                                                                            onChange={() => toggleCollaborator(idx)}
-                                                                        />
+                                                                        <input type="checkbox" className="rounded border-slate-300 text-[#35b6cf] focus:ring-[#35b6cf]" checked={isSelected} onChange={() => toggleCollaborator(idx)} />
                                                                     </td>
                                                                     <td className="px-4 py-3 text-slate-800 font-medium">{name}</td>
                                                                     <td className="px-4 py-3">
@@ -1862,9 +1861,10 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                                     })}
                                                 </div>
                                                 {/* Empty State for Search */}
-                                                {summaryData.company.roles.filter((role: string, idx: number) => {
-                                                    const name = `Colaborador ${idx + 1}`;
-                                                    const sector = summaryData.company.units[0]?.sectors[idx % summaryData.company.units[0]?.sectors.length] || 'Geral';
+                                                {summaryData.company.collaborators.filter((colab: any) => {
+                                                    const name = colab.nome || "";
+                                                    const role = colab.cargo || "";
+                                                    const sector = colab.setor || 'Geral';
                                                     return !collaboratorSearch ||
                                                         name.toLowerCase().includes(collaboratorSearch.toLowerCase()) ||
                                                         role.toLowerCase().includes(collaboratorSearch.toLowerCase()) ||

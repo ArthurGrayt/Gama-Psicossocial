@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PaymentModal } from '../components/modals/PaymentModal';
+// Importação dinâmica do modal de pagamento para reduzir o bundle inicial
+const PaymentModal = lazy(() => import('../components/modals/PaymentModal').then(module => ({ default: module.PaymentModal })));
 import { EditableContent } from '../components/EditableContent';
 import { supabase } from '../services/supabase';
 import logo from '../assets/logo.png';
@@ -213,6 +214,7 @@ export const LandingPage: React.FC = () => {
                                         defaultContent="https://lh3.googleusercontent.com/aida-public/AB6AXuAgTjHSNwimhOjpoOisnT7wa7gekhpGOYesZqHH8yIYL10CR4-xa56GHmLMVSgJ41DKGgCMYqkhkcHY9D4Zp3RXuLJf1ZSrKZm3hNNgTexDiwNtprmjaH94y5QO2wRLX0ptYcBxIaP7d1-ndg13xjAuiphQw6DlHQYn3OpvR_4xDAL8AQd1BgGpur-uct7h__9GooiWAoeqdZbhMz5qbEypZUT_iH5XGfWBGufM27VdtAkY2fewaQriLuFRWLtY_mjpvn4BkIkw-Gk"
                                         isEditing={editMode}
                                         type="image"
+                                        fetchPriority="high"
                                         className="w-full h-auto object-cover transform scale-[1.0] origin-top"
                                         alt="Tablet Interface showing psychological profile"
                                     />
@@ -257,6 +259,7 @@ export const LandingPage: React.FC = () => {
                                         type="image"
                                         defaultContent="https://lh3.googleusercontent.com/aida-public/AB6AXuCUagg3zLkxqnADxdJyv_jpR2hbAbkCS3PGDVH95-h3ZZgabintTDoxiW741MCLW1VhiFrTxYUy6rNXZrebYY0m-1HplW0JNTIoD-Ssmum8jw_-DV0Qrt520x6G7qTY48DBNK3uEpcd53N-D35Lmq_yVuL1lTQ6yhp5WK6KbNDa2pySBmDNDdnLUgqw9VgbGrc03TV-QvSzryikpHPMHjnzKWy1IVBzlLaR0nAJ9HjdClOkQqNVSDYCdy0vvI-3NoZNpbM9SoF-27U"
                                         isEditing={editMode}
+                                        loading="lazy"
                                         className="rounded shadow-sm opacity-90"
                                         alt="Assessment UI"
                                     />
@@ -279,6 +282,7 @@ export const LandingPage: React.FC = () => {
                                         type="image"
                                         defaultContent="https://lh3.googleusercontent.com/aida-public/AB6AXuCdWOC4G_GFtfv0oG9USegnMJWsp5JpEkR3tWgkoOFKiFyVu9yzBnMOZfpUVPxKF5cmzvvuc5guynO6Sm3wgeKnrJdVA1wTf5EOQrLAw5LhQCp9cPYNst-20iZVl4_fEFX9sCXo7PyvfR7llBNg8E6cc8duMSZPjMu4CQOr2kJg8Mym05xcTmahTfZ8Eunf9T1ZB3vwt2xN7aP3v_vXKKy-PC22CobB1vIoRUQc2bMTyKsgyxb6w3g_J1SSyWfPc-aCa57x04bB-a8"
                                         isEditing={editMode}
+                                        loading="lazy"
                                         className="rounded shadow-sm opacity-90"
                                         alt="Analysis Dashboard"
                                     />
@@ -301,6 +305,7 @@ export const LandingPage: React.FC = () => {
                                         type="image"
                                         defaultContent="https://lh3.googleusercontent.com/aida-public/AB6AXuBr71OqVG7z_0wuFgTJliFvVZB_81WJVo30xePop1HLtN_TFQgyJ1wslW91IMgQ2GCBH1gDyOLellMcgIQXg09O7IPbtl46jrdr8IG2aLRLXwN7HTkTnRO3NrTJ6CrA_7cN11ZXUufO-ex239RriXl27_KBoaJZiSXN1WrSx8gBdCJUY_p9cXmmKw1z5uhUW9wywmgxzdTNoCZ4IxtuOdwHgnU4Qho06dGxffOXjWblblCxajOIdTJiS7jie7k1-2BbbW4_CAQubwM"
                                         isEditing={editMode}
+                                        loading="lazy"
                                         className="rounded shadow-sm opacity-90"
                                         alt="Final Report"
                                     />
@@ -432,6 +437,7 @@ export const LandingPage: React.FC = () => {
                                     defaultContent="https://lh3.googleusercontent.com/aida-public/AB6AXuBIY8-eVVnjBG-yaWY2kvTyyKgaqd2_yUh-LvIxbhhZmOFe3HgjCVlIQv9kdE4LBJwu9O3zT8-YDPf1p6E_uney6xQ3EGq2zfKsNBYHrlavE_ITHrNuqjSLuJvqUZ1ZcF7Qu5gAfJ5NBZAu7yfJhkvR2-IdpJK8K4qpI5aKiWukOl-l8nd11S59LcxX4ZaMwg_89N7K_E1-vUO8_rGwG0kwI5GZaQoNL2moz58umKWaJR0F-YMJMH5jK6Gwf6o2HmOPeoYULE-3Pgk"
                                     isEditing={editMode}
                                     type="image"
+                                    loading="lazy"
                                     className="w-24 h-24 rounded-full object-cover border-4 border-slate-50 shadow-md"
                                     alt="Review 1"
                                 />
@@ -479,6 +485,7 @@ export const LandingPage: React.FC = () => {
                                     defaultContent="https://lh3.googleusercontent.com/aida-public/AB6AXuD-LcrZceZ5ADbRP2H5MHgfUEDAbkJSF4SIfarwep6zGQKO35gMSyuzTYIEUjs8N_dTTg_EX5Jsc8WlRJSZWXWrWJG4V6dktGk4BndfKotqSAhVExa8eTbr8L_bT_sNn3ViyS5ItfsvrXS1T-mN5RC5Z_phbRgE_vzonoqOgVC4qQsKIrUYtM5eS7rqjD7bgXEaHVJ-RjOT5nGQ-gO-iHzrzmR3gTeJDe6F8sI-8SHSDqPBG0rKf1jqtGHx_aMm0f2Te1mDcTMCfuk"
                                     isEditing={editMode}
                                     type="image"
+                                    loading="lazy"
                                     className="w-24 h-24 rounded-full object-cover border-4 border-slate-50 shadow-md"
                                     alt="Review 2"
                                 />
@@ -796,11 +803,13 @@ export const LandingPage: React.FC = () => {
                     </div>
                 </div>
             </footer>
-            <PaymentModal
-                isOpen={isPaymentModalOpen}
-                onClose={() => setIsPaymentModalOpen(false)}
-                selectedPackage={selectedPackage}
-            />
+            <Suspense fallback={null}>
+                <PaymentModal
+                    isOpen={isPaymentModalOpen}
+                    onClose={() => setIsPaymentModalOpen(false)}
+                    selectedPackage={selectedPackage}
+                />
+            </Suspense>
 
             {/* Modal de Vídeo */}
             {isVideoModalOpen && (

@@ -424,7 +424,7 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
 
             let colabQuery = supabase
                 .from('colaboradores')
-                .select('id, nome, email, sexo, data_nascimento, cargo_id, cargos(nome)')
+                .select('id, nome, email, sexo, data_nascimento, cargo_id, cargo, setor, cargos(nome)')
                 .in('unidade_id', unitIds);
 
             if (sectorId) {
@@ -1114,16 +1114,12 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
                                                     <div className="flex-1 min-w-0 pr-4">
                                                         <div className="font-bold text-slate-700 truncate">{p.nome || 'Sem Nome'}</div>
                                                         <div className="md:hidden text-[10px] text-slate-400 truncate">
-                                                            {(p.cargos && p.cargos.nome) ? p.cargos.nome : (p.cargo && p.cargo.nome) ? p.cargo.nome : '-'}
+                                                            {p.cargos?.nome || p.cargo || p.cargo_rel?.nome || '-'}
                                                         </div>
                                                     </div>
 
                                                     {/* Cargo */}
-                                                    <div className="w-40 hidden md:block text-slate-500 truncate pr-2">
-                                                        {(p.cargos && p.cargos.nome) ? p.cargos.nome :
-                                                            (p.cargo && p.cargo.nome) ? p.cargo.nome :
-                                                                '-'}
-                                                    </div>
+                                                    {p.cargos?.nome || p.cargo || p.cargo_rel?.nome || '-'}
 
                                                     {/* Sexo */}
                                                     <div className="w-20 hidden lg:block text-slate-500 text-center">

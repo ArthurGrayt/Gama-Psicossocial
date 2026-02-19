@@ -153,20 +153,28 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
 
         setLoading(true);
         try {
-            const toInsert = importedData.map(c => ({
-                nome: c.nome,
-                email: c.email || null,
-                cpf: c.cpf || null,
-                telefone: c.telefone || null,
-                data_nascimento: c.dataNascimento || null,
-                sexo: c.sexo || null,
-                data_desligamento: c.dataDesligamento || null,
-                cargo: c.cargo || null,
-                setor: c.setor || null,
-                unidade_id: Number(defaultUnitId),
-                cod_categoria: 101, // Default
-                texto_categoria: "Empregado - Geral"
-            }));
+            const toInsert = importedData.map(c => {
+                // Tenta resolver IDs de setor e cargo a partir do nome
+                const sectorObj = refData.sectors.find(s => s.nome.toLowerCase() === (c.setor || '').toLowerCase());
+                const roleObj = refData.roles.find(r => r.nome.toLowerCase() === (c.cargo || '').toLowerCase());
+
+                return {
+                    nome: c.nome,
+                    email: c.email || null,
+                    cpf: c.cpf || null,
+                    telefone: c.telefone || null,
+                    data_nascimento: c.dataNascimento || null,
+                    sexo: c.sexo || null,
+                    data_desligamento: c.dataDesligamento || null,
+                    cargo: c.cargo || null,
+                    setor: c.setor || null,
+                    cargo_id: roleObj?.id || null,
+                    setor_id: sectorObj?.id || null,
+                    unidade_id: Number(defaultUnitId),
+                    cod_categoria: 101, // Default
+                    texto_categoria: "Empregado - Geral"
+                };
+            });
 
             const { data, error } = await supabase
                 .from('colaboradores')
@@ -176,13 +184,13 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
             if (error) throw error;
 
             // Refresh list
-            fetchInitialData();
+            await fetchInitialData();
             alert(`${(data || []).length} colaboradores importados com sucesso!`);
             setIsImportModalOpen(false);
 
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error importing:', error);
-            alert('Erro ao importar colaboradores.');
+            alert(`Erro ao importar colaboradores: ${error.message || 'Erro desconhecido'}`);
         } finally {
             setLoading(false);
         }
@@ -601,14 +609,7 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                     setIsImportModalOpen(false);
                     fetchInitialData(); // Refresh after import
                 }}
-                onImport={async (importedData) => {
-                    // Placeholder for import logic matches strict props
-                    console.log("Importing data:", importedData);
-                    // TODO: Implement bulk insert logic here
-                    alert(`Importação simulada de ${importedData.length} colaboradores. Implementar lógica de salvar.`);
-                    setIsImportModalOpen(false);
-                    fetchInitialData();
-                }}
+                onImport={handleImportCollaborators}
             />
 
             <ConfirmationModal

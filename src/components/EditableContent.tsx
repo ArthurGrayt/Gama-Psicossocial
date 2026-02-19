@@ -11,6 +11,8 @@ interface EditableContentProps {
     tagName?: keyof React.JSX.IntrinsicElements; // 'h1', 'p', 'span', 'div'
     isEditing: boolean;
     alt?: string; // Para imagens
+    loading?: 'lazy' | 'eager'; // Otimização de imagem
+    fetchPriority?: 'high' | 'low' | 'auto'; // Prioridade de carregamento
     onSave?: (value: string) => void;
 }
 
@@ -23,6 +25,8 @@ export const EditableContent: React.FC<EditableContentProps> = ({
     tagName = 'div',
     isEditing,
     alt = '',
+    loading,
+    fetchPriority,
     onSave
 }) => {
     const [content, setContent] = useState(defaultContent);
@@ -160,6 +164,8 @@ export const EditableContent: React.FC<EditableContentProps> = ({
                 <img
                     src={content}
                     alt={alt}
+                    loading={loading}
+                    fetchPriority={fetchPriority}
                     className={`${className} ${isUploading ? 'opacity-50 grayscale' : ''}`}
                 />
 
@@ -202,9 +208,6 @@ export const EditableContent: React.FC<EditableContentProps> = ({
 
     // Exibir Skeleton UI durante o carregamento inicial
     if (isInitialLoading) {
-        if (type === 'image') {
-            return <div className={`animate-pulse bg-slate-200 rounded-lg ${className}`} style={{ minHeight: '100px' }} />;
-        }
         return <span className="animate-pulse bg-slate-100 rounded px-4 h-[1.2em] inline-block w-full opacity-50" />;
     }
 

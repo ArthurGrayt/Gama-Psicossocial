@@ -31,6 +31,7 @@ interface Form {
         setores?: number[];
     };
     unidade_nome?: string;
+    setor_nome?: string;
 }
 
 interface FormsListModalProps {
@@ -87,6 +88,10 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
                             id,
                             nome,
                             empresa_mae
+                        ),
+                        setor (
+                            id,
+                            nome
                         )
                     `)
                     .eq('unidades.empresa_mae', company.cliente_uuid);
@@ -122,6 +127,7 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
                 const mappedForms = data?.map(f => ({
                     ...f,
                     unidade_nome: f.unidades?.nome,
+                    setor_nome: f.setor?.nome,
                     qtd_respostas: responseCounts[f.id] || 0
                 })) || [];
 
@@ -329,6 +335,12 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
                                             <div className="flex items-center gap-1.5">
                                                 <Calendar size={12} className="text-[#35b6cf]" />
                                                 {new Date(form.created_at).toLocaleDateString()}
+                                                {form.setor_nome && (
+                                                    <>
+                                                        <span className="text-slate-200">|</span>
+                                                        <span className="text-primary/70">{form.setor_nome}</span>
+                                                    </>
+                                                )}
                                             </div>
                                             <div className="flex items-center gap-1.5 border-l border-slate-200 pl-4">
                                                 <BarChart2 size={12} className="text-[#35b6cf]" />
