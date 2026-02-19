@@ -27,6 +27,7 @@ export const EditableContent: React.FC<EditableContentProps> = ({
 }) => {
     const [content, setContent] = useState(defaultContent);
     const [tempValue, setTempValue] = useState(defaultContent); // Valor enquanto edita
+    const [isInitialLoading, setIsInitialLoading] = useState(true); // Evita flicker do defaultContent
     const [isUploading, setIsUploading] = useState(false); // Status de upload de imagem
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -66,6 +67,8 @@ export const EditableContent: React.FC<EditableContentProps> = ({
             }
         } catch (err) {
             console.error('Erro ao buscar conteúdo:', err);
+        } finally {
+            setIsInitialLoading(false);
         }
     };
 
@@ -195,6 +198,14 @@ export const EditableContent: React.FC<EditableContentProps> = ({
                 />
             </Tag>
         );
+    }
+
+    // Exibir Skeleton UI durante o carregamento inicial
+    if (isInitialLoading) {
+        if (type === 'image') {
+            return <div className={`animate-pulse bg-slate-200 rounded-lg ${className}`} style={{ minHeight: '100px' }} />;
+        }
+        return <span className="animate-pulse bg-slate-100 rounded px-4 h-[1.2em] inline-block w-full opacity-50" />;
     }
 
     return (
