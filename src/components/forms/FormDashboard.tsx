@@ -6,6 +6,7 @@ import { FormsListModal } from '../modals/FormsListModal';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
 import { ConfirmationModal } from '../ui/ConfirmationModal';
+import { Select } from '../ui/Select';
 import gamaLogo from '../../assets/logo.png';
 
 // --- Form Dashboard: Main component for managing forms and companies ---
@@ -1907,16 +1908,16 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                                         className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf]"
                                                     />
                                                 </div>
-                                                <select
-                                                    className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf] text-slate-600"
+                                                <Select
                                                     value={questionFilter}
-                                                    onChange={(e) => setQuestionFilter(e.target.value)}
-                                                >
-                                                    <option value="">Todas Dimensões</option>
-                                                    {questionsDimensions.map(d => (
-                                                        <option key={d} value={d}>{d}</option>
-                                                    ))}
-                                                </select>
+                                                    onChange={(val) => setQuestionFilter(val)}
+                                                    options={[
+                                                        { label: 'Todas Dimensões', value: '' },
+                                                        ...questionsDimensions.map(d => ({ label: d, value: d }))
+                                                    ]}
+                                                    placeholder="Todas Dimensões"
+                                                    className="w-48"
+                                                />
                                             </div>
                                         </div>
                                         <div className="p-6 overflow-auto bg-slate-50/50 h-full">

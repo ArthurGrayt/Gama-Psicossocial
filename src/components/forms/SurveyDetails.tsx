@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../services/supabase';
 import { ArrowLeft, Copy, Search, FileText, X, Building2, Tags, ChevronDown } from 'lucide-react';
 import { SegmentedControl } from '../ui/SegmentedControl';
+import { Select } from '../ui/Select';
 import type { Form } from '../../types';
 import { DimensionAnalysisSection } from './DimensionAnalysisSection';
 import { ActionPlansSection } from './ActionPlansSection';
@@ -749,40 +750,35 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
                             </div>
                             {/* Sector Dropdown Replacement */}
                             <div className="mt-4 grid grid-cols-2 md:flex md:items-center gap-2 md:gap-3 w-full md:w-auto">
-                                {/* Unit Dropdown (Only show if we have units) */}
                                 {units.length > 0 && (
-                                    <div className="relative group">
-                                        <Building2 className="absolute left-2.5 md:left-3 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-[#35b6cf] transition-colors w-3.5 h-3.5 md:w-4 md:h-4" />
-                                        <select
+                                    <div className="md:min-w-[180px]">
+                                        <Select
                                             value={selectedUnit}
-                                            onChange={(e) => {
-                                                setSelectedUnit(e.target.value);
+                                            onChange={(val) => {
+                                                setSelectedUnit(val);
                                                 setSelectedSector(''); // Reset sector when unit changes
                                             }}
-                                            className="w-full appearance-none pl-8 md:pl-10 pr-8 md:pr-10 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs md:text-sm text-slate-600 font-medium focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 cursor-pointer hover:bg-white hover:border-[#35b6cf]/50 transition-all outline-none shadow-sm md:min-w-[180px]"
-                                        >
-                                            <option value="">Unidades</option>
-                                            {units.map(unit => (
-                                                <option key={unit.id} value={unit.id}>{unit.nome}</option>
-                                            ))}
-                                        </select>
-                                        <ChevronDown className="absolute right-2.5 md:right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none group-hover:text-[#35b6cf] transition-colors w-3 h-3 md:w-3.5 md:h-3.5" />
+                                            options={[
+                                                { label: 'Todas as Unidades', value: '' },
+                                                ...units.map(unit => ({ label: unit.nome, value: String(unit.id) }))
+                                            ]}
+                                            placeholder="Todas as Unidades"
+                                            className="w-full"
+                                        />
                                     </div>
                                 )}
 
-                                <div className="relative group">
-                                    <Tags className="absolute left-2.5 md:left-3 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-[#35b6cf] transition-colors w-3.5 h-3.5 md:w-4 md:h-4" />
-                                    <select
+                                <div className="md:min-w-[180px]">
+                                    <Select
                                         value={selectedSector}
-                                        onChange={(e) => setSelectedSector(e.target.value)}
-                                        className="w-full appearance-none pl-8 md:pl-10 pr-8 md:pr-10 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs md:text-sm text-slate-600 font-medium focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 cursor-pointer hover:bg-white hover:border-[#35b6cf]/50 transition-all outline-none shadow-sm md:min-w-[180px]"
-                                    >
-                                        <option value="">Setores</option>
-                                        {distinctSectors.map(sector => (
-                                            <option key={sector} value={sector}>{sector}</option>
-                                        ))}
-                                    </select>
-                                    <ChevronDown className="absolute right-2.5 md:right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none group-hover:text-[#35b6cf] transition-colors w-3 h-3 md:w-3.5 md:h-3.5" />
+                                        onChange={(val) => setSelectedSector(val)}
+                                        options={[
+                                            { label: 'Todos os Setores', value: '' },
+                                            ...distinctSectors.map(sector => ({ label: sector, value: sector }))
+                                        ]}
+                                        placeholder="Todos os Setores"
+                                        className="w-full"
+                                    />
                                 </div>
                             </div>
                         </div>

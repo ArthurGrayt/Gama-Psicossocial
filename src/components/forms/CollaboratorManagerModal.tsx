@@ -4,6 +4,7 @@ import { X, Search, Plus, User, FileSpreadsheet, Building, Pencil, Trash2 } from
 import { supabase } from '../../services/supabase';
 import { ImportCollaboratorsModal } from './ImportCollaboratorsModal';
 import { ConfirmationModal } from '../ui/ConfirmationModal';
+import { Select } from '../ui/Select';
 import ReactDOM from 'react-dom';
 
 interface CollaboratorManagerModalProps {
@@ -362,43 +363,43 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
 
                             {/* Row 2: Logical Filters */}
                             <div className="grid grid-cols-3 gap-2 md:gap-3">
-                                <select
-                                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[11px] md:text-sm text-slate-600 focus:outline-none focus:border-[#139690] transition-colors"
+                                <Select
                                     value={filterUnit}
-                                    onChange={(e) => setFilterUnit(e.target.value)}
-                                >
-                                    <option value="">Unidades</option>
-                                    {units.map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
-                                </select>
+                                    onChange={(val) => setFilterUnit(val)}
+                                    options={[
+                                        { label: 'Todas as Unidades', value: '' },
+                                        ...units.map(u => ({ label: u.nome, value: String(u.id) }))
+                                    ]}
+                                    placeholder="Unidades"
+                                />
 
-                                <select
-                                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[11px] md:text-sm text-slate-600 focus:outline-none focus:border-[#139690] transition-colors"
+                                <Select
                                     value={filterSector}
-                                    onChange={(e) => setFilterSector(e.target.value)}
-                                >
-                                    <option value="">Setores</option>
-                                    {/* Show sectors relative to selected unit or all */}
-                                    {refData.sectors
-                                        .filter(s => filterUnit ? units.find(u => String(u.id) === filterUnit)?.setores?.includes(s.id) : true)
-                                        .map(s => <option key={s.id} value={s.id}>{s.nome}</option>)
-                                    }
-                                </select>
+                                    onChange={(val) => setFilterSector(val)}
+                                    options={[
+                                        { label: 'Todos os Setores', value: '' },
+                                        ...refData.sectors
+                                            .filter(s => filterUnit ? units.find(u => String(u.id) === filterUnit)?.setores?.includes(s.id) : true)
+                                            .map(s => ({ label: s.nome, value: String(s.id) }))
+                                    ]}
+                                    placeholder="Setores"
+                                />
 
-                                <select
-                                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[11px] md:text-sm text-slate-600 focus:outline-none focus:border-[#139690] transition-colors"
+                                <Select
                                     value={filterRole}
-                                    onChange={(e) => setFilterRole(e.target.value)}
-                                >
-                                    <option value="">Cargos</option>
-                                    {refData.roles
-                                        .filter(r => {
-                                            const unitMatch = filterUnit ? units.find(u => String(u.id) === filterUnit)?.cargos?.includes(r.id) : true;
-                                            const sectorMatch = filterSector ? String(r.setor_id) === filterSector : true;
-                                            return unitMatch && sectorMatch;
-                                        })
-                                        .map(r => <option key={r.id} value={r.id}>{r.nome}</option>)
-                                    }
-                                </select>
+                                    onChange={(val) => setFilterRole(val)}
+                                    options={[
+                                        { label: 'Todos os Cargos', value: '' },
+                                        ...refData.roles
+                                            .filter(r => {
+                                                const unitMatch = filterUnit ? units.find(u => String(u.id) === filterUnit)?.cargos?.includes(r.id) : true;
+                                                const sectorMatch = filterSector ? String(r.setor_id) === filterSector : true;
+                                                return unitMatch && sectorMatch;
+                                            })
+                                            .map(r => ({ label: r.nome, value: String(r.id) }))
+                                    ]}
+                                    placeholder="Cargos"
+                                />
                             </div>
                         </div>
                     )}
@@ -467,16 +468,16 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                                 </div>
                                 <div className="md:col-span-3 space-y-1.5">
                                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Sexo</label>
-                                    <select
+                                    <Select
                                         value={newColab.sexo}
-                                        onChange={e => setNewColab({ ...newColab, sexo: e.target.value })}
-                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#139690]/20 focus:border-[#139690] outline-none transition-all bg-white text-slate-600"
-                                    >
-                                        <option value="">Selecione</option>
-                                        <option value="Masculino">Masculino</option>
-                                        <option value="Feminino">Feminino</option>
-                                        <option value="Outro">Outro</option>
-                                    </select>
+                                        onChange={(val) => setNewColab({ ...newColab, sexo: val })}
+                                        options={[
+                                            { label: 'Masculino', value: 'Masculino' },
+                                            { label: 'Feminino', value: 'Feminino' },
+                                            { label: 'Outro', value: 'Outro' }
+                                        ]}
+                                        placeholder="Selecione"
+                                    />
                                 </div>
 
                                 {/* Data Desligamento - Opcional */}
@@ -493,40 +494,34 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                                 {/* Unidade */}
                                 <div className="md:col-span-8 space-y-1.5">
                                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Unidade / Filial</label>
-                                    <select
+                                    <Select
                                         value={newColab.unidade_id}
-                                        onChange={e => setNewColab({ ...newColab, unidade_id: e.target.value, setor: '', cargo: '' })}
-                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#139690]/20 focus:border-[#139690] outline-none transition-all bg-white text-slate-600"
-                                    >
-                                        <option value="">Selecione a Unidade</option>
-                                        {units.map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
-                                    </select>
+                                        onChange={(val) => setNewColab({ ...newColab, unidade_id: val, setor: '', cargo: '' })}
+                                        options={units.map(u => ({ label: u.nome, value: String(u.id) }))}
+                                        placeholder="Selecione a Unidade"
+                                    />
                                 </div>
 
                                 {/* Setor e Cargo */}
                                 <div className="md:col-span-6 space-y-1.5">
                                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Setor</label>
-                                    <select
+                                    <Select
                                         value={newColab.setor}
-                                        onChange={e => setNewColab({ ...newColab, setor: e.target.value, cargo: '' })}
+                                        onChange={(val) => setNewColab({ ...newColab, setor: val, cargo: '' })}
+                                        options={availableSectors.map(s => ({ label: s.nome, value: String(s.id) }))}
+                                        placeholder="Selecione o Setor"
                                         disabled={!newColab.unidade_id}
-                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#139690]/20 focus:border-[#139690] outline-none transition-all bg-white text-slate-600 disabled:opacity-50 disabled:bg-slate-100"
-                                    >
-                                        <option value="">Selecione o Setor</option>
-                                        {availableSectors.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
-                                    </select>
+                                    />
                                 </div>
                                 <div className="md:col-span-6 space-y-1.5">
                                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Cargo</label>
-                                    <select
+                                    <Select
                                         value={newColab.cargo}
-                                        onChange={e => setNewColab({ ...newColab, cargo: e.target.value })}
+                                        onChange={(val) => setNewColab({ ...newColab, cargo: val })}
+                                        options={availableRoles.map(r => ({ label: r.nome, value: String(r.id) }))}
+                                        placeholder="Selecione o Cargo"
                                         disabled={!newColab.setor}
-                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#139690]/20 focus:border-[#139690] outline-none transition-all bg-white text-slate-600 disabled:opacity-50 disabled:bg-slate-100"
-                                    >
-                                        <option value="">Selecione o Cargo</option>
-                                        {availableRoles.map(r => <option key={r.id} value={r.id}>{r.nome}</option>)}
-                                    </select>
+                                    />
                                 </div>
                             </div>
 

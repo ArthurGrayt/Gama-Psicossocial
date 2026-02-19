@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../services/supabase';
-import { X, FileText, Plus, Calendar, BarChart2, Copy, ExternalLink, Pencil, Trash2, Check, MoreVertical, Download } from 'lucide-react';
+import { X, FileText, Plus, Calendar, BarChart2, Pencil, Trash2, Check, Link, ExternalLink } from 'lucide-react';
+import { Dropdown } from '../ui/Dropdown';
 import { HSEReportModal } from '../reports/HSEReportModal';
 import type { HSEReportData } from '../reports/HSEReportModal';
 import { generateHSEReport } from '../../utils/reportGenerator';
@@ -42,10 +43,6 @@ interface FormsListModalProps {
     loading?: boolean;
 }
 
-interface DropdownPosition {
-    top: number;
-    right: number;
-}
 
 export const FormsListModal: React.FC<FormsListModalProps> = ({
     isOpen,
@@ -59,15 +56,12 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
     const loading = parentLoading || internalLoading;
 
     // Actions State
-    const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
-    const [dropdownPosition, setDropdownPosition] = useState<DropdownPosition | null>(null);
     const [editingForm, setEditingForm] = useState<Form | null>(null);
     const [editFormTitle, setEditFormTitle] = useState('');
 
     // Report State
     const [isReportOpen, setIsReportOpen] = useState(false);
     const [reportData, setReportData] = useState<HSEReportData | null>(null);
-    const [reportLoading, setReportLoading] = useState(false);
 
     // Deletion Modal State
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -143,24 +137,6 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
         fetchForms();
     }, [company, isOpen]);
 
-    // Close dropdown on outside click
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            const target = event.target as HTMLElement;
-            if (openDropdownId && !target.closest('.dropdown-tork') && !target.closest('.dropdown-portal')) {
-                setOpenDropdownId(null);
-                setDropdownPosition(null);
-            }
-        };
-
-        if (openDropdownId) {
-            document.addEventListener('mousedown', handleClickOutside);
-        }
-
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, [openDropdownId]);
 
     const handleDeleteForm = (id: number) => {
         setFormToDeleteId(id);
@@ -178,8 +154,6 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
             setForms(prev => prev.filter(f => f.id !== formToDeleteId));
             setShowDeleteConfirm(false);
             setFormToDeleteId(null);
-            setOpenDropdownId(null);
-            setDropdownPosition(null);
         } catch (err) {
             console.error('Error deleting form:', err);
             alert('Erro ao excluir formulário.');
@@ -208,7 +182,6 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
     };
 
     const handleGenerateReport = async (formId: number) => {
-        setReportLoading(true);
         try {
             const report = await generateHSEReport(formId);
             setReportData(report);
@@ -216,8 +189,6 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
         } catch (err) {
             console.error('Error generating report:', err);
             alert('Erro ao gerar relatório.');
-        } finally {
-            setReportLoading(false);
         }
     };
 
@@ -301,7 +272,7 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
                             {forms.map((form) => (
                                 <div
                                     key={form.id}
-                                    className={`bg-white border border-slate-100 rounded-2xl p-3 md:p-5 hover:border-[#35b6cf]/30 hover:shadow-lg hover:shadow-slate-200/50 transition-all flex flex-col md:flex-row md:items-center gap-2 md:gap-6 group relative ${openDropdownId === form.id ? 'z-40' : 'z-10'}`}
+                                    className="bg-white border border-slate-100 rounded-2xl p-3 md:p-5 hover:border-[#35b6cf]/30 hover:shadow-lg hover:shadow-slate-200/50 transition-all flex flex-col md:flex-row md:items-center gap-2 md:gap-6 group relative z-10"
                                 >
                                     {/* Icone */}
                                     <div className="p-2 md:p-3 bg-slate-50 rounded-xl text-[#35b6cf] shrink-0 group-hover:bg-[#35b6cf]/10 transition-colors w-10 h-10 md:w-12 md:h-12 flex items-center justify-center">
@@ -349,95 +320,62 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
                                         </div>
                                     </div>
 
-                                    {/* Ações */}
-                                    <div className="flex items-center gap-3 pt-2 md:pt-0 md:border-l border-slate-100 md:pl-6 shrink-0">
+                                    {/* Ações Padronizadas conforme modelo da imagem */}
+                                    <div className="flex items-center gap-2 pt-2 md:pt-0 md:border-l border-slate-100 md:pl-6 shrink-0 relative">
+                                        {/* Ações Rápidas */}
                                         {form.link && (
-                                            <div className="flex items-center gap-1">
+                                            <>
                                                 <button
                                                     onClick={() => {
                                                         navigator.clipboard.writeText(form.link || '');
+                                                        alert('Link copiado com sucesso!');
                                                     }}
-                                                    className="p-2 text-slate-400 hover:text-[#35b6cf] hover:bg-[#35b6cf]/5 rounded-xl transition-all"
+                                                    className="p-2 text-slate-400 hover:text-[#35b6cf] hover:bg-[#35b6cf]/10 rounded-lg transition-all"
                                                     title="Copiar Link"
                                                 >
-                                                    <Copy size={18} />
+                                                    <Link size={18} />
                                                 </button>
                                                 <a
                                                     href={form.link}
                                                     target="_blank"
-                                                    rel="noreferrer"
-                                                    className="p-2 text-slate-400 hover:text-[#35b6cf] hover:bg-[#35b6cf]/5 rounded-xl transition-all"
+                                                    rel="noopener noreferrer"
+                                                    className="p-2 text-slate-400 hover:text-[#35b6cf] hover:bg-[#35b6cf]/10 rounded-lg transition-all"
                                                     title="Abrir Formulário"
                                                 >
                                                     <ExternalLink size={18} />
                                                 </a>
-                                            </div>
+                                            </>
                                         )}
 
                                         <button
-                                            className="p-2.5 md:px-5 md:py-2.5 bg-[#35b6cf] text-white rounded-xl font-bold text-xs hover:bg-[#2ca3bc] transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 min-w-[36px] md:min-w-0"
                                             onClick={() => handleGenerateReport(form.id)}
-                                            disabled={reportLoading}
-                                            title="Baixar Relatório"
+                                            className="p-2 text-slate-400 hover:text-[#35b6cf] hover:bg-[#35b6cf]/10 rounded-lg transition-all"
+                                            title="Gerar Relatório"
                                         >
-                                            <Download size={14} className="md:w-3.5 md:h-3.5 w-4 h-4" />
-                                            <span className="hidden md:inline">
-                                                {reportLoading ? 'Gerando...' : 'Baixar Relatório'}
-                                            </span>
+                                            <FileText size={18} />
                                         </button>
 
-                                        <button
-                                            className="p-2 hover:bg-slate-50 rounded-xl text-slate-300 hover:text-slate-600 transition-colors dropdown-tork"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                if (openDropdownId === form.id) {
-                                                    setOpenDropdownId(null);
-                                                    setDropdownPosition(null);
-                                                } else {
-                                                    const rect = e.currentTarget.getBoundingClientRect();
-                                                    setDropdownPosition({
-                                                        top: rect.bottom,
-                                                        right: window.innerWidth - rect.right
-                                                    });
-                                                    setOpenDropdownId(form.id);
-                                                }
-                                            }}
-                                        >
-                                            <MoreVertical size={20} />
-                                        </button>
-
-                                        {openDropdownId === form.id && dropdownPosition && createPortal(
-                                            <div
-                                                className="fixed w-44 bg-white border border-slate-100 shadow-2xl rounded-2xl z-[10001] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 dropdown-portal"
-                                                style={{
-                                                    top: `${dropdownPosition.top + 8}px`,
-                                                    right: `${dropdownPosition.right}px`
-                                                }}
-                                            >
-                                                <button
-                                                    onClick={() => {
+                                        {/* Menu de Mais Ações (Dropdown Padronizado) */}
+                                        <Dropdown
+                                            actions={[
+                                                {
+                                                    label: 'Editar Título',
+                                                    icon: Pencil,
+                                                    onClick: () => {
                                                         setEditingForm(form);
                                                         setEditFormTitle(form.title);
-                                                        setOpenDropdownId(null);
-                                                        setDropdownPosition(null);
-                                                    }}
-                                                    className="w-full text-left px-4 py-3 text-xs text-slate-600 hover:bg-slate-50 hover:text-[#35b6cf] font-bold flex items-center gap-2"
-                                                >
-                                                    <Pencil size={14} /> Editar Título
-                                                </button>
-                                                <button
-                                                    onClick={() => {
-                                                        handleDeleteForm(form.id);
-                                                        setOpenDropdownId(null);
-                                                        setDropdownPosition(null);
-                                                    }}
-                                                    className="w-full text-left px-4 py-3 text-xs text-red-500 hover:bg-red-50 font-bold flex items-center gap-2 border-t border-slate-50"
-                                                >
-                                                    <Trash2 size={14} /> Excluir permanentemente
-                                                </button>
-                                            </div>,
-                                            document.body
-                                        )}
+                                                    },
+                                                    show: true
+                                                },
+                                                {
+                                                    label: 'Excluir Formulário',
+                                                    icon: Trash2,
+                                                    variant: 'danger',
+                                                    onClick: () => handleDeleteForm(form.id),
+                                                    show: true
+                                                }
+                                            ]}
+                                        />
                                     </div>
                                 </div>
                             ))}

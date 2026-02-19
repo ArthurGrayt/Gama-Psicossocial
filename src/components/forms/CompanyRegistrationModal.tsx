@@ -15,6 +15,7 @@ import { X, Building, Camera, ChevronRight, Check, Plus, Trash2, Pencil, Users, 
 import { supabase } from '../../services/supabase';
 // Importa um componente de botão padronizado do próprio projeto
 import { Button } from '../ui/Button';
+import { Select } from '../ui/Select';
 import { ImportCollaboratorsModal } from './ImportCollaboratorsModal';
 import { ConfirmationModal } from '../ui/ConfirmationModal';
 
@@ -277,8 +278,8 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
 
     // --- Lógica de Unidades (Filiais) ---
     // Função chamada quando o usuário troca de unidade no seletor (dropdown)
-    const handleUnitChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const value = e.target.value; // Pega o ID da unidade selecionada
+    // Função chamada quando o usuário troca de unidade no seletor (dropdown)
+    const handleUnitChange = (value: string) => {
         // Garante que o ID seja tratado como texto para não dar erro em IDs longos
         const newUnitId = value || null;
         // Procura na lista qual é a unidade completa que tem esse ID
@@ -996,17 +997,13 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                             <div className="mt-4 px-2 animate-in fade-in slide-in-from-top-2 duration-300">
                                 <label className="text-xs font-bold text-[#35b6cf] uppercase tracking-widest mb-2 block pl-2 font-mono">Unidade Ativa</label>
                                 <div className="relative">
-                                    <select
+                                    <Select
                                         value={String(formData.selectedUnitId || '')}
                                         onChange={handleUnitChange}
-                                        className="w-full appearance-none bg-white border-2 border-slate-200 text-slate-700 font-bold py-3 pl-4 pr-10 rounded-2xl outline-none focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 transition-all cursor-pointer shadow-sm hover:border-[#35b6cf]/50"
-                                    >
-                                        {/* Lista todas as unidades disponíveis para troca rápida */}
-                                        {formData.units.map((unit: any) => (
-                                            <option key={unit.id} value={unit.id}>{unit.name}</option>
-                                        ))}
-                                    </select>
-                                    <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none rotate-90" size={18} />
+                                        options={formData.units.map((unit: any) => ({ label: unit.name, value: unit.id }))}
+                                        placeholder="Selecione Unidade"
+                                        className="w-full"
+                                    />
                                 </div>
                             </div>
                         )}
@@ -1099,16 +1096,12 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                                 <div className="mb-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
                                     <label className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-2">Unidade / Filial Ativa</label>
                                     <div className="relative">
-                                        <select
+                                        <Select
                                             value={String(formData.selectedUnitId || '')}
                                             onChange={handleUnitChange}
-                                            className="w-full appearance-none bg-white border border-slate-200 text-slate-700 font-bold py-3 pl-4 pr-10 rounded-xl outline-none focus:border-[#35b6cf] transition-all"
-                                        >
-                                            {formData.units.map((unit: any) => (
-                                                <option key={unit.id} value={unit.id}>{unit.name}</option>
-                                            ))}
-                                        </select>
-                                        <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none rotate-90" size={18} />
+                                            options={formData.units.map((unit: any) => ({ label: unit.name, value: unit.id }))}
+                                            placeholder="Selecione Unidade"
+                                        />
                                     </div>
                                 </div>
                             )}
@@ -1407,11 +1400,15 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                                 <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 max-w-3xl border border-slate-200 rounded-2xl bg-white p-6 shadow-sm">
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                         {/* Primeiro: Escolhe o setor onde o cargo será criado */}
-                                        <select value={selectedSectorForRole} onChange={(e) => setSelectedSectorForRole(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 outline-none bg-white">
-                                            <option value="" disabled>Selecione Setor</option>
-                                            {/* Apenas setores da unidade ativa aparecem aqui */}
-                                            {filteredSectors.map((s, i) => <option key={i} value={s}>{s}</option>)}
-                                        </select>
+                                        <Select
+                                            value={selectedSectorForRole}
+                                            onChange={(val) => setSelectedSectorForRole(val)}
+                                            options={[
+                                                { label: 'Selecione Setor', value: '' },
+                                                ...filteredSectors.map(s => ({ label: s, value: s }))
+                                            ]}
+                                            placeholder="Selecione Setor"
+                                        />
                                         {/* Segundo: Campo de nome do cargo */}
                                         <div className="md:col-span-2 flex gap-2">
                                             <input
@@ -1551,17 +1548,16 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                                                         </div>
                                                         <div className="col-span-6 md:col-span-3 space-y-1">
                                                             <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Sexo</label>
-                                                            <select
-                                                                name="sexo"
+                                                            <Select
                                                                 value={collaboratorForm.sexo}
-                                                                onChange={handleCollaboratorChange}
-                                                                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none bg-white text-slate-600"
-                                                            >
-                                                                <option value="" disabled>Selecione</option>
-                                                                <option value="Masculino">Masculino</option>
-                                                                <option value="Feminino">Feminino</option>
-                                                                <option value="Outro">Outro</option>
-                                                            </select>
+                                                                onChange={(val) => setCollaboratorForm(prev => ({ ...prev, sexo: val }))}
+                                                                options={[
+                                                                    { label: 'Masculino', value: 'Masculino' },
+                                                                    { label: 'Feminino', value: 'Feminino' },
+                                                                    { label: 'Outro', value: 'Outro' }
+                                                                ]}
+                                                                placeholder="Selecione"
+                                                            />
                                                         </div>
 
                                                         <div className="col-span-12 md:col-span-4 space-y-1">
@@ -1576,30 +1572,24 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                                                         </div>
                                                         <div className="col-span-12 md:col-span-4 space-y-1">
                                                             <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Setor</label>
-                                                            <select
-                                                                name="setor"
+                                                            <Select
                                                                 value={collaboratorForm.setor}
-                                                                onChange={handleCollaboratorChange}
-                                                                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none bg-white text-slate-600"
-                                                            >
-                                                                <option value="" disabled>Selecione</option>
-                                                                {filteredSectors.map((s, i) => <option key={i} value={s}>{s}</option>)}
-                                                            </select>
+                                                                onChange={(val) => setCollaboratorForm(prev => ({ ...prev, setor: val, cargo: '' }))}
+                                                                options={filteredSectors.map(s => ({ label: s, value: s }))}
+                                                                placeholder="Selecione"
+                                                            />
                                                         </div>
                                                         <div className="col-span-12 md:col-span-4 space-y-1">
                                                             <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Cargo</label>
-                                                            <select
-                                                                name="cargo"
+                                                            <Select
                                                                 value={collaboratorForm.cargo}
-                                                                onChange={handleCollaboratorChange}
-                                                                disabled={!collaboratorForm.setor}
-                                                                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none bg-white text-slate-600 disabled:bg-slate-100 disabled:opacity-70"
-                                                            >
-                                                                <option value="" disabled>Selecione</option>
-                                                                {formData.cargos
+                                                                onChange={(val) => setCollaboratorForm(prev => ({ ...prev, cargo: val }))}
+                                                                options={formData.cargos
                                                                     .filter(c => normalizeText(c.setor) === normalizeText(collaboratorForm.setor))
-                                                                    .map((c, i) => <option key={i} value={c.nome}>{c.nome}</option>)}
-                                                            </select>
+                                                                    .map(c => ({ label: c.nome, value: c.nome }))}
+                                                                placeholder="Selecione"
+                                                                disabled={!collaboratorForm.setor}
+                                                            />
                                                         </div>
                                                     </div>
                                                     {/* Botão para Confirmar Cadastro Temporário */}
@@ -2003,17 +1993,16 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                                     </div>
                                     <div className="col-span-6 md:col-span-3 space-y-1.5">
                                         <label className="text-xs font-bold text-slate-500 uppercase">Sexo</label>
-                                        <select
-                                            name="sexo"
+                                        <Select
                                             value={editCollaboratorForm.sexo}
-                                            onChange={handleEditCollaboratorChange}
-                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none bg-white text-slate-600"
-                                        >
-                                            <option value="" disabled>Selecione</option>
-                                            <option value="Masculino">Masculino</option>
-                                            <option value="Feminino">Feminino</option>
-                                            <option value="Outro">Outro</option>
-                                        </select>
+                                            onChange={(val) => setEditCollaboratorForm(prev => ({ ...prev, sexo: val }))}
+                                            options={[
+                                                { label: 'Masculino', value: 'Masculino' },
+                                                { label: 'Feminino', value: 'Feminino' },
+                                                { label: 'Outro', value: 'Outro' }
+                                            ]}
+                                            placeholder="Selecione"
+                                        />
                                     </div>
                                     <div className="col-span-12 md:col-span-4 space-y-1.5">
                                         <label className="text-xs font-bold text-slate-500 uppercase">Data Desligamento</label>
@@ -2027,30 +2016,24 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                                     </div>
                                     <div className="col-span-12 md:col-span-4 space-y-1.5">
                                         <label className="text-xs font-bold text-slate-500 uppercase">Setor</label>
-                                        <select
-                                            name="setor"
+                                        <Select
                                             value={editCollaboratorForm.setor}
-                                            onChange={handleEditCollaboratorChange}
-                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none bg-white text-slate-600"
-                                        >
-                                            <option value="" disabled>Selecione</option>
-                                            {formData.setores.map((s, i) => <option key={i} value={s}>{s}</option>)}
-                                        </select>
+                                            onChange={(val) => setEditCollaboratorForm(prev => ({ ...prev, setor: val, cargo: '' }))}
+                                            options={formData.setores.map(s => ({ label: s, value: s }))}
+                                            placeholder="Selecione"
+                                        />
                                     </div>
                                     <div className="col-span-12 md:col-span-4 space-y-1.5">
                                         <label className="text-xs font-bold text-slate-500 uppercase">Cargo</label>
-                                        <select
-                                            name="cargo"
+                                        <Select
                                             value={editCollaboratorForm.cargo}
-                                            onChange={handleEditCollaboratorChange}
-                                            disabled={!editCollaboratorForm.setor}
-                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none bg-white text-slate-600 disabled:bg-slate-100"
-                                        >
-                                            <option value="" disabled>Selecione</option>
-                                            {formData.cargos
+                                            onChange={(val) => setEditCollaboratorForm(prev => ({ ...prev, cargo: val }))}
+                                            options={formData.cargos
                                                 .filter(c => normalizeText(c.setor) === normalizeText(editCollaboratorForm.setor))
-                                                .map((c, i) => <option key={i} value={c.nome}>{c.nome}</option>)}
-                                        </select>
+                                                .map(c => ({ label: c.nome, value: c.nome }))}
+                                            placeholder="Selecione"
+                                            disabled={!editCollaboratorForm.setor}
+                                        />
                                     </div>
                                 </div>
                             </div>
