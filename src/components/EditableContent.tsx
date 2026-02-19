@@ -11,6 +11,7 @@ interface EditableContentProps {
     tagName?: keyof React.JSX.IntrinsicElements; // 'h1', 'p', 'span', 'div'
     isEditing: boolean;
     alt?: string; // Para imagens
+    onSave?: (value: string) => void;
 }
 
 export const EditableContent: React.FC<EditableContentProps> = ({
@@ -21,7 +22,8 @@ export const EditableContent: React.FC<EditableContentProps> = ({
     className = '',
     tagName = 'div',
     isEditing,
-    alt = ''
+    alt = '',
+    onSave
 }) => {
     const [content, setContent] = useState(defaultContent);
     const [tempValue, setTempValue] = useState(defaultContent); // Valor enquanto edita
@@ -87,6 +89,7 @@ export const EditableContent: React.FC<EditableContentProps> = ({
             if (error) throw error;
 
             setContent(valueToSave);
+            if (onSave) onSave(valueToSave);
             console.log(`[${section}:${contentKey}] Salvo instantaneamente!`);
         } catch (err) {
             console.error('Erro ao salvar conteúdo:', err);

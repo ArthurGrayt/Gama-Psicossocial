@@ -1,16 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PaymentModal } from '../components/modals/PaymentModal';
-import { PlansModal } from '../components/modals/PlansModal';
 import { EditableContent } from '../components/EditableContent';
+import { supabase } from '../services/supabase';
 import logo from '../assets/logo.png';
 
 export const LandingPage: React.FC = () => {
     const navigate = useNavigate();
 
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-    const [isPlansModalOpen, setIsPlansModalOpen] = useState(false);
     const [selectedPackage, setSelectedPackage] = useState<{ id: string, name: string, tokens: number, price: string } | null>(null);
+    const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
+    const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+    const [youtubeVideoId, setYoutubeVideoId] = useState('dQw4w9WgXcQ'); // Exemplo padrão
 
     // Estado para MODO DE EDIÇÃO
     const [editMode, setEditMode] = useState(false);
@@ -25,6 +27,23 @@ export const LandingPage: React.FC = () => {
         setIsPaymentModalOpen(true);
     };
 
+    // Carregar ID do vídeo inicial
+    useEffect(() => {
+        const fetchVideoId = async () => {
+            const { data } = await supabase
+                .from('site_content')
+                .select('content')
+                .eq('section', 'hero')
+                .eq('key', 'video_id')
+                .maybeSingle();
+
+            if (data?.content) {
+                setYoutubeVideoId(data.content);
+            }
+        };
+        fetchVideoId();
+    }, []);
+
     // Lógica do Gatilho Secreto (3 cliques)
     const handleSecretTrigger = () => {
         const newCount = clickCount + 1;
@@ -36,23 +55,31 @@ export const LandingPage: React.FC = () => {
             alert(!editMode ? 'Modo de Edição ATIVADO! Clique nos textos para editar.' : 'Modo de Edição DESATIVADO.');
         }
 
-        // Reset automático se demorar muito entre cliques (opcional, mas boa prática)
-        setTimeout(() => setClickCount(0), 5000);
+        // Reset automático do contador de cliques secretos após 2 segundos
+        const timer = setTimeout(() => setClickCount(0), 2000);
+        return () => clearTimeout(timer);
+    };
+
+    const handleVideoOpen = () => {
+        setIsVideoModalOpen(true);
     };
 
     return (
-        <div className={`bg-background-light text-slate-800 font-sans antialiased transition-colors duration-300 ${editMode ? 'border-4 border-yellow-400' : ''}`}>
+        <div className={`bg-background-light text-slate-800 font-sans antialiased transition-colors duration-300 overflow-x-hidden ${editMode ? 'border-4 border-yellow-400' : ''}`}>
             {editMode && (
-                <div className="fixed top-20 right-4 z-50 bg-yellow-400 text-black px-4 py-2 rounded-lg shadow-lg font-bold animate-pulse pointer-events-none">
+                <div className="fixed top-24 right-4 z-50 bg-yellow-400 text-black px-4 py-2 rounded-lg shadow-lg font-bold animate-pulse pointer-events-none">
                     MODO EDIÇÃO ATIVO
                 </div>
             )}
 
             <nav className="fixed top-0 w-full z-50 bg-white/90 backdrop-blur-md border-b border-slate-100">
-                <div className="container mx-auto px-6 py-4 flex justify-between items-center">
-                    <div className="flex items-center gap-3">
-                        <img src={logo} alt="Gama Logo" className="w-10 h-10 object-contain" />
-                        <span className="text-slate-900 font-display font-bold text-2xl tracking-tight">
+                <div className="container mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
+                    <div
+                        className="flex items-center gap-2 sm:gap-3 cursor-pointer select-none active:scale-95 transition-transform"
+                        onClick={handleSecretTrigger}
+                    >
+                        <img src={logo} alt="Gama Logo" className="w-8 h-8 sm:w-10 sm:h-10 object-contain" />
+                        <span className="text-slate-900 font-display font-bold text-xl sm:text-2xl tracking-tight">
                             <EditableContent section="navbar" contentKey="brand_name" defaultContent="Gama Center" isEditing={editMode} tagName="span" />
                         </span>
                     </div>
@@ -68,6 +95,9 @@ export const LandingPage: React.FC = () => {
                         </a>
                         <a className="hover:text-primary transition-colors" href="#pricing">
                             <EditableContent section="navbar" contentKey="link_pricing" defaultContent="Preços" isEditing={editMode} tagName="span" />
+                        </a>
+                        <a className="hover:text-primary transition-colors" href="#faq">
+                            <EditableContent section="navbar" contentKey="link_faq" defaultContent="FAQ" isEditing={editMode} tagName="span" />
                         </a>
                     </div>
                     <button
@@ -93,7 +123,7 @@ export const LandingPage: React.FC = () => {
                                 tagName="span"
                             />
                         </div>
-                        <h1 className="font-display font-extrabold text-5xl lg:text-6xl text-slate-900 leading-[1.15]">
+                        <h1 className="font-display font-extrabold text-3xl sm:text-5xl lg:text-6xl text-slate-900 leading-[1.2] lg:leading-[1.15] break-words">
                             <EditableContent
                                 section="hero"
                                 contentKey="title_prefix"
@@ -127,7 +157,7 @@ export const LandingPage: React.FC = () => {
                             />
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                            <button className="flex items-center justify-center gap-3 bg-primary hover:bg-teal-700 text-white px-8 py-4 rounded-xl font-bold transition-all shadow-xl shadow-primary/30 text-base transform hover:-translate-y-1">
+                            <button className="flex items-center justify-center gap-3 bg-primary hover:bg-teal-700 text-white px-6 sm:px-8 py-3.5 sm:py-4 rounded-xl font-bold transition-all shadow-xl shadow-primary/30 text-base transform hover:-translate-y-1 w-full sm:w-auto">
                                 <EditableContent
                                     section="hero"
                                     contentKey="cta_primary"
@@ -138,8 +168,8 @@ export const LandingPage: React.FC = () => {
                                 <span className="material-symbols-outlined">arrow_forward</span>
                             </button>
                             <button
-                                onClick={handleSecretTrigger}
-                                className="flex items-center justify-center gap-3 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 px-8 py-4 rounded-xl font-medium transition-all shadow-sm hover:shadow-md select-none active:scale-95"
+                                onClick={handleVideoOpen}
+                                className="flex items-center justify-center gap-3 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 px-6 sm:px-8 py-3.5 sm:py-4 rounded-xl font-medium transition-all shadow-sm hover:shadow-md select-none active:scale-95 cursor-pointer w-full sm:w-auto"
                             >
                                 <span className="material-symbols-outlined text-primary">play_circle</span>
                                 <EditableContent
@@ -155,16 +185,31 @@ export const LandingPage: React.FC = () => {
                     {/* ... (Hero Image - Already Editable) ... */}
                     <div className="relative lg:h-[600px] flex items-center justify-center lg:justify-end">
                         <div className="relative z-10 w-full max-w-5xl">
-                            <div className="bg-white p-3 rounded-2xl shadow-2xl border border-slate-100 transform rotate-[-2deg] transition-transform hover:rotate-0 duration-700">
-                                <EditableContent
-                                    section="hero"
-                                    contentKey="hero_image"
-                                    defaultContent="https://lh3.googleusercontent.com/aida-public/AB6AXuAgTjHSNwimhOjpoOisnT7wa7gekhpGOYesZqHH8yIYL10CR4-xa56GHmLMVSgJ41DKGgCMYqkhkcHY9D4Zp3RXuLJf1ZSrKZm3hNNgTexDiwNtprmjaH94y5QO2wRLX0ptYcBxIaP7d1-ndg13xjAuiphQw6DlHQYn3OpvR_4xDAL8AQd1BgGpur-uct7h__9GooiWAoeqdZbhMz5qbEypZUT_iH5XGfWBGufM27VdtAkY2fewaQriLuFRWLtY_mjpvn4BkIkw-Gk"
-                                    isEditing={editMode}
-                                    type="image"
-                                    className="rounded-xl w-full h-auto object-cover"
-                                    alt="Tablet Interface showing psychological profile"
-                                />
+                            {/* Browser Mockup Container */}
+                            <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-[#D1D1D6] overflow-hidden transition-all duration-700">
+                                {/* Browser Header */}
+                                <div className="bg-[#F6F6F6] border-b border-[#D1D1D6] px-4 py-3 flex items-center gap-2">
+                                    <div className="flex gap-1.5">
+                                        <div className="w-3 h-3 rounded-full bg-[#FF5F57]"></div>
+                                        <div className="w-3 h-3 rounded-full bg-[#FFBD2E]"></div>
+                                        <div className="w-3 h-3 rounded-full bg-[#28C840]"></div>
+                                    </div>
+                                    <div className="mx-auto bg-white rounded-md border border-[#EBEBEB] px-3 py-1 text-[10px] text-slate-400 w-48 text-center truncate">
+                                        app.gamapsicossocial.com.br
+                                    </div>
+                                </div>
+                                {/* Browser Content */}
+                                <div className="overflow-hidden bg-slate-50">
+                                    <EditableContent
+                                        section="hero"
+                                        contentKey="hero_image"
+                                        defaultContent="https://lh3.googleusercontent.com/aida-public/AB6AXuAgTjHSNwimhOjpoOisnT7wa7gekhpGOYesZqHH8yIYL10CR4-xa56GHmLMVSgJ41DKGgCMYqkhkcHY9D4Zp3RXuLJf1ZSrKZm3hNNgTexDiwNtprmjaH94y5QO2wRLX0ptYcBxIaP7d1-ndg13xjAuiphQw6DlHQYn3OpvR_4xDAL8AQd1BgGpur-uct7h__9GooiWAoeqdZbhMz5qbEypZUT_iH5XGfWBGufM27VdtAkY2fewaQriLuFRWLtY_mjpvn4BkIkw-Gk"
+                                        isEditing={editMode}
+                                        type="image"
+                                        className="w-full h-auto object-cover transform scale-[1.0] origin-top"
+                                        alt="Tablet Interface showing psychological profile"
+                                    />
+                                </div>
                             </div>
                         </div>
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-primary/5 blur-3xl rounded-full -z-10"></div>
@@ -198,7 +243,7 @@ export const LandingPage: React.FC = () => {
                                 <p className="text-slate-600 leading-relaxed px-4">
                                     <EditableContent section="workflow" contentKey="step_1_description" defaultContent="Os colaboradores completam questionários psicológicos confidenciais e cientificamente embasados em qualquer dispositivo." isEditing={editMode} tagName="span" />
                                 </p>
-                                <div className="mt-6 p-4 bg-slate-50 rounded-xl border border-slate-100 mx-auto max-w-xs transform group-hover:-translate-y-1 transition-transform">
+                                <div className="mt-6 p-3 bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-[#D1D1D6] mx-auto max-w-xs transform group-hover:-translate-y-1 transition-all">
                                     <EditableContent
                                         section="workflow"
                                         contentKey="step_1_image"
@@ -220,7 +265,7 @@ export const LandingPage: React.FC = () => {
                                 <p className="text-slate-600 leading-relaxed px-4">
                                     <EditableContent section="workflow" contentKey="step_2_description" defaultContent="Nossos algoritmos processam os dados instantaneamente, identificando fatores de risco e mantendo o anonimato estrito." isEditing={editMode} tagName="span" />
                                 </p>
-                                <div className="mt-6 p-4 bg-slate-50 rounded-xl border border-slate-100 mx-auto max-w-xs transform group-hover:-translate-y-1 transition-transform">
+                                <div className="mt-6 p-3 bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-[#D1D1D6] mx-auto max-w-xs transform group-hover:-translate-y-1 transition-all">
                                     <EditableContent
                                         section="workflow"
                                         contentKey="step_2_image"
@@ -242,7 +287,7 @@ export const LandingPage: React.FC = () => {
                                 <p className="text-slate-600 leading-relaxed px-4">
                                     <EditableContent section="workflow" contentKey="step_3_description" defaultContent="Receba relatórios abrangentes com recomendações claras para RH e documentação de conformidade legal." isEditing={editMode} tagName="span" />
                                 </p>
-                                <div className="mt-6 p-4 bg-slate-50 rounded-xl border border-slate-100 mx-auto max-w-xs transform group-hover:-translate-y-1 transition-transform">
+                                <div className="mt-6 p-3 bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-[#D1D1D6] mx-auto max-w-xs transform group-hover:-translate-y-1 transition-all">
                                     <EditableContent
                                         section="workflow"
                                         contentKey="step_3_image"
@@ -470,11 +515,6 @@ export const LandingPage: React.FC = () => {
                 </div>
             </section>
 
-            <PlansModal
-                isOpen={isPlansModalOpen}
-                onClose={() => setIsPlansModalOpen(false)}
-                onPlanSelect={handlePlanSelect}
-            />
 
             <section className="py-24 bg-white relative" id="pricing">
                 <div className="container mx-auto px-6">
@@ -507,21 +547,195 @@ export const LandingPage: React.FC = () => {
                             />
                         </p>
                     </div>
-                    <div className="flex justify-center">
-                        <button
-                            onClick={() => setIsPlansModalOpen(true)}
-                            className="bg-primary hover:bg-teal-700 text-white px-12 py-4 rounded-xl font-bold transition-all shadow-xl shadow-primary/30 text-lg transform hover:-translate-y-1"
-                        >
-                            <EditableContent
-                                section="pricing"
-                                contentKey="cta_button"
-                                defaultContent="Ver Planos e Preços"
-                                isEditing={editMode}
-                                tagName="span"
-                            />
-                        </button>
+                    <div className="grid lg:grid-cols-3 gap-8 items-stretch mt-12">
+                        {/* Pacote Mensal */}
+                        <div className="relative flex flex-col rounded-2xl border border-slate-100 bg-white p-7 transition-all hover:shadow-lg group hover:border-primary">
+                            <div className="flex flex-col gap-1 mb-8">
+                                <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">
+                                    <EditableContent section="pricing" contentKey="plan_1_name" defaultContent="Pacote Mensal" isEditing={editMode} tagName="span" />
+                                </h3>
+                                <div className="flex flex-col">
+                                    <p className="flex items-baseline gap-1 text-slate-800 mt-1">
+                                        <span className="text-slate-400 text-sm font-medium">R$</span>
+                                        <span className="text-4xl font-extrabold tracking-tight">
+                                            <EditableContent section="pricing" contentKey="plan_1_price" defaultContent="3.000,00" isEditing={editMode} tagName="span" />
+                                        </span>
+                                    </p>
+                                    <span className="text-xs text-primary font-bold mt-2 px-2 py-0.5 bg-primary/5 rounded-md border border-primary/10 w-fit">
+                                        R$ <EditableContent section="pricing" contentKey="plan_1_per_eval" defaultContent="10,00" isEditing={editMode} tagName="span" />/aval
+                                    </span>
+                                </div>
+                                <ul className="text-left space-y-3 mt-6 text-sm text-slate-600">
+                                    <li className="flex gap-2 items-center">
+                                        <span className="material-symbols-outlined text-primary text-lg">check</span>
+                                        <EditableContent section="pricing" contentKey="plan_1_feat_1" defaultContent="300 avaliações" isEditing={editMode} tagName="span" />
+                                    </li>
+                                    <li className="flex gap-2 items-center">
+                                        <span className="material-symbols-outlined text-primary text-lg">check</span>
+                                        <EditableContent section="pricing" contentKey="plan_1_feat_2" defaultContent="Relatório de Conformidade Básico" isEditing={editMode} tagName="span" />
+                                    </li>
+                                </ul>
+                            </div>
+                            <button
+                                onClick={() => handlePlanSelect({ id: 'mensal', name: 'Pacote Mensal', tokens: 300, price: '3000.00' })}
+                                className="mt-auto w-full cursor-pointer flex items-center justify-center rounded-xl h-12 px-6 font-bold transition-all bg-slate-50 hover:bg-primary text-slate-600 hover:text-white border border-slate-100 hover:border-primary"
+                            >
+                                Selecionar Plano
+                            </button>
+                        </div>
+
+                        {/* Plano Anual - Featured */}
+                        <div className="relative flex flex-col rounded-2xl border-2 border-primary bg-white p-7 transition-all shadow-md scale-105 z-10">
+                            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-white text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-widest shadow-sm">
+                                Melhor Valor
+                            </div>
+                            <div className="flex flex-col gap-1 mb-8">
+                                <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+                                    <EditableContent section="pricing" contentKey="plan_2_name" defaultContent="Plano Anual" isEditing={editMode} tagName="span" />
+                                    <span className="material-symbols-outlined text-primary text-sm">verified</span>
+                                </h3>
+                                <div className="flex flex-col">
+                                    <p className="flex items-baseline gap-1 text-slate-800 mt-1">
+                                        <span className="text-slate-400 text-sm font-medium">R$</span>
+                                        <span className="text-5xl font-extrabold tracking-tight text-primary">
+                                            <EditableContent section="pricing" contentKey="plan_2_price" defaultContent="6.000,00" isEditing={editMode} tagName="span" />
+                                        </span>
+                                    </p>
+                                    <span className="text-xs text-primary font-bold mt-2 px-2 py-0.5 bg-primary/5 rounded-md border border-primary/10 w-fit">
+                                        R$ <EditableContent section="pricing" contentKey="plan_2_per_eval" defaultContent="5,00" isEditing={editMode} tagName="span" />/aval
+                                    </span>
+                                </div>
+                                <p className="text-primary text-xs font-bold mt-4 bg-primary/5 p-2 rounded-lg border border-primary/10">
+                                    <EditableContent section="pricing" contentKey="plan_2_discount" defaultContent="Economize 50% com faturamento anual" isEditing={editMode} tagName="span" />
+                                </p>
+                                <ul className="text-left space-y-3 mt-6 text-sm text-slate-600">
+                                    <li className="flex gap-2 items-center">
+                                        <span className="material-symbols-outlined text-primary text-lg">check</span>
+                                        <EditableContent section="pricing" contentKey="plan_2_feat_1" defaultContent="Até 1.200 avaliações" isEditing={editMode} tagName="span" />
+                                    </li>
+                                    <li className="flex gap-2 items-center">
+                                        <span className="material-symbols-outlined text-primary text-lg">check</span>
+                                        <EditableContent section="pricing" contentKey="plan_2_feat_2" defaultContent="Suíte Completa de Conformidade" isEditing={editMode} tagName="span" />
+                                    </li>
+                                    <li className="flex gap-2 items-center">
+                                        <span className="material-symbols-outlined text-primary text-lg">check</span>
+                                        <EditableContent section="pricing" contentKey="plan_2_feat_3" defaultContent="Suporte Prioritário" isEditing={editMode} tagName="span" />
+                                    </li>
+                                </ul>
+                            </div>
+                            <button
+                                onClick={() => handlePlanSelect({ id: 'anual', name: 'Plano Anual', tokens: 1200, price: '6000.00' })}
+                                className="mt-auto w-full cursor-pointer flex items-center justify-center rounded-xl h-12 px-6 font-bold transition-all bg-primary hover:bg-teal-700 text-white shadow-md shadow-primary/20"
+                            >
+                                Selecionar Plano
+                            </button>
+                        </div>
+
+                        {/* Pacote Semestral */}
+                        <div className="relative flex flex-col rounded-2xl border border-slate-100 bg-white p-7 transition-all hover:shadow-lg group hover:border-primary">
+                            <div className="flex flex-col gap-1 mb-8">
+                                <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">
+                                    <EditableContent section="pricing" contentKey="plan_3_name" defaultContent="Pacote Semestral" isEditing={editMode} tagName="span" />
+                                </h3>
+                                <div className="flex flex-col">
+                                    <p className="flex items-baseline gap-1 text-slate-800 mt-1">
+                                        <span className="text-slate-400 text-sm font-medium">R$</span>
+                                        <span className="text-4xl font-extrabold tracking-tight">
+                                            <EditableContent section="pricing" contentKey="plan_3_price" defaultContent="3.500,00" isEditing={editMode} tagName="span" />
+                                        </span>
+                                    </p>
+                                    <span className="text-xs text-primary font-bold mt-2 px-2 py-0.5 bg-primary/5 rounded-md border border-primary/10 w-fit">
+                                        R$ <EditableContent section="pricing" contentKey="plan_3_per_eval" defaultContent="7,00" isEditing={editMode} tagName="span" />/aval
+                                    </span>
+                                </div>
+                                <ul className="text-left space-y-3 mt-6 text-sm text-slate-600">
+                                    <li className="flex gap-2 items-center">
+                                        <span className="material-symbols-outlined text-primary text-lg">check</span>
+                                        <EditableContent section="pricing" contentKey="plan_3_feat_1" defaultContent="Até 500 avaliações" isEditing={editMode} tagName="span" />
+                                    </li>
+                                    <li className="flex gap-2 items-center">
+                                        <span className="material-symbols-outlined text-primary text-lg">check</span>
+                                        <EditableContent section="pricing" contentKey="plan_3_feat_2" defaultContent="Relatórios Padrão" isEditing={editMode} tagName="span" />
+                                    </li>
+                                </ul>
+                            </div>
+                            <button
+                                onClick={() => handlePlanSelect({ id: 'semestral', name: 'Pacote Semestral', tokens: 500, price: '3500.00' })}
+                                className="mt-auto w-full cursor-pointer flex items-center justify-center rounded-xl h-12 px-6 font-bold transition-all bg-slate-50 hover:bg-primary text-slate-600 hover:text-white border border-slate-100 hover:border-primary"
+                            >
+                                Selecionar Plano
+                            </button>
+                        </div>
                     </div>
                 </div>
+            </section>
+
+            <section className="py-24 bg-slate-50/50 relative overflow-hidden" id="faq">
+                <div className="container mx-auto px-4 sm:px-6 relative z-10">
+                    <div className="text-center mb-16">
+                        <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-wider mb-4">
+                            <EditableContent section="faq" contentKey="chip" defaultContent="Suporte & Dúvidas" isEditing={editMode} tagName="span" />
+                        </span>
+                        <h2 className="text-3xl lg:text-4xl font-display font-bold text-slate-900 mt-2">
+                            <EditableContent section="faq" contentKey="title" defaultContent="Perguntas Frequentes" isEditing={editMode} tagName="span" />
+                        </h2>
+                        <p className="mt-4 text-slate-500 max-w-2xl mx-auto">
+                            <EditableContent section="faq" contentKey="subtitle" defaultContent="Tudo o que você precisa saber sobre a implementação do Gama Psicossocial em sua operação." isEditing={editMode} tagName="span" />
+                        </p>
+                    </div>
+
+                    <div className="max-w-3xl mx-auto space-y-4">
+                        {[
+                            {
+                                q: "Posso cadastrar múltiplas empresas?",
+                                a: "Sim, cada cliente terá um relatório separado e gestão independente dentro da plataforma."
+                            },
+                            {
+                                q: "O software é seguro?",
+                                a: "Sim, utilizamos criptografia de ponta a ponta e seguimos todas as normas de segurança de dados (LGPD) para garantir a confidencialidade das avaliações."
+                            },
+                            {
+                                q: "Consigo acompanhar se as medidas estão sendo implementadas?",
+                                a: "Sim, nosso dashboard oferece acompanhamento em tempo real do progresso das avaliações e da aplicação das recomendações."
+                            },
+                            {
+                                q: "Posso reavaliar ao longo do tempo?",
+                                a: "Com certeza. O sistema permite avaliações periódicas para que você possa monitorar a evolução do clima psicossocial na sua empresa."
+                            },
+                            {
+                                q: "Posso cancelar quando quiser?",
+                                a: "Sim, não temos fidelidade obrigatória nos planos. Você tem total liberdade para gerir sua assinatura."
+                            }
+                        ].map((item, index) => (
+                            <div
+                                key={index}
+                                className={`group bg-white rounded-2xl border transition-all duration-300 ${openFaqIndex === index ? 'border-primary shadow-lg' : 'border-[#D1D1D6] shadow-sm'
+                                    }`}
+                            >
+                                <button
+                                    onClick={() => setOpenFaqIndex(openFaqIndex === index ? null : index)}
+                                    className="w-full px-4 sm:px-6 py-5 flex items-center justify-between gap-4 text-left cursor-pointer"
+                                >
+                                    <span className={`font-bold transition-colors break-words ${openFaqIndex === index ? 'text-primary' : 'text-slate-700'}`}>
+                                        <EditableContent section="faq" contentKey={`q_${index}`} defaultContent={item.q} isEditing={editMode} tagName="span" />
+                                    </span>
+                                    <span className={`material-symbols-outlined flex-shrink-0 transition-transform duration-300 ${openFaqIndex === index ? 'rotate-180 text-primary' : 'text-slate-400'}`}>
+                                        keyboard_arrow_down
+                                    </span>
+                                </button>
+                                <div
+                                    className={`overflow-hidden transition-all duration-300 ${openFaqIndex === index ? 'max-h-48 opacity-100' : 'max-h-0 opacity-0'
+                                        }`}
+                                >
+                                    <div className="px-4 sm:px-6 pb-6 text-slate-500 text-sm leading-relaxed border-t border-slate-50 pt-4 break-words">
+                                        <EditableContent section="faq" contentKey={`a_${index}`} defaultContent={item.a} isEditing={editMode} tagName="span" />
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-primary/5 blur-3xl rounded-full -z-10"></div>
             </section>
 
             <footer className="bg-white text-slate-500 py-16 border-t border-slate-100">
@@ -537,46 +751,6 @@ export const LandingPage: React.FC = () => {
                             <p className="text-sm text-slate-500 leading-relaxed mb-6">
                                 <EditableContent section="footer" contentKey="description" defaultContent="Preenchendo a lacuna entre os requisitos corporativos e as necessidades humanas. Tornamos a conformidade empática." isEditing={editMode} />
                             </p>
-                            <div className="flex gap-4">
-                                <a className="w-8 h-8 rounded bg-slate-50 flex items-center justify-center hover:bg-primary hover:text-white transition-colors" href="#">
-                                    <span className="material-symbols-outlined text-sm">public</span>
-                                </a>
-                                <a className="w-8 h-8 rounded bg-slate-50 flex items-center justify-center hover:bg-primary hover:text-white transition-colors" href="#">
-                                    <span className="material-symbols-outlined text-sm">mail</span>
-                                </a>
-                            </div>
-                        </div>
-                        <div>
-                            <h4 className="text-slate-900 font-bold mb-6">
-                                <EditableContent section="footer" contentKey="col_1_title" defaultContent="Plataforma" isEditing={editMode} tagName="span" />
-                            </h4>
-                            <ul className="space-y-3 text-sm">
-                                <li><a className="hover:text-primary transition-colors" href="#">
-                                    <EditableContent section="footer" contentKey="link_1" defaultContent="Avaliação Psicossocial" isEditing={editMode} tagName="span" />
-                                </a></li>
-                                <li><a className="hover:text-primary transition-colors" href="#">
-                                    <EditableContent section="footer" contentKey="link_2" defaultContent="Conformidade Legal" isEditing={editMode} tagName="span" />
-                                </a></li>
-                                <li><a className="hover:text-primary transition-colors" href="#">
-                                    <EditableContent section="footer" contentKey="link_3" defaultContent="Planos de Preços" isEditing={editMode} tagName="span" />
-                                </a></li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h4 className="text-slate-900 font-bold mb-6">
-                                <EditableContent section="footer" contentKey="col_2_title" defaultContent="Recursos" isEditing={editMode} tagName="span" />
-                            </h4>
-                            <ul className="space-y-3 text-sm">
-                                <li><a className="hover:text-primary transition-colors" href="#">
-                                    <EditableContent section="footer" contentKey="link_4" defaultContent="Guias de RH" isEditing={editMode} tagName="span" />
-                                </a></li>
-                                <li><a className="hover:text-primary transition-colors" href="#">
-                                    <EditableContent section="footer" contentKey="link_5" defaultContent="Blog de Bem-estar" isEditing={editMode} tagName="span" />
-                                </a></li>
-                                <li><a className="hover:text-primary transition-colors" href="#">
-                                    <EditableContent section="footer" contentKey="link_6" defaultContent="Estudos de Caso" isEditing={editMode} tagName="span" />
-                                </a></li>
-                            </ul>
                         </div>
                         <div>
                             <h4 className="text-slate-900 font-bold mb-6">
@@ -585,14 +759,14 @@ export const LandingPage: React.FC = () => {
                             <ul className="space-y-3 text-sm">
                                 <li className="flex items-center gap-2">
                                     <span className="material-symbols-outlined text-primary text-sm">mail</span>
-                                    <EditableContent section="footer" contentKey="contact_email" defaultContent="support@gamacenter.com" isEditing={editMode} tagName="span" />
+                                    <EditableContent section="footer" contentKey="contact_email" defaultContent="gamacentersst@gmail.com" isEditing={editMode} tagName="span" />
                                 </li>
                                 <li className="flex items-center gap-2">
                                     <span className="material-symbols-outlined text-primary text-sm">call</span>
-                                    <EditableContent section="footer" contentKey="contact_phone" defaultContent="+55 11 99999-9999" isEditing={editMode} tagName="span" />
+                                    <EditableContent section="footer" contentKey="contact_phone" defaultContent="31 97192-0766" isEditing={editMode} tagName="span" />
                                 </li>
                                 <li className="mt-4 text-xs text-slate-400">
-                                    <EditableContent section="footer" contentKey="address" defaultContent="Av. Paulista, 1000 - São Paulo, SP" isEditing={editMode} tagName="span" />
+                                    <EditableContent section="footer" contentKey="address" defaultContent="R. Barão de Pouso Alegre, 90 - São Sebastiao, Conselheiro Lafaiete - MG, 36406-034" isEditing={editMode} tagName="span" />
                                 </li>
                             </ul>
                         </div>
@@ -620,6 +794,60 @@ export const LandingPage: React.FC = () => {
                 onClose={() => setIsPaymentModalOpen(false)}
                 selectedPackage={selectedPackage}
             />
+
+            {/* Modal de Vídeo */}
+            {isVideoModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div
+                        className="absolute inset-0 bg-slate-900/90 backdrop-blur-sm cursor-pointer"
+                        onClick={() => setIsVideoModalOpen(false)}
+                    ></div>
+                    <div className="relative w-full max-w-4xl aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10">
+                        <button
+                            onClick={() => setIsVideoModalOpen(false)}
+                            className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
+                        >
+                            <span className="material-symbols-outlined">close</span>
+                        </button>
+
+                        {editMode ? (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/80 text-white p-8 space-y-4">
+                                <span className="material-symbols-outlined text-6xl text-primary">edit_note</span>
+                                <h3 className="text-xl font-bold">Configurar Vídeo do YouTube</h3>
+                                <p className="text-slate-400 text-center max-w-md">
+                                    Insira apenas o <b>ID do vídeo</b> (ex: dQw4w9WgXcQ) no campo abaixo para alterar o player.
+                                </p>
+                                <div className="bg-white/10 p-3 rounded-lg border border-white/20 w-full max-w-sm text-center">
+                                    <EditableContent
+                                        section="hero"
+                                        contentKey="video_id"
+                                        defaultContent="dQw4w9WgXcQ"
+                                        isEditing={editMode}
+                                        tagName="span"
+                                        className="text-primary font-mono text-lg"
+                                        onSave={(val: string) => setYoutubeVideoId(val)}
+                                    />
+                                </div>
+                                <button
+                                    onClick={() => setIsVideoModalOpen(false)}
+                                    className="mt-4 bg-primary px-6 py-2 rounded-lg font-bold hover:bg-teal-700 transition-colors"
+                                >
+                                    Fechar e Testar
+                                </button>
+                            </div>
+                        ) : (
+                            <iframe
+                                className="w-full h-full"
+                                src={`https://www.youtube.com/embed/${youtubeVideoId}?autoplay=1`}
+                                title="YouTube video player"
+                                frameBorder="0"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                allowFullScreen
+                            ></iframe>
+                        )}
+                    </div>
+                </div>
+            )}
         </div >
     );
 };
