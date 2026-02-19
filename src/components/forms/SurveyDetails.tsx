@@ -752,7 +752,7 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
                                 {/* Unit Dropdown (Only show if we have units) */}
                                 {units.length > 0 && (
                                     <div className="relative group">
-                                        <Building2 className="absolute left-2.5 md:left-3 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-[#35b6cf] transition-colors" size={14} className="md:w-4 md:h-4" />
+                                        <Building2 className="absolute left-2.5 md:left-3 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-[#35b6cf] transition-colors w-3.5 h-3.5 md:w-4 md:h-4" />
                                         <select
                                             value={selectedUnit}
                                             onChange={(e) => {
@@ -766,12 +766,12 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
                                                 <option key={unit.id} value={unit.id}>{unit.nome}</option>
                                             ))}
                                         </select>
-                                        <ChevronDown className="absolute right-2.5 md:right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none group-hover:text-[#35b6cf] transition-colors" size={12} className="md:w-3.5 md:h-3.5" />
+                                        <ChevronDown className="absolute right-2.5 md:right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none group-hover:text-[#35b6cf] transition-colors w-3 h-3 md:w-3.5 md:h-3.5" />
                                     </div>
                                 )}
 
                                 <div className="relative group">
-                                    <Tags className="absolute left-2.5 md:left-3 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-[#35b6cf] transition-colors" size={14} className="md:w-4 md:h-4" />
+                                    <Tags className="absolute left-2.5 md:left-3 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-[#35b6cf] transition-colors w-3.5 h-3.5 md:w-4 md:h-4" />
                                     <select
                                         value={selectedSector}
                                         onChange={(e) => setSelectedSector(e.target.value)}
@@ -782,7 +782,7 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
                                             <option key={sector} value={sector}>{sector}</option>
                                         ))}
                                     </select>
-                                    <ChevronDown className="absolute right-2.5 md:right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none group-hover:text-[#35b6cf] transition-colors" size={12} className="md:w-3.5 md:h-3.5" />
+                                    <ChevronDown className="absolute right-2.5 md:right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none group-hover:text-[#35b6cf] transition-colors w-3 h-3 md:w-3.5 md:h-3.5" />
                                 </div>
                             </div>
                         </div>
