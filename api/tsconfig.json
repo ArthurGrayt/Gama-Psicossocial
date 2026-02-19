@@ -1,13 +1,14 @@
 {
     "extends": "../tsconfig.json",
     "compilerOptions": {
-        "module": "commonjs",
+        "module": "NodeNext",
+        "moduleResolution": "NodeNext",
         "declaration": true,
         "removeComments": true,
         "emitDecoratorMetadata": true,
         "experimentalDecorators": true,
         "allowSyntheticDefaultImports": true,
-        "target": "es2021",
+        "target": "ES2022",
         "sourceMap": true,
         "outDir": "../dist/api",
         "baseUrl": "./",
@@ -17,7 +18,8 @@
         "noImplicitAny": false,
         "strictBindCallApply": false,
         "forceConsistentCasingInFileNames": false,
-        "noFallthroughCasesInSwitch": false
+        "noFallthroughCasesInSwitch": false,
+        "esModuleInterop": true
     },
     "include": [
         "**/*.ts",

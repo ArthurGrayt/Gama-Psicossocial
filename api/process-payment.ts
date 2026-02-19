@@ -17,7 +17,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     try {
-        console.log('[API PROD] Recebendo requisição...');
+        console.log('[API PROD] Recebendo requisição (v2 - ESM Check)...');
 
         // 1. VALIDAÇÃO DE MÉTODO E BODY
         if (req.method !== 'POST') {
