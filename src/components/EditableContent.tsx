@@ -13,6 +13,7 @@ interface EditableContentProps {
     alt?: string; // Para imagens
     loading?: 'lazy' | 'eager'; // Otimização de imagem
     fetchPriority?: 'high' | 'low' | 'auto'; // Prioridade de carregamento
+    initialContent?: string; // Conteúdo carregado externamente (batch fetch)
     onSave?: (value: string) => void;
 }
 
@@ -27,23 +28,33 @@ export const EditableContent: React.FC<EditableContentProps> = ({
     alt = '',
     loading,
     fetchPriority,
+    initialContent,
     onSave
 }) => {
-    const [content, setContent] = useState(defaultContent);
-    const [tempValue, setTempValue] = useState(defaultContent); // Valor enquanto edita
-    const [isInitialLoading, setIsInitialLoading] = useState(true); // Evita flicker do defaultContent
+    // Determina o valor inicial: prioridade para initialContent, fallback para defaultContent
+    const initialValue = initialContent !== undefined ? initialContent : defaultContent;
+
+    const [content, setContent] = useState(initialValue);
+    const [tempValue, setTempValue] = useState(initialValue); // Valor enquanto edita
+    const [isInitialLoading, setIsInitialLoading] = useState(initialContent === undefined); // Se veio initialContent, não precisa de loading interno
     const [isUploading, setIsUploading] = useState(false); // Status de upload de imagem
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Carregar conteúdo do Supabase ao montar
+    // Carregar conteúdo do Supabase ao montar apenas se NÃO veio initialContent
     useEffect(() => {
+        if (initialContent !== undefined) {
+            setContent(initialContent);
+            setTempValue(initialContent);
+            setIsInitialLoading(false);
+            return;
+        }
         fetchContent();
-    }, [section, contentKey]);
+    }, [section, contentKey, initialContent]);
 
     // Lógica de Salvamento Automático (Debounce)
     useEffect(() => {
         // Não salva durante o carregamento inicial ou se for imagem (imagem salva no upload)
-        if (type === 'image' || tempValue === content) return;
+        if (type === 'image' || tempValue === content || isInitialLoading) return;
 
         const timer = setTimeout(() => {
             handleSave();

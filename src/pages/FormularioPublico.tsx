@@ -496,7 +496,7 @@ export const FormularioPublico: React.FC = () => {
 
                                             {/* SELECT (ADAPTIVE LAYOUT) */}
                                             {(q.question_type === 'select' || q.question_type === 'choice') && (
-                                                <div className="flex flex-col sm:flex-row sm:flex-wrap lg:flex-nowrap justify-center gap-2 sm:gap-4 pb-2 sm:pb-0 max-h-[40dvh] overflow-y-auto px-1 custom-scrollbar">
+                                                <div className="flex flex-col sm:flex-row sm:flex-wrap lg:flex-nowrap justify-center gap-2 sm:gap-4 py-4 sm:py-6 pb-2 sm:pb-0 px-1 custom-scrollbar">
                                                     {optionsList.map((opt, oIdx) => {
                                                         const isSelected = currentVal === opt;
                                                         return (
