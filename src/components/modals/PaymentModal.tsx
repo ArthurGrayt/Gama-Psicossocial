@@ -59,9 +59,13 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, sel
             const cleanValue = parseFloat(selectedPackage.price.replace(/\./g, '').replace(',', '.'));
 
             // 2. Montagem do Payload
+            const today = new Date();
+            const dueDate = today.toISOString().split('T')[0];
+
             const body = {
                 value: cleanValue,
                 billingType: paymentMethod === 'pix' ? 'PIX' : 'CREDIT_CARD',
+                dueDate: dueDate,
                 // ADICIONADO: O Webhook precisa disso para saber quantos tokens dar!
                 description: selectedPackage.name,
                 customer: {
@@ -76,6 +80,8 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, sel
                 } : null
             };
 
+            console.log('[PaymentModal] Payload sendo enviado:', body); // LOG DEBUG
+
             // 3. Envio para o Backend
             const response = await fetch('/api/process-payment', {
                 method: 'POST',
@@ -87,7 +93,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, sel
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.details || data.error || 'Erro ao processar pagamento');
+                console.error('[PaymentModal] Erro API:', data);
+                // Tenta extrair mensagem de erro do formato Asaas (lista de erros)
+                const asaasError = data.errors ? data.errors[0]?.description : null;
+                throw new Error(asaasError || data.error || data.details || 'Erro ao processar pagamento');
             }
 
             // 4. Sucesso! Redirecionamento
@@ -105,6 +114,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, sel
 
         } catch (error: any) {
             console.error('Payment Error:', error);
+            // Mostra o erro real para o usuário
             alert(`Erro: ${error.message}`);
         } finally {
             setIsLoading(false);
