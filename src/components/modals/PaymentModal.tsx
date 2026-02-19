@@ -100,6 +100,32 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, sel
             }
 
             // 4. Sucesso! Redirecionamento
+            // 4. Sucesso!
+            console.log('[PaymentModal] Pagamento processado. Iniciando simulação de Webhook Local...');
+
+            // SIMULAÇÃO LOCAL: Chama o webhook manualmente para garantir criação de usuário e email
+            // Isso só acontece no localhost porque o Asaas não consegue chamar 'localhost'
+            if (window.location.hostname === 'localhost') {
+                try {
+                    await fetch('/api/webhook-simulation', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            event: 'PAYMENT_RECEIVED',
+                            payment: {
+                                ...data,
+                                description: selectedPackage.name,
+                                value: cleanValue, // Garante que o valor vem correto
+                                customer: data.customer // ID do customer retornado pelo Asaas
+                            }
+                        })
+                    });
+                    console.log('[PaymentModal] Webhook simulado com sucesso.');
+                } catch (webhookError) {
+                    console.error('[PaymentModal] Erro ao simular webhook:', webhookError);
+                }
+            }
+
             if (data.invoiceUrl) {
                 // Abre em nova aba para não fechar seu app
                 window.open(data.invoiceUrl, '_blank');
