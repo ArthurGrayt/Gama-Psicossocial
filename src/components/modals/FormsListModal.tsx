@@ -218,10 +218,21 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
     if (!isOpen) return null;
 
     return createPortal(
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-            <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
+        // Wrapper Principal
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-2 md:p-4">
+
+            {/* Backdrop Separado */}
+            <div
+                className="absolute inset-0 bg-slate-900/60 backdrop-blur-md transition-opacity"
+                onClick={onClose}
+            />
+
+            {/* Container do Modal */}
+            <div
+                className="relative bg-white rounded-2xl w-full md:max-w-4xl max-h-[90dvh] md:max-h-[90vh] flex flex-col shadow-2xl overflow-hidden isolation-isolate animate-in fade-in zoom-in-95 duration-200"
+            >
                 {/* Header */}
-                <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between">
+                <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between relative z-10 rounded-t-2xl bg-white">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-xl bg-[#35b6cf]/10 text-[#35b6cf] flex items-center justify-center">
                             <FileText size={24} />
@@ -246,7 +257,7 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-y-auto p-8 pb-32 custom-scrollbar relative">
+                <div className="flex-1 overflow-y-auto p-8 pb-8 custom-scrollbar relative">
                     {loading ? (
                         <div className="flex flex-col items-center justify-center py-12 text-slate-400">
                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#35b6cf] mb-4"></div>
@@ -284,11 +295,11 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
                             {forms.map((form) => (
                                 <div
                                     key={form.id}
-                                    className={`bg-white border border-slate-100 rounded-2xl p-4 md:p-5 hover:border-[#35b6cf]/30 hover:shadow-lg hover:shadow-slate-200/50 transition-all flex flex-col md:flex-row md:items-center gap-4 md:gap-6 group relative ${openDropdownId === form.id ? 'z-40' : 'z-10'}`}
+                                    className={`bg-white border border-slate-100 rounded-2xl p-3 md:p-5 hover:border-[#35b6cf]/30 hover:shadow-lg hover:shadow-slate-200/50 transition-all flex flex-col md:flex-row md:items-center gap-2 md:gap-6 group relative ${openDropdownId === form.id ? 'z-40' : 'z-10'}`}
                                 >
                                     {/* Icone */}
-                                    <div className="p-3 bg-slate-50 rounded-xl text-[#35b6cf] shrink-0 group-hover:bg-[#35b6cf]/10 transition-colors w-12 h-12 flex items-center justify-center">
-                                        <FileText size={24} />
+                                    <div className="p-2 md:p-3 bg-slate-50 rounded-xl text-[#35b6cf] shrink-0 group-hover:bg-[#35b6cf]/10 transition-colors w-10 h-10 md:w-12 md:h-12 flex items-center justify-center">
+                                        <FileText size={20} className="md:w-6 md:h-6" />
                                     </div>
 
                                     {/* Info Principal */}
@@ -312,7 +323,7 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
                                         ) : (
                                             <h3 className="font-bold text-slate-800 text-lg group-hover:text-[#35b6cf] transition-colors truncate mb-0.5">{form.title}</h3>
                                         )}
-                                        <p className="text-xs text-slate-500 line-clamp-1 mb-2">{form.description || 'Sem descrição disponível para este formulário.'}</p>
+                                        <p className="text-xs text-slate-500 line-clamp-1 mb-1 md:mb-2">{form.description || 'Sem descrição disponível para este formulário.'}</p>
 
                                         <div className="flex items-center gap-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                                             <div className="flex items-center gap-1.5">
@@ -327,7 +338,7 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
                                     </div>
 
                                     {/* Ações */}
-                                    <div className="flex items-center gap-3 pt-4 md:pt-0 md:border-l border-slate-100 md:pl-6 shrink-0">
+                                    <div className="flex items-center gap-3 pt-2 md:pt-0 md:border-l border-slate-100 md:pl-6 shrink-0">
                                         {form.link && (
                                             <div className="flex items-center gap-1">
                                                 <button
@@ -420,19 +431,6 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
                             ))}
                         </div>
                     )}
-                </div>
-
-                {/* Footer */}
-                <div className="px-8 py-4 border-t border-slate-100 bg-slate-50 flex justify-between items-center rounded-b-2xl">
-                    <span className="text-xs text-slate-400">
-                        Total: <strong>{forms.length}</strong> formulários
-                    </span>
-                    <button
-                        onClick={onClose}
-                        className="px-6 py-2 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-colors"
-                    >
-                        Fechar
-                    </button>
                 </div>
             </div>
             {reportData && (

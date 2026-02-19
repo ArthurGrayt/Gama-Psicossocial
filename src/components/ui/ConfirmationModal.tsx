@@ -45,14 +45,18 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
     const style = typeStyles[type];
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+        // Alterado: Backdrop bg-slate-900/60 backdrop-blur-md
+        <div className="fixed inset-0 z-[9999] flex items-end md:items-center justify-center p-0 md:p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-200">
             <div
-                className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200"
+                // Alterado: rounded-t-[2rem], overflow-hidden. Mantendo height auto para confirmação mas com max-h-[94dvh] se necessário.
+                className="relative bg-white rounded-t-[2rem] md:rounded-2xl w-full md:max-w-md overflow-hidden isolation-isolate shadow-2xl animate-in slide-in-from-bottom-4 md:zoom-in-95 duration-200"
                 onClick={(e) => e.stopPropagation()}
+                style={{ paddingBottom: 'env(safe-area-inset-bottom)', maxHeight: '94dvh' }}
             >
                 {/* Header/Icon Area */}
-                <div className="relative h-24 flex items-center justify-center border-b border-slate-50">
-                    <div className={`w-16 h-16 ${style.bg} rounded-2xl flex items-center justify-center animate-bounce-subtle`}>
+                {/* Alterado: Removida altura fixa h-24 para auto padding, garantindo que não corte */}
+                <div className="p-6 md:p-8 flex flex-col items-center text-center relative z-10 rounded-t-[2rem] md:rounded-t-2xl bg-white">
+                    <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${style.bg}`}>
                         {style.icon}
                     </div>
                     <button

@@ -84,10 +84,22 @@ export const HSEReportModal: React.FC<HSEReportModalProps> = ({ isOpen, onClose,
     };
 
     return (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 print:p-0">
-            <div className="bg-white w-full max-w-5xl rounded-xl shadow-2xl flex flex-col max-h-[90vh]">
+        // Wrapper Principal
+        <div className="fixed inset-0 z-[9999] flex items-end md:items-center justify-center p-0 md:p-4 print:p-0">
+
+            {/* Backdrop Separado */}
+            <div
+                className="absolute inset-0 bg-slate-900/60 backdrop-blur-md transition-opacity print:hidden"
+                onClick={onClose}
+            />
+
+            {/* Container do Modal */}
+            <div
+                className="relative bg-white rounded-t-[2rem] md:rounded-xl w-full max-w-5xl h-[94dvh] md:h-auto md:max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 md:zoom-in-95 duration-300"
+                style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+            >
                 {/* Toolbar */}
-                <div className="p-4 border-b flex justify-between items-center bg-slate-50 rounded-t-xl print:hidden">
+                <div className="p-4 border-b flex justify-between items-center bg-white rounded-t-xl print:hidden">
                     <h2 className="font-bold text-slate-700 flex items-center gap-2"><FileText size={20} className="text-[#35b6cf]" /> Pré-visualização do Laudo</h2>
                     <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full text-slate-500"><X size={20} /></button>
                 </div>

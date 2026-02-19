@@ -153,14 +153,21 @@ export const ImportCollaboratorsModal: React.FC<ImportCollaboratorsModalProps> =
     };
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+        // Alterado: Z-index 9999, items-end para bottom sheet no mobile, p-0 no mobile
+        <div className="fixed inset-0 z-[9999] flex items-end md:items-center justify-center p-0 md:p-4">
             <div
-                className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+                // Alterado: Backdrop mais escuro (60%) e blur-md
+                className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
                 onClick={onClose}
             />
-            <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Container do Modal - Strict Mobile Pattern */}
+            <div
+                className="relative bg-white rounded-t-[2rem] md:rounded-2xl w-full h-[94dvh] md:h-auto md:max-w-xl md:max-h-[90vh] flex flex-col shadow-2xl overflow-hidden isolation-isolate animate-in slide-in-from-bottom-4 md:zoom-in-95 duration-200"
+                style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+            >
 
-                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                {/* Header com padding generoso px-6 py-5 e bg-white */}
+                <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-white relative">
                     <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                         <FileSpreadsheet size={20} className="text-emerald-500" />
                         Importar Colaboradores
