@@ -19,9 +19,20 @@ export const PlanSelectionModal: React.FC<PlanSelectionModalProps> = ({ isOpen, 
     const customTotal = (customTokens * PRICE_PER_TOKEN_CUSTOM).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm transition-opacity duration-300">
+        // Wrapper Principal
+        <div className="fixed inset-0 z-[9999] flex items-end md:items-center justify-center p-0 md:p-4">
+
+            {/* Backdrop Separado */}
+            <div
+                className="absolute inset-0 bg-slate-900/60 backdrop-blur-md transition-opacity"
+                onClick={onClose}
+            />
+
             {/* Modal Container */}
-            <div className="relative w-full max-w-[960px] bg-white rounded-[2rem] shadow-xl flex flex-col max-h-[90vh] overflow-y-auto border border-slate-100 animate-in fade-in zoom-in-95 duration-300">
+            <div
+                className="relative bg-white rounded-t-[2rem] md:rounded-[2rem] w-full max-w-[960px] h-[94dvh] md:h-auto md:max-h-[90vh] flex flex-col shadow-2xl overflow-hidden isolation-isolate animate-in slide-in-from-bottom-4 md:zoom-in-95 duration-300 border border-slate-100"
+                style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+            >
                 {/* Close Button */}
                 <button
                     onClick={onClose}

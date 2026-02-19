@@ -955,14 +955,14 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
-            {/* Header / Actions */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
-                <div>
+            {/* Header / Actions - Styled to match Grid Alignment */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 mb-2">
+                <div className="flex items-center">
                     <h2 className="text-xl md:text-2xl font-bold text-slate-800 tracking-tight">Empresas Monitoradas</h2>
                 </div>
 
-                <div className="flex flex-col gap-3 w-full">
-                    <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-slate-200 shadow-sm w-full h-11">
+                <div className="sm:col-span-1 xl:col-span-2 flex flex-col md:flex-row items-center gap-3 w-full">
+                    <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-slate-200 shadow-sm w-full h-11 flex-1">
                         <div className="relative flex-1">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                             <input
@@ -1174,7 +1174,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                     <div className="flex items-center gap-2 w-full md:w-auto">
                         <button
                             onClick={() => setInfoModalCompany({ isNew: true })}
-                            className="flex items-center justify-center gap-2 px-4 md:px-6 bg-[#35b6cf] text-white rounded-xl font-bold hover:bg-[#2ca3bc] transition-all shadow-lg shadow-[#35b6cf]/20 shrink-0 flex-1 md:flex-none md:w-48 h-11 text-sm"
+                            className="flex items-center justify-center gap-2 px-4 md:px-6 bg-[#35b6cf] text-white rounded-xl font-bold hover:bg-[#2ca3bc] transition-all shadow-lg shadow-[#35b6cf]/20 shrink-0 flex-1 md:flex-none md:w-40 h-11 text-sm whitespace-nowrap"
                         >
                             <Plus size={18} />
                             <span>Empresa</span>
@@ -1185,7 +1185,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                 setManagingCompany(null); // Global mode
                                 setShowCollaboratorManager(true);
                             }}
-                            className="flex items-center justify-center gap-2 px-4 md:px-6 bg-white text-[#35b6cf] border border-[#35b6cf] rounded-xl font-bold hover:bg-[#35b6cf]/5 transition-all shadow-sm shrink-0 flex-1 md:flex-none md:w-48 h-11 text-sm"
+                            className="flex items-center justify-center gap-2 px-4 md:px-6 bg-white text-[#35b6cf] border border-[#35b6cf] rounded-xl font-bold hover:bg-[#35b6cf]/5 transition-all shadow-sm shrink-0 flex-1 md:flex-none md:w-40 h-11 text-sm whitespace-nowrap"
                         >
                             <Plus size={18} />
                             <span>Colaborador</span>

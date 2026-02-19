@@ -66,10 +66,19 @@ export const FirstAccessModal: React.FC<FirstAccessModalProps> = ({ isOpen }) =>
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-300 border border-slate-200">
-                <div className="bg-[#139690] p-8 text-center text-white relative">
-                    <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none overflow-hidden">
+        // Wrapper Principal
+        <div className="fixed inset-0 z-[9999] flex items-end md:items-center justify-center p-0 md:p-4">
+
+            {/* Backdrop Separado */}
+            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md transition-opacity" />
+
+            {/* Container do Modal */}
+            <div
+                className="relative bg-white rounded-t-[2rem] md:rounded-2xl w-full md:max-w-md overflow-hidden isolation-isolate shadow-2xl animate-in slide-in-from-bottom-4 md:zoom-in-95 duration-200 border border-slate-200"
+                style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+            >
+                <div className="bg-[#139690] p-8 text-center text-white relative z-10 rounded-t-[2rem] md:rounded-t-2xl">
+                    <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none overflow-hidden rounded-t-[2rem] md:rounded-t-2xl">
                         <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full bg-white blur-3xl" />
                         <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] rounded-full bg-white blur-3xl" />
                     </div>

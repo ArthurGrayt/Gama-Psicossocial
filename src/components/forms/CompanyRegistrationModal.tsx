@@ -113,6 +113,20 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
     // Cria a memória principal que guarda todas as informações que o usuário digita no formulário
     const [formData, setFormData] = useState(initialEmptyState);
 
+    // Estado para controlar a navegação mobile (Menu vs Conteúdo)
+    const [mobileShowContent, setMobileShowContent] = useState(false);
+
+    // Função para entrar em uma seção no mobile
+    const enterMobileSection = (sectionId: Section) => {
+        setActiveSection(sectionId);
+        setMobileShowContent(true);
+    };
+
+    // Função para voltar ao menu principal no mobile
+    const backToMobileMenu = () => {
+        setMobileShowContent(false);
+    };
+
     useEffect(() => {
         if (isOpen) {
             if (initialData) {
@@ -847,87 +861,80 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
         // Fundo escurecido atrás da janela (Modal)
         <div className="fixed inset-0 z-[9999] flex items-end md:items-center justify-center md:p-4 lg:p-6">
             <div
-                className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
+                className="absolute inset-0 bg-slate-900/60 backdrop-blur-md transition-opacity"
                 onClick={onClose}
             />
 
             {/* Janela Principal do Modal */}
-            <div className="relative w-full h-[calc(100dvh-70px)] md:h-[96vh] md:max-w-[90rem] bg-white md:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col md:flex-row animate-in fade-in slide-in-from-bottom-4 md:zoom-in-95 duration-300">
+            {/* Alterado: Altura 'h-[94dvh]', arredondamento 'rounded-t-[2rem]' e 'overflow-hidden' */}
+            <div className="relative w-full h-[94dvh] md:h-[96vh] md:max-w-[90rem] bg-white rounded-t-[2rem] md:rounded-[2.5rem] shadow-2xl overflow-hidden isolation-isolate flex flex-col md:flex-row animate-in fade-in slide-in-from-bottom-4 md:zoom-in-95 duration-300">
 
-                {/* --- Mobile Header + Tab Bar (visible < md) --- */}
-                <div className="md:hidden bg-slate-50 border-b border-slate-200 shrink-0">
-                    {/* Mobile Company Header */}
-                    <div className="flex items-center gap-3 px-4 pt-4 pb-3">
-                        <div
-                            onClick={handleUploadClick}
-                            className={`w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-300 overflow-hidden relative shrink-0 ${isUploading ? 'opacity-50' : ''}`}
-                        >
-                            <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
-                            {isUploading ? (
-                                <Loader2 size={16} className="text-[#35b6cf] animate-spin" />
-                            ) : formData.img_url ? (
-                                <img src={formData.img_url} alt="Logo" className="w-full h-full object-cover" />
-                            ) : formData.nomeFantasia ? (
-                                <span className="text-sm font-bold text-slate-400">{formData.nomeFantasia.substring(0, 2).toUpperCase()}</span>
-                            ) : (
-                                <Building size={18} />
-                            )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <h2 className="text-sm font-bold text-slate-800 truncate">{formData.nomeFantasia || 'Nova Empresa'}</h2>
-                            <p className="text-xs text-slate-500 truncate">{formData.cnpj || 'CNPJ não informado'}</p>
-                        </div>
-                        <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors shrink-0">
-                            <X size={20} />
-                        </button>
+                {/* --- Mobile Header + Navigation (Layout Refatorado) --- */}
+                {/* Removido 'border-b border-slate-200' para eliminar o risco cinza abaixo do nome da empresa */}
+                {/* Alterado: bg-slate-50 para bg-white para garantir que o arredondamento mostre fundo branco. Double Rounding aplicado. */}
+                <div className="md:hidden bg-white shrink-0 transition-all duration-300 relative z-10 rounded-t-[2rem]">
+
+                    {/* Header Principal - Muda dependendo se está no Menu ou no Conteúdo */}
+                    {/* Padding ajustado para px-6 py-5 */}
+                    <div className="flex items-center gap-3 px-6 py-5 bg-white">
+                        {mobileShowContent ? (
+                            // Header do Conteúdo (Com botão de voltar)
+                            <>
+                                <button
+                                    onClick={backToMobileMenu}
+                                    // Alterado: Removido margin negativo (-ml-2) para evitar corte no header
+                                    className="p-2 text-slate-500 hover:text-slate-800 rounded-full hover:bg-slate-200 transition-colors"
+                                >
+                                    <ChevronRight className="rotate-180" size={24} />
+                                </button>
+                                <h2 className="text-lg font-bold text-slate-800 truncate">
+                                    {activeSection === 'dados' && 'Dados Gerais'}
+                                    {activeSection === 'unidades' && 'Unidades'}
+                                    {activeSection === 'setores' && 'Setores'}
+                                    {activeSection === 'cargos' && 'Cargos'}
+                                    {activeSection === 'colaboradores' && 'Colaboradores'}
+                                </h2>
+                            </>
+                        ) : (
+                            // Header do Menu (Logo e Nome da Empresa)
+                            <>
+                                <div
+                                    onClick={handleUploadClick}
+                                    className={`w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-300 overflow-hidden relative shrink-0 ${isUploading ? 'opacity-50' : ''}`}
+                                >
+                                    <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
+                                    {isUploading ? (
+                                        <Loader2 size={16} className="text-[#35b6cf] animate-spin" />
+                                    ) : formData.img_url ? (
+                                        <img src={formData.img_url} alt="Logo" className="w-full h-full object-cover" />
+                                    ) : formData.nomeFantasia ? (
+                                        <span className="text-sm font-bold text-slate-400">{formData.nomeFantasia.substring(0, 2).toUpperCase()}</span>
+                                    ) : (
+                                        <Building size={18} />
+                                    )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <h2 className="text-sm font-bold text-slate-800 truncate px-1">{formData.nomeFantasia || 'Nova Empresa'}</h2>
+                                    <p className="text-xs text-slate-500 truncate px-1">{formData.cnpj || 'CNPJ não informado'}</p>
+                                </div>
+                                <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors shrink-0">
+                                    <X size={20} />
+                                </button>
+                            </>
+                        )}
                     </div>
 
-                    {/* Mobile Unit Selector */}
-                    {formData.units.length > 1 && ['setores', 'cargos', 'colaboradores'].includes(activeSection) && (
-                        <div className="px-4 pb-2">
-                            <select
-                                value={String(formData.selectedUnitId || '')}
-                                onChange={handleUnitChange}
-                                className="w-full appearance-none bg-white border border-slate-200 text-slate-700 font-bold py-2 pl-3 pr-8 rounded-xl text-sm outline-none focus:border-[#35b6cf] transition-all"
-                            >
-                                {formData.units.map((unit: any) => (
-                                    <option key={unit.id} value={unit.id}>{unit.name}</option>
-                                ))}
-                            </select>
+                    {/* Barra de Progresso / Indicador (Opcional, mas ajuda na UX) */}
+                    {mobileShowContent && (
+                        <div className="w-full h-1 bg-slate-100">
+                            <div className="h-full bg-[#35b6cf] transition-all duration-300" style={{
+                                width: activeSection === 'dados' ? '20%' :
+                                    activeSection === 'unidades' ? '40%' :
+                                        activeSection === 'setores' ? '60%' :
+                                            activeSection === 'cargos' ? '80%' : '100%'
+                            }} />
                         </div>
                     )}
-
-                    {/* Horizontal Scrollable Tab Bar */}
-                    <div className="flex overflow-x-auto gap-1 px-3 pb-2 scrollbar-hide">
-                        {[
-                            { id: 'dados', label: 'Dados', icon: Building },
-                            { id: 'unidades', label: 'Unidades', icon: LayoutGrid, badge: formData.units.length },
-                            { id: 'setores', label: 'Setores', icon: LayoutGrid, badge: formData.setores.length },
-                            { id: 'cargos', label: 'Cargos', icon: Briefcase, badge: formData.cargos.length },
-                            { id: 'colaboradores', label: 'Colab.', icon: Users, badge: formData.colaboradores.length },
-                        ].map(tab => {
-                            const Icon = tab.icon;
-                            const isActive = activeSection === tab.id;
-                            return (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => setActiveSection(tab.id as any)}
-                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all shrink-0 ${isActive
-                                        ? 'bg-[#35b6cf] text-white shadow-sm'
-                                        : 'text-slate-500 hover:bg-slate-100'
-                                        }`}
-                                >
-                                    <Icon size={14} />
-                                    {tab.label}
-                                    {tab.badge !== undefined && (
-                                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                                            {tab.badge}
-                                        </span>
-                                    )}
-                                </button>
-                            );
-                        })}
-                    </div>
                 </div>
 
                 {/* --- Barra Lateral Esquerda (Sidebar) — hidden on mobile --- */}
@@ -1082,694 +1089,801 @@ export const CompanyRegistrationModal: React.FC<CompanyRegistrationModalProps> =
                     </div>
 
                     {/* Corpo do Modal (Área de Rolagem) */}
-                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 custom-scrollbar bg-slate-50/30">
-                        {/* --- SEÇÃO: DADOS DA EMPRESA --- */}
-                        {activeSection === 'dados' && (
-                            <div className="space-y-8 animate-in slide-in-from-right-4 duration-300 max-w-3xl">
-                                {/* Bloco de Identidade e Foto/Logo */}
-                                <div className="flex flex-col sm:flex-row gap-8 items-start">
-                                    <div className="flex-1 space-y-6 w-full">
-                                        <div className="space-y-4">
-                                            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">Dados Empresariais</h3>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                {/* Nome Fantasia da Empresa */}
-                                                <div className="space-y-1.5">
-                                                    <label className="text-sm font-semibold text-slate-700">Nome Fantasia</label>
-                                                    <input
-                                                        type="text"
-                                                        name="nomeFantasia"
-                                                        value={formData.nomeFantasia}
-                                                        onChange={handleChange}
-                                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none transition-all"
-                                                        placeholder="Ex: Gama Center"
-                                                    />
-                                                </div>
-                                                {/* Razão Social (Nome Oficial) */}
-                                                <div className="space-y-1.5">
-                                                    <label className="text-sm font-semibold text-slate-700">Razão Social</label>
-                                                    <input
-                                                        type="text"
-                                                        name="razaoSocial"
-                                                        value={formData.razaoSocial}
-                                                        onChange={handleChange}
-                                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none transition-all"
-                                                    />
-                                                </div>
-                                                {/* CNPJ da Empresa */}
-                                                <div className="sm:col-span-2 space-y-1.5">
-                                                    <label className="text-sm font-semibold text-slate-700">CNPJ</label>
-                                                    <input
-                                                        type="text"
-                                                        name="cnpj"
-                                                        value={formData.cnpj}
-                                                        onChange={handleChange}
-                                                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none transition-all"
-                                                    />
+                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 custom-scrollbar bg-slate-50/30 relative">
+
+                        {/* --- MENU VERTICAL MOBILE (Só aparece se NÃO estiver vendo conteúdo) --- */}
+                        <div className={`md:hidden flex flex-col gap-2 ${mobileShowContent ? 'hidden' : 'block animate-in slide-in-from-left-4 duration-300'}`}>
+
+                            {/* Mobile Unit Selector (Contexto) */}
+                            {formData.units.length > 1 && (
+                                <div className="mb-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-2">Unidade / Filial Ativa</label>
+                                    <div className="relative">
+                                        <select
+                                            value={String(formData.selectedUnitId || '')}
+                                            onChange={handleUnitChange}
+                                            className="w-full appearance-none bg-white border border-slate-200 text-slate-700 font-bold py-3 pl-4 pr-10 rounded-xl outline-none focus:border-[#35b6cf] transition-all"
+                                        >
+                                            {formData.units.map((unit: any) => (
+                                                <option key={unit.id} value={unit.id}>{unit.name}</option>
+                                            ))}
+                                        </select>
+                                        <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none rotate-90" size={18} />
+                                    </div>
+                                </div>
+                            )}
+
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 px-2">Gerenciamento</p>
+
+                            {/* Botão para Dados Gerais */}
+                            <button onClick={() => enterMobileSection('dados')} className="w-full bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-center justify-between active:scale-[0.98] transition-all">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-indigo-50 text-indigo-500 rounded-lg">
+                                        <Building size={20} />
+                                    </div>
+                                    <div className="text-left">
+                                        <span className="block font-bold text-slate-700">Dados da Empresa</span>
+                                        <span className="block text-xs text-slate-400">CNPJ, Endereço, Contato</span>
+                                    </div>
+                                </div>
+                                <ChevronRight size={20} className="text-slate-300" />
+                            </button>
+
+                            {/* Botão para Unidades */}
+                            <button onClick={() => enterMobileSection('unidades')} className="w-full bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-center justify-between active:scale-[0.98] transition-all">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-emerald-50 text-emerald-500 rounded-lg">
+                                        <LayoutGrid size={20} />
+                                    </div>
+                                    <div className="text-left">
+                                        <span className="block font-bold text-slate-700">Unidades e Filiais</span>
+                                        <span className="block text-xs text-slate-400">{formData.units.length} unidade(s) cadastrada(s)</span>
+                                    </div>
+                                </div>
+                                <ChevronRight size={20} className="text-slate-300" />
+                            </button>
+
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-4 mb-2 px-2">Estrutura</p>
+
+                            {/* Botão para Setores */}
+                            <button onClick={() => enterMobileSection('setores')} className="w-full bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-center justify-between active:scale-[0.98] transition-all">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-blue-50 text-blue-500 rounded-lg">
+                                        <LayoutGrid size={20} />
+                                    </div>
+                                    <div className="text-left">
+                                        <span className="block font-bold text-slate-700">Setores</span>
+                                        <span className="block text-xs text-slate-400">{formData.setores.length} setor(es)</span>
+                                    </div>
+                                </div>
+                                <ChevronRight size={20} className="text-slate-300" />
+                            </button>
+
+                            {/* Botão para Cargos */}
+                            <button onClick={() => enterMobileSection('cargos')} className="w-full bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-center justify-between active:scale-[0.98] transition-all">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-amber-50 text-amber-500 rounded-lg">
+                                        <Briefcase size={20} />
+                                    </div>
+                                    <div className="text-left">
+                                        <span className="block font-bold text-slate-700">Cargos e Funções</span>
+                                        <span className="block text-xs text-slate-400">{formData.cargos.length} cargo(s)</span>
+                                    </div>
+                                </div>
+                                <ChevronRight size={20} className="text-slate-300" />
+                            </button>
+
+                            {/* Botão para Colaboradores */}
+                            <button onClick={() => enterMobileSection('colaboradores')} className="w-full bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-center justify-between active:scale-[0.98] transition-all">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-violet-50 text-violet-500 rounded-lg">
+                                        <Users size={20} />
+                                    </div>
+                                    <div className="text-left">
+                                        <span className="block font-bold text-slate-700">Colaboradores</span>
+                                        <span className="block text-xs text-slate-400">{formData.colaboradores.length} pessoa(s)</span>
+                                    </div>
+                                </div>
+                                <ChevronRight size={20} className="text-slate-300" />
+                            </button>
+
+                        </div>
+
+                        {/* Wrap para Conteúdo das Seções (Controlado pelo estado no mobile) */}
+                        <div className={`${!mobileShowContent ? 'hidden md:block' : 'block animate-in slide-in-from-right-4 duration-300'}`}>
+
+                            {/* --- SEÇÃO: DADOS DA EMPRESA --- */}
+                            {activeSection === 'dados' && (
+                                <div className="space-y-8 animate-in slide-in-from-right-4 duration-300 max-w-3xl">
+                                    {/* Bloco de Identidade e Foto/Logo */}
+                                    <div className="flex flex-col sm:flex-row gap-8 items-start">
+                                        <div className="flex-1 space-y-6 w-full">
+                                            <div className="space-y-4">
+                                                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">Dados Empresariais</h3>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    {/* Nome Fantasia da Empresa */}
+                                                    <div className="space-y-1.5">
+                                                        <label className="text-sm font-semibold text-slate-700">Nome Fantasia</label>
+                                                        <input
+                                                            type="text"
+                                                            name="nomeFantasia"
+                                                            value={formData.nomeFantasia}
+                                                            onChange={handleChange}
+                                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none transition-all"
+                                                            placeholder="Ex: Gama Center"
+                                                        />
+                                                    </div>
+                                                    {/* Razão Social (Nome Oficial) */}
+                                                    <div className="space-y-1.5">
+                                                        <label className="text-sm font-semibold text-slate-700">Razão Social</label>
+                                                        <input
+                                                            type="text"
+                                                            name="razaoSocial"
+                                                            value={formData.razaoSocial}
+                                                            onChange={handleChange}
+                                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none transition-all"
+                                                        />
+                                                    </div>
+                                                    {/* CNPJ da Empresa */}
+                                                    <div className="sm:col-span-2 space-y-1.5">
+                                                        <label className="text-sm font-semibold text-slate-700">CNPJ</label>
+                                                        <input
+                                                            type="text"
+                                                            name="cnpj"
+                                                            value={formData.cnpj}
+                                                            onChange={handleChange}
+                                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none transition-all"
+                                                        />
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                <hr className="border-slate-100" />
+                                    <hr className="border-slate-100" />
 
-                                {/* Bloco de Informações de Contato */}
-                                <div className="space-y-4">
-                                    <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Contato</h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="space-y-1.5">
-                                            <label className="text-sm font-semibold text-slate-700">Responsável</label>
-                                            <input type="text" name="responsavel" value={formData.responsavel} onChange={handleChange} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none" placeholder="Nome completo" />
+                                    {/* Bloco de Informações de Contato */}
+                                    <div className="space-y-4">
+                                        <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Contato</h3>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="space-y-1.5">
+                                                <label className="text-sm font-semibold text-slate-700">Responsável</label>
+                                                <input type="text" name="responsavel" value={formData.responsavel} onChange={handleChange} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none" placeholder="Nome completo" />
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <label className="text-sm font-semibold text-slate-700">Email</label>
+                                                <input type="email" name="email" value={formData.email} onChange={handleChange} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none" />
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <label className="text-sm font-semibold text-slate-700">Telefone</label>
+                                                <input type="tel" name="telefone" value={formData.telefone} onChange={handleChange} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none" />
+                                            </div>
                                         </div>
-                                        <div className="space-y-1.5">
-                                            <label className="text-sm font-semibold text-slate-700">Email</label>
-                                            <input type="email" name="email" value={formData.email} onChange={handleChange} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none" />
+                                    </div>
+
+                                    <hr className="border-slate-100" />
+
+                                    {/* Bloco de Endereço */}
+                                    <div className="space-y-4">
+                                        <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Endereço</h3>
+                                        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                                            <div className="col-span-2 md:col-span-2"><label className="text-xs font-bold text-slate-600">CEP</label><input type="text" name="cep" value={formData.cep} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none focus:border-[#35b6cf]" /></div>
+                                            <div className="col-span-2 md:col-span-4"><label className="text-xs font-bold text-slate-600">Rua</label><input type="text" name="rua" value={formData.rua} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none focus:border-[#35b6cf]" /></div>
+                                            <div className="col-span-2 md:col-span-2"><label className="text-xs font-bold text-slate-600">Bairro</label><input type="text" name="bairro" value={formData.bairro} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none focus:border-[#35b6cf]" /></div>
+                                            <div className="col-span-2 md:col-span-3"><label className="text-xs font-bold text-slate-600">Cidade</label><input type="text" name="cidade" value={formData.cidade} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none focus:border-[#35b6cf]" /></div>
+                                            <div className="col-span-2 md:col-span-1"><label className="text-xs font-bold text-slate-600">UF</label><input type="text" name="uf" value={formData.uf} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none focus:border-[#35b6cf]" /></div>
                                         </div>
-                                        <div className="space-y-1.5">
-                                            <label className="text-sm font-semibold text-slate-700">Telefone</label>
-                                            <input type="tel" name="telefone" value={formData.telefone} onChange={handleChange} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none" />
+                                    </div>
+
+                                    {/* Opção para definir se a empresa é grande (Multi-unidade) */}
+                                    <div className="bg-slate-100 p-4 rounded-xl border border-slate-200 flex items-start gap-3 cursor-pointer" onClick={() => setFormData(prev => ({ ...prev, isMultiUnit: !prev.isMultiUnit }))}>
+                                        <div className={`mt-1 w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${formData.isMultiUnit ? 'bg-[#35b6cf] border-[#35b6cf] text-white' : 'bg-white border-slate-300'}`}>
+                                            {formData.isMultiUnit && <Check size={14} />}
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-slate-800 text-sm">Empresa com Multi-unidades</h4>
+                                            <p className="text-xs text-slate-500 mt-0.5">Marque se esta empresa gerencia múltiplas filiais.</p>
                                         </div>
                                     </div>
                                 </div>
+                            )}
 
-                                <hr className="border-slate-100" />
+                            {/* --- SEÇÃO: UNIDADES (FILIAIS/FILIAIS) --- */}
+                            {activeSection === 'unidades' && (
+                                <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 max-w-3xl border border-slate-200 rounded-2xl bg-white p-6 shadow-sm">
+                                    <div className="space-y-4">
+                                        {/* Campo de entrada para criar uma nova filial */}
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                value={newUnitName}
+                                                onChange={(e) => setNewUnitName(e.target.value)}
+                                                onKeyDown={(e) => e.key === 'Enter' && addUnit()}
+                                                className="flex-1 px-4 py-3 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none transition-all placeholder:text-slate-400"
+                                                placeholder="Nome da unidade (ex: Matriz, Filial SP)..."
+                                            />
+                                            <button onClick={addUnit} className="bg-[#35b6cf] text-white p-2 md:p-3 rounded-xl hover:bg-[#2ca3bc] shrink-0"><Plus size={20} className="md:w-6 md:h-6" /></button>
+                                        </div>
 
-                                {/* Bloco de Endereço */}
-                                <div className="space-y-4">
-                                    <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Endereço</h3>
-                                    <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-                                        <div className="col-span-2 md:col-span-2"><label className="text-xs font-bold text-slate-600">CEP</label><input type="text" name="cep" value={formData.cep} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none focus:border-[#35b6cf]" /></div>
-                                        <div className="col-span-2 md:col-span-4"><label className="text-xs font-bold text-slate-600">Rua</label><input type="text" name="rua" value={formData.rua} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none focus:border-[#35b6cf]" /></div>
-                                        <div className="col-span-2 md:col-span-2"><label className="text-xs font-bold text-slate-600">Bairro</label><input type="text" name="bairro" value={formData.bairro} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none focus:border-[#35b6cf]" /></div>
-                                        <div className="col-span-2 md:col-span-3"><label className="text-xs font-bold text-slate-600">Cidade</label><input type="text" name="cidade" value={formData.cidade} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none focus:border-[#35b6cf]" /></div>
-                                        <div className="col-span-2 md:col-span-1"><label className="text-xs font-bold text-slate-600">UF</label><input type="text" name="uf" value={formData.uf} onChange={handleChange} className="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none focus:border-[#35b6cf]" /></div>
+                                        {/* Lista das Unidades cadastradas */}
+                                        <div className="border-t border-slate-100 pt-4 space-y-3">
+                                            {formData.units.map((unit, idx) => (
+                                                <div key={unit.id} className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl hover:shadow-md transition-all group">
+                                                    {/* Modo de Edição do Nome da Unidade */}
+                                                    {editingUnitId === unit.id ? (
+                                                        <div className="flex-1 flex gap-2 items-center">
+                                                            <input
+                                                                value={tempUnitName}
+                                                                onChange={(e) => setTempUnitName(e.target.value)}
+                                                                className="flex-1 p-2 rounded border border-[#35b6cf] outline-none"
+                                                                autoFocus
+                                                            />
+                                                            <button onClick={saveEditUnit} className="text-emerald-500 p-2"><Check size={18} /></button>
+                                                            <button onClick={() => setEditingUnitId(null)} className="text-slate-400 p-2"><X size={18} /></button>
+                                                        </div>
+                                                    ) : (
+                                                        /* Modo de Visualização da Unidade */
+                                                        <>
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="p-2 bg-white rounded-lg border border-slate-200 text-[#35b6cf]"><Building size={20} /></div>
+                                                                <div>
+                                                                    <span className="font-bold text-slate-700 block">{unit.name}</span>
+                                                                    {idx === 0 && <span className="text-[10px] uppercase font-black text-[#35b6cf] tracking-widest">Unidade Principal</span>}
+                                                                </div>
+                                                            </div>
+                                                            {/* Botões de Ação (Aparecem ao passar o mouse) */}
+                                                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                <button onClick={() => startEditUnit(unit)} className="p-2 text-slate-400 hover:text-[#35b6cf] transition-colors"><Pencil size={18} /></button>
+                                                                <button onClick={() => removeUnit(unit.id)} className="p-2 text-slate-400 hover:text-rose-500 transition-colors"><Trash2 size={18} /></button>
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
+                            )}
 
-                                {/* Opção para definir se a empresa é grande (Multi-unidade) */}
-                                <div className="bg-slate-100 p-4 rounded-xl border border-slate-200 flex items-start gap-3 cursor-pointer" onClick={() => setFormData(prev => ({ ...prev, isMultiUnit: !prev.isMultiUnit }))}>
-                                    <div className={`mt-1 w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${formData.isMultiUnit ? 'bg-[#35b6cf] border-[#35b6cf] text-white' : 'bg-white border-slate-300'}`}>
-                                        {formData.isMultiUnit && <Check size={14} />}
-                                    </div>
-                                    <div>
-                                        <h4 className="font-bold text-slate-800 text-sm">Empresa com Multi-unidades</h4>
-                                        <p className="text-xs text-slate-500 mt-0.5">Marque se esta empresa gerencia múltiplas filiais.</p>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* --- SEÇÃO: UNIDADES (FILIAIS/FILIAIS) --- */}
-                        {activeSection === 'unidades' && (
-                            <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 max-w-3xl border border-slate-200 rounded-2xl bg-white p-6 shadow-sm">
-                                <div className="space-y-4">
-                                    {/* Campo de entrada para criar uma nova filial */}
+                            {/* --- SEÇÃO: SETORES ORGANIZACIONAIS --- */}
+                            {activeSection === 'setores' && (
+                                <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 max-w-3xl border border-slate-200 rounded-2xl bg-white p-6 shadow-sm">
+                                    {/* Campo para adicionar um novo setor (Ex: RH, Financeiro) */}
                                     <div className="flex gap-2">
                                         <input
                                             type="text"
-                                            value={newUnitName}
-                                            onChange={(e) => setNewUnitName(e.target.value)}
-                                            onKeyDown={(e) => e.key === 'Enter' && addUnit()}
+                                            value={newSector}
+                                            onChange={(e) => setNewSector(e.target.value)}
+                                            onKeyDown={(e) => e.key === 'Enter' && addSector()}
                                             className="flex-1 px-4 py-3 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none transition-all placeholder:text-slate-400"
-                                            placeholder="Nome da unidade (ex: Matriz, Filial SP)..."
+                                            placeholder="Nome do novo setor..."
                                         />
-                                        <button onClick={addUnit} className="bg-[#35b6cf] text-white p-2 md:p-3 rounded-xl hover:bg-[#2ca3bc] shrink-0"><Plus size={20} className="md:w-6 md:h-6" /></button>
+                                        <button onClick={addSector} className="bg-[#35b6cf] text-white p-2 md:p-3 rounded-xl hover:bg-[#2ca3bc] shrink-0"><Plus size={20} className="md:w-6 md:h-6" /></button>
                                     </div>
 
-                                    {/* Lista das Unidades cadastradas */}
-                                    <div className="border-t border-slate-100 pt-4 space-y-3">
-                                        {formData.units.map((unit, idx) => (
-                                            <div key={unit.id} className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl hover:shadow-md transition-all group">
-                                                {/* Modo de Edição do Nome da Unidade */}
-                                                {editingUnitId === unit.id ? (
-                                                    <div className="flex-1 flex gap-2 items-center">
-                                                        <input
-                                                            value={tempUnitName}
-                                                            onChange={(e) => setTempUnitName(e.target.value)}
-                                                            className="flex-1 p-2 rounded border border-[#35b6cf] outline-none"
-                                                            autoFocus
-                                                        />
-                                                        <button onClick={saveEditUnit} className="text-emerald-500 p-2"><Check size={18} /></button>
-                                                        <button onClick={() => setEditingUnitId(null)} className="text-slate-400 p-2"><X size={18} /></button>
-                                                    </div>
-                                                ) : (
-                                                    /* Modo de Visualização da Unidade */
-                                                    <>
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="p-2 bg-white rounded-lg border border-slate-200 text-[#35b6cf]"><Building size={20} /></div>
-                                                            <div>
-                                                                <span className="font-bold text-slate-700 block">{unit.name}</span>
-                                                                {idx === 0 && <span className="text-[10px] uppercase font-black text-[#35b6cf] tracking-widest">Unidade Principal</span>}
+                                    {/* Lista de Setores (Filtrada pela Unidade selecionada na barra lateral) */}
+                                    <div className="border-t border-slate-100 pt-4 space-y-2">
+                                        {/* Mensagem caso não existam setores na unidade atual */}
+                                        {filteredSectors.length === 0 && <p className="text-center text-slate-400 py-8">Nenhum setor cadastrado nesta unidade.</p>}
+                                        {filteredSectors.map((setor, _) => {
+                                            // Busca o índice original na lista mestre para permitir edição correta
+                                            const globalIdx = formData.setores.findIndex(s => normalizeText(s) === normalizeText(setor));
+                                            return (
+                                                <div key={setor} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl hover:shadow-md transition-all group">
+                                                    {/* Modo de Edição do Setor */}
+                                                    {editingSectorIndex === globalIdx ? (
+                                                        <div className="flex-1 flex gap-2 items-center">
+                                                            <input
+                                                                value={tempSectorName}
+                                                                onChange={(e) => setTempSectorName(e.target.value)}
+                                                                className="flex-1 p-2 rounded border border-[#35b6cf] outline-none"
+                                                                autoFocus
+                                                            />
+                                                            <button onClick={() => handleSaveSector(globalIdx)} className="text-emerald-500 p-2"><Check size={18} /></button>
+                                                            <button onClick={cancelEditSector} className="text-slate-400 p-2"><X size={18} /></button>
+                                                        </div>
+                                                    ) : (
+                                                        /* Modo de Visualização do Setor */
+                                                        <>
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="p-2 bg-white rounded-lg border border-slate-200 text-slate-400"><LayoutGrid size={16} /></div>
+                                                                <span className="font-semibold text-slate-700">{setor}</span>
                                                             </div>
-                                                        </div>
-                                                        {/* Botões de Ação (Aparecem ao passar o mouse) */}
-                                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                            <button onClick={() => startEditUnit(unit)} className="p-2 text-slate-400 hover:text-[#35b6cf] transition-colors"><Pencil size={18} /></button>
-                                                            <button onClick={() => removeUnit(unit.id)} className="p-2 text-slate-400 hover:text-rose-500 transition-colors"><Trash2 size={18} /></button>
-                                                        </div>
-                                                    </>
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* --- SEÇÃO: SETORES ORGANIZACIONAIS --- */}
-                        {activeSection === 'setores' && (
-                            <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 max-w-3xl border border-slate-200 rounded-2xl bg-white p-6 shadow-sm">
-                                {/* Campo para adicionar um novo setor (Ex: RH, Financeiro) */}
-                                <div className="flex gap-2">
-                                    <input
-                                        type="text"
-                                        value={newSector}
-                                        onChange={(e) => setNewSector(e.target.value)}
-                                        onKeyDown={(e) => e.key === 'Enter' && addSector()}
-                                        className="flex-1 px-4 py-3 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none transition-all placeholder:text-slate-400"
-                                        placeholder="Nome do novo setor..."
-                                    />
-                                    <button onClick={addSector} className="bg-[#35b6cf] text-white p-2 md:p-3 rounded-xl hover:bg-[#2ca3bc] shrink-0"><Plus size={20} className="md:w-6 md:h-6" /></button>
-                                </div>
-
-                                {/* Lista de Setores (Filtrada pela Unidade selecionada na barra lateral) */}
-                                <div className="border-t border-slate-100 pt-4 space-y-2">
-                                    {/* Mensagem caso não existam setores na unidade atual */}
-                                    {filteredSectors.length === 0 && <p className="text-center text-slate-400 py-8">Nenhum setor cadastrado nesta unidade.</p>}
-                                    {filteredSectors.map((setor, _) => {
-                                        // Busca o índice original na lista mestre para permitir edição correta
-                                        const globalIdx = formData.setores.findIndex(s => normalizeText(s) === normalizeText(setor));
-                                        return (
-                                            <div key={setor} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl hover:shadow-md transition-all group">
-                                                {/* Modo de Edição do Setor */}
-                                                {editingSectorIndex === globalIdx ? (
-                                                    <div className="flex-1 flex gap-2 items-center">
-                                                        <input
-                                                            value={tempSectorName}
-                                                            onChange={(e) => setTempSectorName(e.target.value)}
-                                                            className="flex-1 p-2 rounded border border-[#35b6cf] outline-none"
-                                                            autoFocus
-                                                        />
-                                                        <button onClick={() => handleSaveSector(globalIdx)} className="text-emerald-500 p-2"><Check size={18} /></button>
-                                                        <button onClick={cancelEditSector} className="text-slate-400 p-2"><X size={18} /></button>
-                                                    </div>
-                                                ) : (
-                                                    /* Modo de Visualização do Setor */
-                                                    <>
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="p-2 bg-white rounded-lg border border-slate-200 text-slate-400"><LayoutGrid size={16} /></div>
-                                                            <span className="font-semibold text-slate-700">{setor}</span>
-                                                        </div>
-                                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                            <button onClick={() => startEditSector(globalIdx)} className="p-2 text-slate-400 hover:text-[#35b6cf]"><Pencil size={16} /></button>
-                                                            <button onClick={() => removeSector(setor)} className="p-2 text-slate-400 hover:text-rose-500"><Trash2 size={16} /></button>
-                                                        </div>
-                                                    </>
-                                                )}
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* --- SEÇÃO: CARGOS E FUNÇÕES --- */}
-                        {activeSection === 'cargos' && (
-                            <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 max-w-3xl border border-slate-200 rounded-2xl bg-white p-6 shadow-sm">
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                    {/* Primeiro: Escolhe o setor onde o cargo será criado */}
-                                    <select value={selectedSectorForRole} onChange={(e) => setSelectedSectorForRole(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 outline-none bg-white">
-                                        <option value="" disabled>Selecione Setor</option>
-                                        {/* Apenas setores da unidade ativa aparecem aqui */}
-                                        {filteredSectors.map((s, i) => <option key={i} value={s}>{s}</option>)}
-                                    </select>
-                                    {/* Segundo: Campo de nome do cargo */}
-                                    <div className="md:col-span-2 flex gap-2">
-                                        <input
-                                            value={newRole}
-                                            onChange={(e) => setNewRole(e.target.value)}
-                                            placeholder="Nome do cargo"
-                                            disabled={!selectedSectorForRole}
-                                            className="flex-1 border border-slate-200 rounded-xl px-3 outline-none disabled:bg-slate-50"
-                                        />
-                                        <button onClick={addRole} disabled={!newRole || !selectedSectorForRole} className="bg-[#35b6cf] text-white p-3 rounded-xl hover:bg-[#2ca3bc] shrink-0"><Plus size={20} /></button>
-                                    </div>
-                                </div>
-                                {/* Lista de Cargos Filtrados */}
-                                <div className="border-t border-slate-100 pt-4 space-y-2">
-                                    {/* Mensagem caso não existam cargos na unidade/setor atual */}
-                                    {filteredCargos.length === 0 && <p className="text-center text-slate-400 py-8">Nenhum cargo cadastrado nesta unidade.</p>}
-                                    {filteredCargos.map((cargo, idx) => {
-                                        // Find original index for editing if needed, or use name-based removal as we already do
-                                        // Encontra o índice original para permitir edição
-                                        const originalIdx = formData.cargos.findIndex(c => c === cargo);
-                                        return (
-                                            <div key={`${cargo.nome}-${cargo.setor}`} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl hover:shadow-md transition-all group">
-                                                {/* Modo de Edição do Nome do Cargo */}
-                                                {editingRoleIndex === idx ? (
-                                                    <div className="flex-1 flex gap-2 items-center">
-                                                        <input
-                                                            value={tempRoleName}
-                                                            onChange={(e) => setTempRoleName(e.target.value)}
-                                                            className="flex-1 p-2 rounded border border-[#35b6cf] outline-none"
-                                                            autoFocus
-                                                        />
-                                                        <span className="text-xs text-slate-400 px-2 border-l border-slate-200">{cargo.setor}</span>
-                                                        <button onClick={() => handleSaveRole(idx)} className="text-emerald-500 p-2"><Check size={18} /></button>
-                                                        <button onClick={cancelEditRole} className="text-slate-400 p-2"><X size={18} /></button>
-                                                    </div>
-                                                ) : (
-                                                    /* Modo de Visualização do Cargo */
-                                                    <>
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="flex flex-col">
-                                                                <span className="font-semibold text-slate-700">{cargo.nome}</span>
-                                                                <span className="text-xs text-slate-400 flex items-center gap-1"><LayoutGrid size={10} /> {cargo.setor}</span>
+                                                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                <button onClick={() => startEditSector(globalIdx)} className="p-2 text-slate-400 hover:text-[#35b6cf]"><Pencil size={16} /></button>
+                                                                <button onClick={() => removeSector(setor)} className="p-2 text-slate-400 hover:text-rose-500"><Trash2 size={16} /></button>
                                                             </div>
-                                                        </div>
-                                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                            <button onClick={() => startEditRole(originalIdx)} className="p-2 text-slate-400 hover:text-[#35b6cf]"><Pencil size={16} /></button>
-                                                            <button onClick={() => removeRole(cargo)} className="p-2 text-slate-400 hover:text-rose-500"><Trash2 size={16} /></button>
-                                                        </div>
-                                                    </>
-                                                )}
-                                            </div>
-                                        )
-                                    })}
+                                                        </>
+                                                    )}
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
 
-                        {/* --- SEÇÃO: COLABORADORES (MEMBROS DA EQUIPE) --- */}
-                        {activeSection === 'colaboradores' && (
-                            <div className="space-y-8 animate-in slide-in-from-right-4 duration-300">
-
-                                {/* Botão Expansível para Adicionar Novo Colaborador */}
-                                {/* Botão Expansível para Adicionar Novo Colaborador */}
-                                <div className="flex gap-4 items-start mb-6">
-                                    <div className="flex-1 bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden">
-                                        <button
-                                            onClick={() => setIsAddingCollaborator(!isAddingCollaborator)}
-                                            className="w-full flex items-center justify-between p-6 hover:bg-slate-100 transition-colors text-left"
-                                        >
-                                            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                                                <Plus size={18} className="text-[#35b6cf]" />
-                                                Novo Colaborador
-                                            </h3>
-                                            <ChevronRight
-                                                size={20}
-                                                className={`text-slate-400 transition-transform duration-300 ${isAddingCollaborator ? 'rotate-90' : ''}`}
+                            {/* --- SEÇÃO: CARGOS E FUNÇÕES --- */}
+                            {activeSection === 'cargos' && (
+                                <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 max-w-3xl border border-slate-200 rounded-2xl bg-white p-6 shadow-sm">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                        {/* Primeiro: Escolhe o setor onde o cargo será criado */}
+                                        <select value={selectedSectorForRole} onChange={(e) => setSelectedSectorForRole(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 outline-none bg-white">
+                                            <option value="" disabled>Selecione Setor</option>
+                                            {/* Apenas setores da unidade ativa aparecem aqui */}
+                                            {filteredSectors.map((s, i) => <option key={i} value={s}>{s}</option>)}
+                                        </select>
+                                        {/* Segundo: Campo de nome do cargo */}
+                                        <div className="md:col-span-2 flex gap-2">
+                                            <input
+                                                value={newRole}
+                                                onChange={(e) => setNewRole(e.target.value)}
+                                                placeholder="Nome do cargo"
+                                                disabled={!selectedSectorForRole}
+                                                className="flex-1 border border-slate-200 rounded-xl px-3 outline-none disabled:bg-slate-50"
                                             />
-                                        </button>
-
-                                        {/* Formulário de Cadastro do Colaborador (Aparece ao clicar em 'Novo Colaborador') */}
-                                        {isAddingCollaborator && (
-                                            <div className="px-6 pb-6 animate-in slide-in-from-top-2 duration-200">
-                                                <div className="grid grid-cols-12 gap-4 items-start">
-                                                    <div className="col-span-12 md:col-span-6">
-                                                        <input
-                                                            type="text"
-                                                            name="nome"
-                                                            value={collaboratorForm.nome}
-                                                            onChange={handleCollaboratorChange}
-                                                            placeholder="Nome completo"
-                                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none"
-                                                        />
-                                                    </div>
-                                                    <div className="col-span-12 md:col-span-6">
-                                                        <input
-                                                            type="email"
-                                                            name="email"
-                                                            value={collaboratorForm.email}
-                                                            onChange={handleCollaboratorChange}
-                                                            placeholder="Email corporativo"
-                                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none"
-                                                        />
-                                                    </div>
-
-                                                    <div className="col-span-6 md:col-span-3 space-y-1">
-                                                        <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">CPF</label>
-                                                        <input
-                                                            type="text"
-                                                            name="cpf"
-                                                            value={collaboratorForm.cpf}
-                                                            onChange={handleCollaboratorChange}
-                                                            placeholder="CPF"
-                                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none"
-                                                        />
-                                                    </div>
-                                                    <div className="col-span-6 md:col-span-3 space-y-1">
-                                                        <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Telefone</label>
-                                                        <input
-                                                            type="tel"
-                                                            name="telefone"
-                                                            value={collaboratorForm.telefone}
-                                                            onChange={handleCollaboratorChange}
-                                                            placeholder="Telefone"
-                                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none"
-                                                        />
-                                                    </div>
-                                                    <div className="col-span-6 md:col-span-3 space-y-1">
-                                                        <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Nascimento</label>
-                                                        <input
-                                                            type="date"
-                                                            name="dataNascimento"
-                                                            value={collaboratorForm.dataNascimento}
-                                                            onChange={handleCollaboratorChange}
-                                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none text-slate-600"
-                                                        />
-                                                    </div>
-                                                    <div className="col-span-6 md:col-span-3 space-y-1">
-                                                        <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Sexo</label>
-                                                        <select
-                                                            name="sexo"
-                                                            value={collaboratorForm.sexo}
-                                                            onChange={handleCollaboratorChange}
-                                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none bg-white text-slate-600"
-                                                        >
-                                                            <option value="" disabled>Selecione</option>
-                                                            <option value="Masculino">Masculino</option>
-                                                            <option value="Feminino">Feminino</option>
-                                                            <option value="Outro">Outro</option>
-                                                        </select>
-                                                    </div>
-
-                                                    <div className="col-span-12 md:col-span-4 space-y-1">
-                                                        <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Data Desligamento</label>
-                                                        <input
-                                                            type="date"
-                                                            name="dataDesligamento"
-                                                            value={collaboratorForm.dataDesligamento}
-                                                            onChange={handleCollaboratorChange}
-                                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none text-slate-600"
-                                                        />
-                                                    </div>
-                                                    <div className="col-span-12 md:col-span-4 space-y-1">
-                                                        <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Setor</label>
-                                                        <select
-                                                            name="setor"
-                                                            value={collaboratorForm.setor}
-                                                            onChange={handleCollaboratorChange}
-                                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none bg-white text-slate-600"
-                                                        >
-                                                            <option value="" disabled>Selecione</option>
-                                                            {filteredSectors.map((s, i) => <option key={i} value={s}>{s}</option>)}
-                                                        </select>
-                                                    </div>
-                                                    <div className="col-span-12 md:col-span-4 space-y-1">
-                                                        <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Cargo</label>
-                                                        <select
-                                                            name="cargo"
-                                                            value={collaboratorForm.cargo}
-                                                            onChange={handleCollaboratorChange}
-                                                            disabled={!collaboratorForm.setor}
-                                                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none bg-white text-slate-600 disabled:bg-slate-100 disabled:opacity-70"
-                                                        >
-                                                            <option value="" disabled>Selecione</option>
-                                                            {formData.cargos
-                                                                .filter(c => normalizeText(c.setor) === normalizeText(collaboratorForm.setor))
-                                                                .map((c, i) => <option key={i} value={c.nome}>{c.nome}</option>)}
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                {/* Botão para Confirmar Cadastro Temporário */}
-                                                <div className="flex justify-end mt-4">
-                                                    <Button
-                                                        onClick={addCollaborator}
-                                                        disabled={!collaboratorForm.nome || !collaboratorForm.email || !collaboratorForm.cargo}
-                                                        className="bg-[#35b6cf] text-white px-6 py-2 rounded-xl hover:bg-[#2ca3bc] disabled:opacity-50 disabled:cursor-not-allowed"
-                                                    >
-                                                        Adicionar Colaborador
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <button
-                                        onClick={() => setIsImportModalOpen(true)}
-                                        className="hidden md:flex flex-col items-center justify-center gap-2 px-4 h-20 w-24 bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 hover:border-emerald-200 hover:text-emerald-600 transition-all group shadow-sm shrink-0"
-                                        title="Importar Planilha"
-                                    >
-                                        <FileSpreadsheet size={24} className="text-slate-400 group-hover:text-emerald-500 transition-colors" />
-                                        <span className="font-bold text-slate-600 group-hover:text-emerald-600 text-xs text-center leading-tight">Importar</span>
-                                    </button>
-                                    {!isAddingCollaborator && (
-                                        <button
-                                            onClick={() => setIsImportModalOpen(true)}
-                                            className="md:hidden p-4 bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 text-slate-600 hover:text-emerald-600 transition-all shrink-0"
-                                            title="Importar Planilha"
-                                        >
-                                            <FileSpreadsheet size={24} />
-                                        </button>
-                                    )}
-                                </div>
-
-                                {/* Lista/Tabela de Colaboradores já cadastrados */}
-                                <div>
-                                    <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 px-2 gap-4">
-                                        <h3 className="text-lg font-bold text-slate-800">
-                                            Colaboradores Cadastrados ({filteredCollaborators.length})
-                                        </h3>
-                                        {/* Barra de busca rápida na tabela */}
-                                        <div className="flex items-center gap-2 w-full md:w-auto">
-                                            <div className="relative flex-1 md:w-64">
-                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                                                <input
-                                                    type="text"
-                                                    value={collabSearch}
-                                                    onChange={(e) => setCollabSearch(e.target.value)}
-                                                    placeholder="Buscar colaborador..."
-                                                    className="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-[#35b6cf]"
-                                                />
-                                            </div>
-                                            {/* Menu de Filtros Avançados */}
-                                            <div className="relative">
-                                                <button
-                                                    onClick={() => setIsFilterMenuOpen(!isFilterMenuOpen)}
-                                                    className={`p-2 rounded-lg border transition-colors ${isFilterMenuOpen || Object.keys(selectedFilters).some(k => selectedFilters[k].length > 0) ? 'bg-[#35b6cf] border-[#35b6cf] text-white' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}
-                                                >
-                                                    <Filter size={20} />
-                                                </button>
-
-                                                {/* Popup do Menu de Filtros */}
-                                                {isFilterMenuOpen && (
-                                                    <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-xl shadow-xl border border-slate-100 p-4 z-50 animate-in fade-in zoom-in-95 duration-200">
-                                                        <div className="space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
-                                                            {/* Filtro por Sexo */}
-                                                            <div>
-                                                                <div className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">Sexo</div>
-                                                                <div className="space-y-1">
-                                                                    {getUniqueValues('sexo').map(opt => (
-                                                                        <div
-                                                                            key={opt}
-                                                                            onClick={() => handleFilterSelect('sexo', opt)}
-                                                                            className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors ${selectedFilters['sexo']?.includes(opt) ? 'bg-[#35b6cf]/10 text-[#35b6cf] font-medium' : 'hover:bg-slate-50 text-slate-600'}`}
-                                                                        >
-                                                                            <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${selectedFilters['sexo']?.includes(opt) ? 'bg-[#35b6cf] border-[#35b6cf]' : 'border-slate-300'}`}>
-                                                                                {selectedFilters['sexo']?.includes(opt) && <Check size={12} className="text-white" />}
-                                                                            </div>
-                                                                            {opt}
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                            {/* Filtro por Cargo */}
-                                                            <div>
-                                                                <div className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">Cargo</div>
-                                                                <div className="space-y-1">
-                                                                    {getUniqueValues('cargo').map(opt => (
-                                                                        <div
-                                                                            key={opt}
-                                                                            onClick={() => handleFilterSelect('cargo', opt)}
-                                                                            className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors ${selectedFilters['cargo']?.includes(opt) ? 'bg-[#35b6cf]/10 text-[#35b6cf] font-medium' : 'hover:bg-slate-50 text-slate-600'}`}
-                                                                        >
-                                                                            <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${selectedFilters['cargo']?.includes(opt) ? 'bg-[#35b6cf] border-[#35b6cf]' : 'border-slate-300'}`}>
-                                                                                {selectedFilters['cargo']?.includes(opt) && <Check size={12} className="text-white" />}
-                                                                            </div>
-                                                                            {opt}
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                            {/* Filtro por Setor */}
-                                                            <div>
-                                                                <div className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">Setor</div>
-                                                                <div className="space-y-1">
-                                                                    {getUniqueValues('setor').map(opt => (
-                                                                        <div
-                                                                            key={opt}
-                                                                            onClick={() => handleFilterSelect('setor', opt)}
-                                                                            className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors ${selectedFilters['setor']?.includes(opt) ? 'bg-[#35b6cf]/10 text-[#35b6cf] font-medium' : 'hover:bg-slate-50 text-slate-600'}`}
-                                                                        >
-                                                                            <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${selectedFilters['setor']?.includes(opt) ? 'bg-[#35b6cf] border-[#35b6cf]' : 'border-slate-300'}`}>
-                                                                                {selectedFilters['setor']?.includes(opt) && <Check size={12} className="text-white" />}
-                                                                            </div>
-                                                                            {opt}
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        {/* Botão de Limpar Filtros */}
-                                                        <div className="mt-4 pt-3 border-t border-slate-100 flex justify-end">
-                                                            <button
-                                                                onClick={() => setSelectedFilters({})}
-                                                                className="text-xs font-semibold text-slate-400 hover:text-rose-500 transition-colors"
-                                                            >
-                                                                Limpar Filtros
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
+                                            <button onClick={addRole} disabled={!newRole || !selectedSectorForRole} className="bg-[#35b6cf] text-white p-3 rounded-xl hover:bg-[#2ca3bc] shrink-0"><Plus size={20} /></button>
                                         </div>
                                     </div>
-
-                                    {/* Tabela de Colaboradores */}
-                                    <div className="bg-white rounded-xl border border-slate-200 overflow-visible shadow-sm">
-                                        <table className="hidden md:table w-full text-left text-sm">
-                                            <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 font-semibold relative z-10">
-                                                <tr>
-                                                    <th className="px-3 py-3 rounded-tl-xl w-[20%]">Nome</th>
-                                                    <th className="px-3 py-3 w-[13%]">Nascimento</th>
-                                                    <th className="px-3 py-3 w-[8%]">Sexo</th>
-                                                    <th className="px-3 py-3 w-[21%]">Cargo</th>
-                                                    <th className="px-3 py-3 w-[21%]">Setor</th>
-                                                    <th className="px-3 py-3 rounded-tr-xl text-right w-[17%]">Ações</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-slate-100">
-                                                {filteredCollaborators.length === 0 ? (
-                                                    <tr>
-                                                        <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
-                                                            Nenhum colaborador encontrado nesta unidade.
-                                                        </td>
-                                                    </tr>
-                                                ) : (
-                                                    filteredCollaborators.map((colab, idx) => (
-                                                        <tr key={idx} className="hover:bg-slate-50/80 transition-colors group">
-                                                            <td className="px-3 py-3 text-slate-800 font-medium">
-                                                                <div className="flex items-center gap-2">
-                                                                    <div className="w-7 h-7 rounded-full bg-indigo-50 text-indigo-500 flex items-center justify-center text-xs font-bold shrink-0">
-                                                                        {colab.nome.charAt(0).toUpperCase()}
-                                                                    </div>
-                                                                    <span className="truncate">{colab.nome}</span>
+                                    {/* Lista de Cargos Filtrados */}
+                                    <div className="border-t border-slate-100 pt-4 space-y-2">
+                                        {/* Mensagem caso não existam cargos na unidade/setor atual */}
+                                        {filteredCargos.length === 0 && <p className="text-center text-slate-400 py-8">Nenhum cargo cadastrado nesta unidade.</p>}
+                                        {filteredCargos.map((cargo, idx) => {
+                                            // Find original index for editing if needed, or use name-based removal as we already do
+                                            // Encontra o índice original para permitir edição
+                                            const originalIdx = formData.cargos.findIndex(c => c === cargo);
+                                            return (
+                                                <div key={`${cargo.nome}-${cargo.setor}`} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl hover:shadow-md transition-all group">
+                                                    {/* Modo de Edição do Nome do Cargo */}
+                                                    {editingRoleIndex === idx ? (
+                                                        <div className="flex-1 flex gap-2 items-center">
+                                                            <input
+                                                                value={tempRoleName}
+                                                                onChange={(e) => setTempRoleName(e.target.value)}
+                                                                className="flex-1 p-2 rounded border border-[#35b6cf] outline-none"
+                                                                autoFocus
+                                                            />
+                                                            <span className="text-xs text-slate-400 px-2 border-l border-slate-200">{cargo.setor}</span>
+                                                            <button onClick={() => handleSaveRole(idx)} className="text-emerald-500 p-2"><Check size={18} /></button>
+                                                            <button onClick={cancelEditRole} className="text-slate-400 p-2"><X size={18} /></button>
+                                                        </div>
+                                                    ) : (
+                                                        /* Modo de Visualização do Cargo */
+                                                        <>
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="flex flex-col">
+                                                                    <span className="font-semibold text-slate-700">{cargo.nome}</span>
+                                                                    <span className="text-xs text-slate-400 flex items-center gap-1"><LayoutGrid size={10} /> {cargo.setor}</span>
                                                                 </div>
-                                                            </td>
-                                                            <td className="px-3 py-3 text-slate-500 whitespace-nowrap text-sm">{colab.dataNascimento ? new Date(colab.dataNascimento).toLocaleDateString('pt-BR') : '-'}</td>
-                                                            <td className="px-3 py-3 text-slate-500 text-sm">{colab.sexo || '-'}</td>
-                                                            <td className="px-3 py-3">
-                                                                <span className="inline-block bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-lg text-xs font-semibold">
-                                                                    {colab.cargo}
-                                                                </span>
-                                                            </td>
-                                                            <td className="px-3 py-3">
-                                                                <span className="inline-block bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg text-xs font-semibold">
-                                                                    {colab.setor}
-                                                                </span>
-                                                            </td>
-                                                            <td className="px-3 py-3 text-right">
-                                                                <div className="relative inline-block text-left">
-                                                                    <button
-                                                                        onClick={() => setActionMenuOpenIndex(actionMenuOpenIndex === idx ? null : idx)}
-                                                                        className="p-1.5 text-slate-400 hover:text-[#35b6cf] hover:bg-slate-100 rounded-lg transition-colors"
-                                                                    >
-                                                                        <MoreVertical size={16} />
-                                                                    </button>
-
-                                                                    {/* Menu de Ações (Editar/Excluir) */}
-                                                                    {actionMenuOpenIndex === idx && (
-                                                                        <>
-                                                                            {/* Camada Invisível para fechar menu ao clicar fora */}
-                                                                            <div className="fixed inset-0 z-40" onClick={() => setActionMenuOpenIndex(null)}></div>
-                                                                            <div className="absolute right-0 mt-1 w-32 bg-white rounded-xl shadow-xl border border-slate-100 py-1 z-50 animate-in fade-in zoom-in-95 duration-200">
-                                                                                <button
-                                                                                    onClick={() => openEditModal(colab, formData.colaboradores.indexOf(colab))}
-                                                                                    className="w-full text-left px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-[#35b6cf] flex items-center gap-2"
-                                                                                >
-                                                                                    <Pencil size={14} /> Editar
-                                                                                </button>
-                                                                                <button
-                                                                                    onClick={() => {
-                                                                                        setDeleteConfirmationIndex(formData.colaboradores.indexOf(colab));
-                                                                                        setActionMenuOpenIndex(null);
-                                                                                    }}
-                                                                                    className="w-full text-left px-3 py-2 text-xs font-medium text-slate-600 hover:bg-rose-50 hover:text-rose-500 flex items-center gap-2"
-                                                                                >
-                                                                                    <Trash2 size={14} /> Excluir
-                                                                                </button>
-                                                                            </div>
-                                                                        </>
-                                                                    )}
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    ))
-                                                )}
-                                            </tbody>
-                                        </table>
-                                    </div>
-
-                                    {/* Mobile Card Layout for Collaborators */}
-                                    <div className="md:hidden space-y-3">
-                                        {filteredCollaborators.length === 0 ? (
-                                            <p className="text-center text-slate-400 py-8 bg-white rounded-xl border border-slate-100 shadow-sm">Nenhum colaborador encontrado.</p>
-                                        ) : (
-                                            filteredCollaborators.map((colab, idx) => (
-                                                <div key={idx} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col gap-3 relative">
-                                                    <div className="flex items-start justify-between">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center font-bold text-sm">
-                                                                {colab.nome.charAt(0).toUpperCase()}
                                                             </div>
-                                                            <div>
-                                                                <h4 className="font-bold text-slate-800 text-sm">{colab.nome}</h4>
-                                                                <p className="text-xs text-slate-500">{colab.email}</p>
+                                                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                <button onClick={() => startEditRole(originalIdx)} className="p-2 text-slate-400 hover:text-[#35b6cf]"><Pencil size={16} /></button>
+                                                                <button onClick={() => removeRole(cargo)} className="p-2 text-slate-400 hover:text-rose-500"><Trash2 size={16} /></button>
                                                             </div>
-                                                        </div>
-
-                                                        {/* Ações Mobile */}
-                                                        <div className="flex items-center gap-1">
-                                                            <button
-                                                                onClick={() => openEditModal(colab, formData.colaboradores.indexOf(colab))}
-                                                                className="p-2 text-slate-400 hover:text-[#35b6cf] hover:bg-slate-50 rounded-lg"
-                                                            >
-                                                                <Pencil size={16} />
-                                                            </button>
-                                                            <button
-                                                                onClick={() => setDeleteConfirmationIndex(formData.colaboradores.indexOf(colab))}
-                                                                className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg"
-                                                            >
-                                                                <Trash2 size={16} />
-                                                            </button>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="grid grid-cols-2 gap-2 text-xs">
-                                                        <div className="bg-slate-50 p-2 rounded-lg">
-                                                            <span className="text-slate-400 block mb-0.5 text-[10px] uppercase font-bold">Cargo</span>
-                                                            <span className="text-slate-700 font-semibold">{colab.cargo}</span>
-                                                        </div>
-                                                        <div className="bg-slate-50 p-2 rounded-lg">
-                                                            <span className="text-slate-400 block mb-0.5 text-[10px] uppercase font-bold">Setor</span>
-                                                            <span className="text-slate-700 font-semibold">{colab.setor}</span>
-                                                        </div>
-                                                        <div className="bg-slate-50 p-2 rounded-lg">
-                                                            <span className="text-slate-400 block mb-0.5 text-[10px] uppercase font-bold">Nascimento</span>
-                                                            <span className="text-slate-700 font-semibold">{colab.dataNascimento ? new Date(colab.dataNascimento).toLocaleDateString('pt-BR') : '-'}</span>
-                                                        </div>
-                                                        <div className="bg-slate-50 p-2 rounded-lg">
-                                                            <span className="text-slate-400 block mb-0.5 text-[10px] uppercase font-bold">Sexo</span>
-                                                            <span className="text-slate-700 font-semibold">{colab.sexo || '-'}</span>
-                                                        </div>
-                                                    </div>
+                                                        </>
+                                                    )}
                                                 </div>
-                                            ))
-                                        )}
+                                            )
+                                        })}
                                     </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
+
+                            {/* --- SEÇÃO: COLABORADORES (MEMBROS DA EQUIPE) --- */}
+                            {activeSection === 'colaboradores' && (
+                                <div className="space-y-8 animate-in slide-in-from-right-4 duration-300">
+
+                                    {/* Botão Expansível para Adicionar Novo Colaborador */}
+                                    {/* Botão Expansível para Adicionar Novo Colaborador */}
+                                    <div className="flex gap-4 items-start mb-6">
+                                        <div className="flex-1 bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden">
+                                            <button
+                                                onClick={() => setIsAddingCollaborator(!isAddingCollaborator)}
+                                                // Alterado: texto de 'text-lg' para 'max-md:text-sm text-lg' para evitar quebra de linha em telas pequenas
+                                                className="w-full flex items-center justify-between p-6 hover:bg-slate-100 transition-colors text-left"
+                                            >
+                                                <h3 className="max-md:text-base text-lg font-bold text-slate-800 flex items-center gap-2">
+                                                    <Plus size={18} className="text-[#35b6cf]" />
+                                                    Novo Colaborador
+                                                </h3>
+                                                <ChevronRight
+                                                    size={20}
+                                                    className={`text-slate-400 transition-transform duration-300 ${isAddingCollaborator ? 'rotate-90' : ''}`}
+                                                />
+                                            </button>
+
+                                            {/* Formulário de Cadastro do Colaborador (Aparece ao clicar em 'Novo Colaborador') */}
+                                            {isAddingCollaborator && (
+                                                <div className="px-6 pb-6 animate-in slide-in-from-top-2 duration-200">
+                                                    <div className="grid grid-cols-12 gap-4 items-start">
+                                                        <div className="col-span-12 md:col-span-6">
+                                                            <input
+                                                                type="text"
+                                                                name="nome"
+                                                                value={collaboratorForm.nome}
+                                                                onChange={handleCollaboratorChange}
+                                                                placeholder="Nome completo"
+                                                                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none"
+                                                            />
+                                                        </div>
+                                                        <div className="col-span-12 md:col-span-6">
+                                                            <input
+                                                                type="email"
+                                                                name="email"
+                                                                value={collaboratorForm.email}
+                                                                onChange={handleCollaboratorChange}
+                                                                placeholder="Email corporativo"
+                                                                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none"
+                                                            />
+                                                        </div>
+
+                                                        <div className="col-span-6 md:col-span-3 space-y-1">
+                                                            <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">CPF</label>
+                                                            <input
+                                                                type="text"
+                                                                name="cpf"
+                                                                value={collaboratorForm.cpf}
+                                                                onChange={handleCollaboratorChange}
+                                                                placeholder="CPF"
+                                                                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none"
+                                                            />
+                                                        </div>
+                                                        <div className="col-span-6 md:col-span-3 space-y-1">
+                                                            <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Telefone</label>
+                                                            <input
+                                                                type="tel"
+                                                                name="telefone"
+                                                                value={collaboratorForm.telefone}
+                                                                onChange={handleCollaboratorChange}
+                                                                placeholder="Telefone"
+                                                                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none"
+                                                            />
+                                                        </div>
+                                                        <div className="col-span-6 md:col-span-3 space-y-1">
+                                                            <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Nascimento</label>
+                                                            <input
+                                                                type="date"
+                                                                name="dataNascimento"
+                                                                value={collaboratorForm.dataNascimento}
+                                                                onChange={handleCollaboratorChange}
+                                                                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none text-slate-600"
+                                                            />
+                                                        </div>
+                                                        <div className="col-span-6 md:col-span-3 space-y-1">
+                                                            <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Sexo</label>
+                                                            <select
+                                                                name="sexo"
+                                                                value={collaboratorForm.sexo}
+                                                                onChange={handleCollaboratorChange}
+                                                                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none bg-white text-slate-600"
+                                                            >
+                                                                <option value="" disabled>Selecione</option>
+                                                                <option value="Masculino">Masculino</option>
+                                                                <option value="Feminino">Feminino</option>
+                                                                <option value="Outro">Outro</option>
+                                                            </select>
+                                                        </div>
+
+                                                        <div className="col-span-12 md:col-span-4 space-y-1">
+                                                            <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Data Desligamento</label>
+                                                            <input
+                                                                type="date"
+                                                                name="dataDesligamento"
+                                                                value={collaboratorForm.dataDesligamento}
+                                                                onChange={handleCollaboratorChange}
+                                                                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] focus:ring-4 focus:ring-[#35b6cf]/10 outline-none text-slate-600"
+                                                            />
+                                                        </div>
+                                                        <div className="col-span-12 md:col-span-4 space-y-1">
+                                                            <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Setor</label>
+                                                            <select
+                                                                name="setor"
+                                                                value={collaboratorForm.setor}
+                                                                onChange={handleCollaboratorChange}
+                                                                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none bg-white text-slate-600"
+                                                            >
+                                                                <option value="" disabled>Selecione</option>
+                                                                {filteredSectors.map((s, i) => <option key={i} value={s}>{s}</option>)}
+                                                            </select>
+                                                        </div>
+                                                        <div className="col-span-12 md:col-span-4 space-y-1">
+                                                            <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Cargo</label>
+                                                            <select
+                                                                name="cargo"
+                                                                value={collaboratorForm.cargo}
+                                                                onChange={handleCollaboratorChange}
+                                                                disabled={!collaboratorForm.setor}
+                                                                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-[#35b6cf] outline-none bg-white text-slate-600 disabled:bg-slate-100 disabled:opacity-70"
+                                                            >
+                                                                <option value="" disabled>Selecione</option>
+                                                                {formData.cargos
+                                                                    .filter(c => normalizeText(c.setor) === normalizeText(collaboratorForm.setor))
+                                                                    .map((c, i) => <option key={i} value={c.nome}>{c.nome}</option>)}
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    {/* Botão para Confirmar Cadastro Temporário */}
+                                                    <div className="flex justify-end mt-4">
+                                                        <Button
+                                                            onClick={addCollaborator}
+                                                            disabled={!collaboratorForm.nome || !collaboratorForm.email || !collaboratorForm.cargo}
+                                                            className="bg-[#35b6cf] text-white px-6 py-2 rounded-xl hover:bg-[#2ca3bc] disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        >
+                                                            Adicionar Colaborador
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <button
+                                            onClick={() => setIsImportModalOpen(true)}
+                                            className="hidden md:flex flex-col items-center justify-center gap-2 px-4 h-20 w-24 bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 hover:border-emerald-200 hover:text-emerald-600 transition-all group shadow-sm shrink-0"
+                                            title="Importar Planilha"
+                                        >
+                                            <FileSpreadsheet size={24} className="text-slate-400 group-hover:text-emerald-500 transition-colors" />
+                                            <span className="font-bold text-slate-600 group-hover:text-emerald-600 text-xs text-center leading-tight">Importar</span>
+                                        </button>
+                                        {!isAddingCollaborator && (
+                                            <button
+                                                onClick={() => setIsImportModalOpen(true)}
+                                                className="md:hidden p-4 bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 text-slate-600 hover:text-emerald-600 transition-all shrink-0"
+                                                title="Importar Planilha"
+                                            >
+                                                <FileSpreadsheet size={24} />
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {/* Lista/Tabela de Colaboradores já cadastrados */}
+                                    <div>
+                                        <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 px-2 gap-4">
+                                            <h3 className="text-lg font-bold text-slate-800">
+                                                Colaboradores Cadastrados ({filteredCollaborators.length})
+                                            </h3>
+                                            {/* Barra de busca rápida na tabela */}
+                                            <div className="flex items-center gap-2 w-full md:w-auto">
+                                                <div className="relative flex-1 md:w-64">
+                                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                                    <input
+                                                        type="text"
+                                                        value={collabSearch}
+                                                        onChange={(e) => setCollabSearch(e.target.value)}
+                                                        placeholder="Buscar colaborador..."
+                                                        className="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-[#35b6cf]"
+                                                    />
+                                                </div>
+                                                {/* Menu de Filtros Avançados */}
+                                                {/* Adicionado 'hidden md:block' para remover o ícone de filtro no mobile conforme solicitado */}
+                                                <div className="relative hidden md:block">
+                                                    <button
+                                                        onClick={() => setIsFilterMenuOpen(!isFilterMenuOpen)}
+                                                        className={`p-2 rounded-lg border transition-colors ${isFilterMenuOpen || Object.keys(selectedFilters).some(k => selectedFilters[k].length > 0) ? 'bg-[#35b6cf] border-[#35b6cf] text-white' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+                                                    >
+                                                        <Filter size={20} />
+                                                    </button>
+
+                                                    {/* Popup do Menu de Filtros */}
+                                                    {isFilterMenuOpen && (
+                                                        <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-xl shadow-xl border border-slate-100 p-4 z-50 animate-in fade-in zoom-in-95 duration-200">
+                                                            <div className="space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                                                                {/* Filtro por Sexo */}
+                                                                <div>
+                                                                    <div className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">Sexo</div>
+                                                                    <div className="space-y-1">
+                                                                        {getUniqueValues('sexo').map(opt => (
+                                                                            <div
+                                                                                key={opt}
+                                                                                onClick={() => handleFilterSelect('sexo', opt)}
+                                                                                className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors ${selectedFilters['sexo']?.includes(opt) ? 'bg-[#35b6cf]/10 text-[#35b6cf] font-medium' : 'hover:bg-slate-50 text-slate-600'}`}
+                                                                            >
+                                                                                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${selectedFilters['sexo']?.includes(opt) ? 'bg-[#35b6cf] border-[#35b6cf]' : 'border-slate-300'}`}>
+                                                                                    {selectedFilters['sexo']?.includes(opt) && <Check size={12} className="text-white" />}
+                                                                                </div>
+                                                                                {opt}
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                                {/* Filtro por Cargo */}
+                                                                <div>
+                                                                    <div className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">Cargo</div>
+                                                                    <div className="space-y-1">
+                                                                        {getUniqueValues('cargo').map(opt => (
+                                                                            <div
+                                                                                key={opt}
+                                                                                onClick={() => handleFilterSelect('cargo', opt)}
+                                                                                className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors ${selectedFilters['cargo']?.includes(opt) ? 'bg-[#35b6cf]/10 text-[#35b6cf] font-medium' : 'hover:bg-slate-50 text-slate-600'}`}
+                                                                            >
+                                                                                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${selectedFilters['cargo']?.includes(opt) ? 'bg-[#35b6cf] border-[#35b6cf]' : 'border-slate-300'}`}>
+                                                                                    {selectedFilters['cargo']?.includes(opt) && <Check size={12} className="text-white" />}
+                                                                                </div>
+                                                                                {opt}
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                                {/* Filtro por Setor */}
+                                                                <div>
+                                                                    <div className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">Setor</div>
+                                                                    <div className="space-y-1">
+                                                                        {getUniqueValues('setor').map(opt => (
+                                                                            <div
+                                                                                key={opt}
+                                                                                onClick={() => handleFilterSelect('setor', opt)}
+                                                                                className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors ${selectedFilters['setor']?.includes(opt) ? 'bg-[#35b6cf]/10 text-[#35b6cf] font-medium' : 'hover:bg-slate-50 text-slate-600'}`}
+                                                                            >
+                                                                                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${selectedFilters['setor']?.includes(opt) ? 'bg-[#35b6cf] border-[#35b6cf]' : 'border-slate-300'}`}>
+                                                                                    {selectedFilters['setor']?.includes(opt) && <Check size={12} className="text-white" />}
+                                                                                </div>
+                                                                                {opt}
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            {/* Botão de Limpar Filtros */}
+                                                            <div className="mt-4 pt-3 border-t border-slate-100 flex justify-end">
+                                                                <button
+                                                                    onClick={() => setSelectedFilters({})}
+                                                                    className="text-xs font-semibold text-slate-400 hover:text-rose-500 transition-colors"
+                                                                >
+                                                                    Limpar Filtros
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Tabela de Colaboradores */}
+                                        <div className="bg-white rounded-xl border border-slate-200 overflow-visible shadow-sm">
+                                            <table className="hidden md:table w-full text-left text-sm">
+                                                <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 font-semibold relative z-10">
+                                                    <tr>
+                                                        <th className="px-3 py-3 rounded-tl-xl w-[20%]">Nome</th>
+                                                        <th className="px-3 py-3 w-[13%]">Nascimento</th>
+                                                        <th className="px-3 py-3 w-[8%]">Sexo</th>
+                                                        <th className="px-3 py-3 w-[21%]">Cargo</th>
+                                                        <th className="px-3 py-3 w-[21%]">Setor</th>
+                                                        <th className="px-3 py-3 rounded-tr-xl text-right w-[17%]">Ações</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-100">
+                                                    {filteredCollaborators.length === 0 ? (
+                                                        <tr>
+                                                            <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
+                                                                Nenhum colaborador encontrado nesta unidade.
+                                                            </td>
+                                                        </tr>
+                                                    ) : (
+                                                        filteredCollaborators.map((colab, idx) => (
+                                                            <tr key={idx} className="hover:bg-slate-50/80 transition-colors group">
+                                                                <td className="px-3 py-3 text-slate-800 font-medium">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <div className="w-7 h-7 rounded-full bg-indigo-50 text-indigo-500 flex items-center justify-center text-xs font-bold shrink-0">
+                                                                            {colab.nome.charAt(0).toUpperCase()}
+                                                                        </div>
+                                                                        <span className="truncate">{colab.nome}</span>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-3 py-3 text-slate-500 whitespace-nowrap text-sm">{colab.dataNascimento ? new Date(colab.dataNascimento).toLocaleDateString('pt-BR') : '-'}</td>
+                                                                <td className="px-3 py-3 text-slate-500 text-sm">{colab.sexo || '-'}</td>
+                                                                <td className="px-3 py-3">
+                                                                    <span className="inline-block bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-lg text-xs font-semibold">
+                                                                        {colab.cargo}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-3 py-3">
+                                                                    <span className="inline-block bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg text-xs font-semibold">
+                                                                        {colab.setor}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-3 py-3 text-right">
+                                                                    <div className="relative inline-block text-left">
+                                                                        <button
+                                                                            onClick={() => setActionMenuOpenIndex(actionMenuOpenIndex === idx ? null : idx)}
+                                                                            className="p-1.5 text-slate-400 hover:text-[#35b6cf] hover:bg-slate-100 rounded-lg transition-colors"
+                                                                        >
+                                                                            <MoreVertical size={16} />
+                                                                        </button>
+
+                                                                        {/* Menu de Ações (Editar/Excluir) */}
+                                                                        {actionMenuOpenIndex === idx && (
+                                                                            <>
+                                                                                {/* Camada Invisível para fechar menu ao clicar fora */}
+                                                                                <div className="fixed inset-0 z-40" onClick={() => setActionMenuOpenIndex(null)}></div>
+                                                                                <div className="absolute right-0 mt-1 w-32 bg-white rounded-xl shadow-xl border border-slate-100 py-1 z-50 animate-in fade-in zoom-in-95 duration-200">
+                                                                                    <button
+                                                                                        onClick={() => openEditModal(colab, formData.colaboradores.indexOf(colab))}
+                                                                                        className="w-full text-left px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-[#35b6cf] flex items-center gap-2"
+                                                                                    >
+                                                                                        <Pencil size={14} /> Editar
+                                                                                    </button>
+                                                                                    <button
+                                                                                        onClick={() => {
+                                                                                            setDeleteConfirmationIndex(formData.colaboradores.indexOf(colab));
+                                                                                            setActionMenuOpenIndex(null);
+                                                                                        }}
+                                                                                        className="w-full text-left px-3 py-2 text-xs font-medium text-slate-600 hover:bg-rose-50 hover:text-rose-500 flex items-center gap-2"
+                                                                                    >
+                                                                                        <Trash2 size={14} /> Excluir
+                                                                                    </button>
+                                                                                </div>
+                                                                            </>
+                                                                        )}
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        ))
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+                                        {/* Mobile Card Layout for Collaborators */}
+                                        {/* Ajuste: Adicionado 'pt-2 px-1' para evitar que o card seja cortado nos cantos ou no topo */}
+                                        <div className="md:hidden space-y-3 pt-2 px-1">
+                                            {filteredCollaborators.length === 0 ? (
+                                                <p className="text-center text-slate-400 py-8 bg-white rounded-xl border border-slate-100 shadow-sm">Nenhum colaborador encontrado.</p>
+                                            ) : (
+                                                filteredCollaborators.map((colab, idx) => (
+                                                    <div key={idx} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col gap-3 relative">
+                                                        <div className="flex items-start justify-between">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center font-bold text-sm">
+                                                                    {colab.nome.charAt(0).toUpperCase()}
+                                                                </div>
+                                                                <div>
+                                                                    <h4 className="font-bold text-slate-800 text-sm">{colab.nome}</h4>
+                                                                    <p className="text-xs text-slate-500">{colab.email}</p>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Ações Mobile */}
+                                                            <div className="flex items-center gap-1">
+                                                                <button
+                                                                    onClick={() => openEditModal(colab, formData.colaboradores.indexOf(colab))}
+                                                                    className="p-2 text-slate-400 hover:text-[#35b6cf] hover:bg-slate-50 rounded-lg"
+                                                                >
+                                                                    <Pencil size={16} />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => setDeleteConfirmationIndex(formData.colaboradores.indexOf(colab))}
+                                                                    className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg"
+                                                                >
+                                                                    <Trash2 size={16} />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="grid grid-cols-2 gap-2 text-xs">
+                                                            <div className="bg-slate-50 p-2 rounded-lg">
+                                                                <span className="text-slate-400 block mb-0.5 text-[10px] uppercase font-bold">Cargo</span>
+                                                                <span className="text-slate-700 font-semibold">{colab.cargo}</span>
+                                                            </div>
+                                                            <div className="bg-slate-50 p-2 rounded-lg">
+                                                                <span className="text-slate-400 block mb-0.5 text-[10px] uppercase font-bold">Setor</span>
+                                                                <span className="text-slate-700 font-semibold">{colab.setor}</span>
+                                                            </div>
+                                                            <div className="bg-slate-50 p-2 rounded-lg">
+                                                                <span className="text-slate-400 block mb-0.5 text-[10px] uppercase font-bold">Nascimento</span>
+                                                                <span className="text-slate-700 font-semibold">{colab.dataNascimento ? new Date(colab.dataNascimento).toLocaleDateString('pt-BR') : '-'}</span>
+                                                            </div>
+                                                            <div className="bg-slate-50 p-2 rounded-lg">
+                                                                <span className="text-slate-400 block mb-0.5 text-[10px] uppercase font-bold">Sexo</span>
+                                                                <span className="text-slate-700 font-semibold">{colab.sexo || '-'}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                        </div> {/* Fim do Wrapper de Conteúdo */}
 
                     </div>
 
