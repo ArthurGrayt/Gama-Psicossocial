@@ -963,8 +963,8 @@ export const EditFormsModal: React.FC<EditFormsModalProps> = ({
                     )}
 
                     {expandedView === 'questions' && (
-                        <div className="h-full flex flex-col min-w-[30rem]">
-                            <div className="px-6 py-4 border-b border-slate-100 bg-white">
+                        <div className="h-full flex flex-col min-w-0 w-full">
+                            <div className="px-6 py-4 border-b border-slate-100 bg-white min-h-[5rem] shrink-0">
                                 <div className="flex items-center justify-between mb-4">
                                     <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                                         <HelpCircle size={18} className="text-[#35b6cf]" />
@@ -1004,7 +1004,7 @@ export const EditFormsModal: React.FC<EditFormsModalProps> = ({
                                     </div>
                                 </div>
                             </div>
-                            <div className="p-6 overflow-auto bg-slate-50/50 h-full">
+                            <div className="p-6 overflow-y-auto bg-slate-50/50 flex-1 min-h-0">
                                 <div className="space-y-3">
                                     {filteredQuestions.map((q, idx) => (
                                         <div key={q.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-start gap-3 hover:border-[#35b6cf]/50 transition-colors">
@@ -1030,8 +1030,8 @@ export const EditFormsModal: React.FC<EditFormsModalProps> = ({
                     )}
 
                     {expandedView === 'description' && (
-                        <div className="h-full flex flex-col min-w-[30rem]">
-                            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-white text-[#35b6cf]">
+                        <div className="h-full flex flex-col min-w-0 w-full">
+                            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-white text-[#35b6cf] min-h-[4rem] shrink-0">
                                 <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                                     <FileText size={18} />
                                     Descrição Completa
@@ -1043,7 +1043,7 @@ export const EditFormsModal: React.FC<EditFormsModalProps> = ({
                                     <X size={18} />
                                 </button>
                             </div>
-                            <div className="p-8 overflow-auto bg-white h-full">
+                            <div className="p-8 overflow-y-auto bg-white flex-1 min-h-0">
                                 <div className="max-w-2xl mx-auto">
                                     <div className="flex items-center gap-3 mb-6 p-4 bg-slate-50 rounded-2xl border border-slate-100">
                                         <div className="w-10 h-10 rounded-xl bg-[#35b6cf]/10 text-[#35b6cf] flex items-center justify-center">
