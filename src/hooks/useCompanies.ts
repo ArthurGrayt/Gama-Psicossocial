@@ -29,16 +29,18 @@ export const useCompanies = (user: any) => {
 
         setLoading(true);
         try {
-            // Optimized query: selecting only necessary fields for the list view
-            const { data: clientsData, error: clientsError } = await supabase
-                .from('vw_empresas_dashboard')
-                .select('id, cliente_uuid, nome_fantasia, razao_social, cnpj, total_colaboradores, total_unidades')
-                .eq('empresa_responsavel', user.id)
-                .order('nome_fantasia');
+            // Requisição para a API local para buscar as empresas
+            const response = await fetch('http://localhost:3000/dashboard/empresas');
 
-            if (clientsError) throw clientsError;
+            // Verifica se a requisição foi bem sucedida
+            if (!response.ok) {
+                throw new Error('Erro ao buscar empresas da API');
+            }
 
-            if (!clientsData) {
+            // Converte a resposta para JSON
+            const clientsData = await response.json();
+
+            if (!clientsData || clientsData.length === 0) {
                 setCompanies([]);
                 globalCache = [];
                 return;

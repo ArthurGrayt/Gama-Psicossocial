@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../services/supabase';
 import { Trophy, Medal, Award } from 'lucide-react';
 // import { useAuth } from '../contexts/AuthContext'; // Simplify for debugging
 
@@ -31,14 +30,15 @@ export const RankingGeralWidget: React.FC = () => {
             );
 
             // Create the fetch promise
-            const fetchPromise = supabase
-                .from('vw_dashboard_ranking_geral')
-                .select('empresa, score_global, total_colaboradores, status_classificacao')
-                .order('score_global', { ascending: false })
-                .limit(5);
+            const fetchPromise = fetch('http://localhost:3000/dashboard/ranking')
+                .then(async (res) => {
+                    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+                    return { data: await res.json(), error: null };
+                })
+                .catch(err => ({ data: null, error: err }));
 
             // Race them
-            setDebugMsg('Sending request to Supabase...');
+            setDebugMsg('Sending request to API...');
             const result = await Promise.race([fetchPromise, timeoutPromise]) as any;
 
             const { data, error } = result;
