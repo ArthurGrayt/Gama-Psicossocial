@@ -29,34 +29,18 @@ export const useCompanies = (user: any) => {
 
         setLoading(true);
         try {
-            // Requisição para a API local para buscar as empresas
-            const response = await fetch('http://localhost:3000/dashboard/empresas');
+            // Fetch from Supabase exclusively to ensure user-level filtering
+            const { data: clientsData, error: dbError } = await supabase
+                .from('clientes')
+                .select('id, cliente_uuid, nome_fantasia, razao_social, cnpj, total_colaboradores, total_unidades, img_url, created_at')
+                .eq('empresa_responsavel', user.id);
 
-            // Verifica se a requisição foi bem sucedida
-            if (!response.ok) {
-                throw new Error('Erro ao buscar empresas da API');
-            }
-
-            // Converte a resposta para JSON
-            const clientsData = await response.json();
+            if (dbError) throw dbError;
 
             if (!clientsData || clientsData.length === 0) {
                 setCompanies([]);
                 globalCache = [];
                 return;
-            }
-
-            // Fetch img_url and created_at separately from the clientes table (not in the view)
-            const companyIds = clientsData.map(c => c.id);
-            let extraMap: Record<number, { img_url: string | null; created_at: string | null }> = {};
-            if (companyIds.length > 0) {
-                const { data: extraData } = await supabase
-                    .from('clientes')
-                    .select('id, img_url, created_at')
-                    .in('id', companyIds);
-                if (extraData) {
-                    extraData.forEach((row: any) => { extraMap[row.id] = { img_url: row.img_url, created_at: row.created_at }; });
-                }
             }
 
             // Map efficiently
@@ -74,8 +58,8 @@ export const useCompanies = (user: any) => {
                 setores: [],
                 detailsLoaded: false,
                 total_units: client.total_unidades || 0,
-                img_url: extraMap[client.id]?.img_url || null,
-                created_at: extraMap[client.id]?.created_at || null
+                img_url: client.img_url || null,
+                created_at: client.created_at || null
             }));
 
             // Update state and cache
