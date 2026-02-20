@@ -30,9 +30,10 @@ export const useCompanies = (user: any) => {
         setLoading(true);
         try {
             // Fetch from Supabase exclusively to ensure user-level filtering
+            // Note: vw_empresas_dashboard already includes total_colaboradores, total_unidades, etc.
             const { data: clientsData, error: dbError } = await supabase
-                .from('clientes')
-                .select('id, cliente_uuid, nome_fantasia, razao_social, cnpj, total_colaboradores, total_unidades, img_url, created_at')
+                .from('vw_empresas_dashboard')
+                .select('*')
                 .eq('empresa_responsavel', user.id);
 
             if (dbError) throw dbError;
