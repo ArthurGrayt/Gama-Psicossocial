@@ -789,7 +789,7 @@ export const LandingPage: React.FC = () => {
                                 </ul>
                             </div>
                             <button
-                                onClick={() => handlePlanSelect({ id: 'mensal', name: 'Pacote Mensal', tokens: 300, price: '3000.00' })}
+                                onClick={() => handlePlanSelect({ id: 'mensal', name: 'Pacote Mensal', tokens: 300, price: '3.000,00' })}
                                 className="mt-auto w-full cursor-pointer flex items-center justify-center rounded-xl h-12 px-6 font-bold transition-all bg-slate-50 hover:bg-primary text-slate-600 hover:text-white border border-slate-100 hover:border-primary"
                             >
                                 Selecionar Plano
@@ -850,7 +850,7 @@ export const LandingPage: React.FC = () => {
                                 </ul>
                             </div>
                             <button
-                                onClick={() => handlePlanSelect({ id: 'anual', name: 'Plano Anual', tokens: 1200, price: '6000.00' })}
+                                onClick={() => handlePlanSelect({ id: 'anual', name: 'Plano Anual', tokens: 1200, price: '6.000,00' })}
                                 className="mt-auto w-full cursor-pointer flex items-center justify-center rounded-xl h-12 px-6 font-bold transition-all bg-primary hover:bg-teal-700 text-white shadow-md shadow-primary/20"
                             >
                                 Selecionar Plano
@@ -900,7 +900,7 @@ export const LandingPage: React.FC = () => {
                                 </ul>
                             </div>
                             <button
-                                onClick={() => handlePlanSelect({ id: 'semestral', name: 'Pacote Semestral', tokens: 500, price: '5.00' })}
+                                onClick={() => handlePlanSelect({ id: 'semestral', name: 'Pacote Semestral', tokens: 500, price: '5,00' })}
                                 className="mt-auto w-full cursor-pointer flex items-center justify-center rounded-xl h-12 px-6 font-bold transition-all bg-slate-50 hover:bg-primary text-slate-600 hover:text-white border border-slate-100 hover:border-primary"
                             >
                                 Selecionar Plano
