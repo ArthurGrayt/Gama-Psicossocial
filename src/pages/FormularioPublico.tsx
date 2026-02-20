@@ -52,10 +52,6 @@ export const FormularioPublico: React.FC = () => {
     }, [questions]);
 
     useEffect(() => {
-        console.log(`[FORM ACCESS] Questions state updated: ${questions.length} items`);
-    }, [questions]);
-
-    useEffect(() => {
         if (slug) fetchForm();
     }, [slug]);
 
@@ -66,12 +62,9 @@ export const FormularioPublico: React.FC = () => {
     const fetchForm = async () => {
         setLoading(true);
         setError(null);
-        console.log(`[FORM ACCESS v3] Fetching form and questions in parallel for slug: "${slug}"`);
-
         try {
             if (!slug) throw new Error('Link inválido: ID do formulário não fornecido.');
 
-            // Parallel Execution: Fetch form and all questions library simultaneously
             const [formResult, questionsResult] = await Promise.all([
                 supabase
                     .from('forms')
@@ -84,7 +77,6 @@ export const FormularioPublico: React.FC = () => {
                     .order('question_order', { ascending: true })
             ]);
 
-            // Handle Form Result
             if (formResult.error) throw formResult.error;
             if (!formResult.data) {
                 setError('Formulário não encontrado. Verifique se o link está correto.');
@@ -92,17 +84,13 @@ export const FormularioPublico: React.FC = () => {
             }
             setForm(formResult.data);
 
-            // Handle Questions Result
             if (questionsResult.error) {
                 console.error('[FORM ACCESS] Error fetching questions:', questionsResult.error);
-                // We show an error but maybe we could show the form cover first? 
-                // However, without questions, the form is unusable.
                 throw new Error('Erro ao carregar perguntas.');
             }
             setQuestions(questionsResult.data || []);
 
         } catch (err: any) {
-            if (err.name === 'AbortError' || err.message?.includes('AbortError')) return;
             console.error('Erro geral ao carregar formulário:', err);
             setError(err.message || 'Erro ao carregar formulário.');
         } finally {
@@ -110,10 +98,8 @@ export const FormularioPublico: React.FC = () => {
         }
     };
 
-    // --- Lógica de CPF ---
     const handleCheckCPF = async () => {
         setCpfError(null);
-        // Clean input: remove dots, dashes and other non-numeric characters
         const cleanCpf = cpf.replace(/\D/g, '');
 
         if (cleanCpf.length !== 11) {
@@ -123,10 +109,7 @@ export const FormularioPublico: React.FC = () => {
 
         setCheckingCpf(true);
         try {
-            // Formatted version with dots and dashes
             const formattedCpf = cleanCpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
-
-            console.log(`[CPF DEBUG] Searching for CPF: ${cleanCpf} or ${formattedCpf}`);
 
             const { data: colabData, error: colabError } = await supabase
                 .from('colaboradores')
@@ -134,24 +117,16 @@ export const FormularioPublico: React.FC = () => {
                 .or(`cpf.eq.${cleanCpf},cpf.eq.${formattedCpf}`)
                 .maybeSingle();
 
-            if (colabError) {
-                console.error("[CPF DEBUG] database error:", colabError);
-                throw colabError;
-            }
+            if (colabError) throw colabError;
 
             if (!colabData) {
-                console.warn(`[CPF DEBUG] Collaborator not found for CPF: ${cleanCpf}`);
                 setCpfError('Colaborador não encontrado.');
                 setCheckingCpf(false);
                 return;
             }
 
-            // Verifica permissão (se houver lista de inclusos no form)
             const allowedIds = (form?.colaboladores_inclusos || []).map(String);
-            // Se a lista for vazia ou nula, assume liberado para todos (ou bloqueia, depende da regra)
-            // Aqui assumo: Se tem lista, verifica. Se não tem, libera (ou bloqueia, ajuste conforme regra).
             if (form?.colaboladores_inclusos && form.colaboladores_inclusos.length > 0) {
-                // Nota: colabData.id precisa ser convertido para string para comparar com UUIDs do array
                 if (!allowedIds.includes(String(colabData.id))) {
                     setCpfError('Você não está habilitado para este formulário.');
                     setCheckingCpf(false);
@@ -159,7 +134,6 @@ export const FormularioPublico: React.FC = () => {
                 }
             }
 
-            // Busca nome da empresa para exibição
             let companyName = '';
             if (colabData.unidade_id) {
                 const { data: unitData } = await supabase.from('unidades').select('empresa_mae').eq('id', colabData.unidade_id).single();
@@ -170,7 +144,7 @@ export const FormularioPublico: React.FC = () => {
             }
 
             setCollaborator({ ...colabData, empresa_nome: companyName });
-            setCurrentQuestionIndex(0); // Garante que comece do início
+            setCurrentQuestionIndex(0);
             setStep('form');
         } catch (err) {
             setCpfError('Erro ao verificar CPF.');
@@ -217,7 +191,6 @@ export const FormularioPublico: React.FC = () => {
         }
     };
 
-    // --- ENVIO DAS RESPOSTAS (Ajustado para seu Schema) ---
     const handleSubmit = async () => {
         const lastQ = validQuestions[currentQuestionIndex];
         if (!validateQuestion(lastQ)) return;
@@ -225,54 +198,42 @@ export const FormularioPublico: React.FC = () => {
 
         setLoading(true);
 
-        // Mapeia respostas para o formato da tabela 'form_answers'
         const answersToInsert = validQuestions.map(q => {
             if (!q.id) return null;
-
             const rawValue = answers[q.id];
             if (rawValue === undefined) return null;
 
-            // Define se salva em answer_text ou answer_number
             let answerNumber: number | null = null;
             let answerText: string | null = String(rawValue);
 
-            // Se for rating/escala, converte para número
-            // (Assumindo que sua tabela questions usa 'rating' ou 'scale' como type)
             if (q.question_type === 'rating' || q.question_type === 'scale' || !isNaN(Number(rawValue))) {
-                // Tenta converter se for puramente numérico (segurança extra)
                 const num = Number(rawValue);
                 if (!isNaN(num)) {
                     answerNumber = num;
-                    // Se for puramente numérico, podemos optar por não salvar texto ou salvar ambos
-                    // Aqui salvo texto como null se for numérico puro para limpar o banco
-                    // AJUSTE: Se for um select de texto (ex: "Sempre"), isNaN falha e cai no else, salvando texto. Correto.
                 }
             }
 
-            // Força lógica correta baseada no tipo da pergunta
             if (q.question_type === 'select' || q.question_type === 'short_text' || q.question_type === 'long_text' || q.question_type === 'choice') {
                 answerNumber = null;
                 answerText = String(rawValue);
 
-                // LOGICA DE SCORE PARA SELECT/CHOICE
-                // Se for select/choice, tentamos achar o indice da resposta nas 5 opções
                 if (q.question_type === 'select' || q.question_type === 'choice') {
                     const opts = getOptions(q);
                     const idx = opts.findIndex(opt => opt === rawValue);
                     if (idx !== -1) {
-                        answerNumber = idx; // 0-based index (Option 0 -> 0, Option 1 -> 1...)
+                        answerNumber = idx;
                     }
                 }
             }
 
             return {
-                form_id: form.id,                // bigint
-                question_id: q.id,            // bigint
-                respondedor: collaborator.id, // uuid (Vem da tabela colaboradores)
-                unidade_colaborador: collaborator.unidade_id, // bigint
-                cargo: collaborator.cargo_id, // bigint (ajuste se o nome da coluna no objeto collaborator for diferente)
-                answer_text: answerText,      // text
-                answer_number: answerNumber,  // numeric
+                form_id: form.id,
+                question_id: q.id,
+                respondedor: collaborator.id,
+                unidade_colaborador: collaborator.unidade_id,
+                cargo: collaborator.cargo_id,
+                answer_text: answerText,
+                answer_number: answerNumber,
             };
         }).filter(Boolean);
 
@@ -285,7 +246,6 @@ export const FormularioPublico: React.FC = () => {
             alert('Erro ao enviar respostas. Verifique sua conexão.');
             setLoading(false);
         } else {
-            // Incrementa contador de respondentes (+1 na coluna respondentes)
             const { data: currentForm } = await supabase.from('forms').select('respondentes').eq('id', form.id).single();
             await supabase.from('forms').update({ respondentes: (currentForm?.respondentes || 0) + 1 }).eq('id', form.id);
 
@@ -312,7 +272,6 @@ export const FormularioPublico: React.FC = () => {
 
     return (
         <div className="bg-slate-50 h-screen h-[100dvh] overflow-hidden flex flex-col font-sans">
-            {/* NOVO CABEÇALHO FIXO PREMIUM COM TÍTULO E DESCRIÇÃO - HIDDEN ON COVER */}
             {step !== 'cover' && (
                 <header className="bg-white border-b border-slate-200 px-6 py-4 flex flex-col gap-3 shrink-0 z-50 shadow-sm relative animate-in fade-in duration-500">
                     <div className="max-w-[1200px] mx-auto w-full flex items-center justify-between">
@@ -352,22 +311,19 @@ export const FormularioPublico: React.FC = () => {
             <main className="flex-1 overflow-hidden w-full flex flex-col items-center justify-center">
                 <div className="w-full max-w-[1000px] px-3 sm:px-4 py-2 sm:py-16">
                     <div className="w-full flex flex-col items-center justify-center">
-                        {/* DEBUG BADGE */}
-                        <div className="fixed bottom-2 right-2 bg-red-500 text-white text-[10px] px-2 py-1 rounded-full z-[9999] opacity-50 font-mono">
-                            FP_V2_FIX
-                        </div>
-                        {/* PASSO 1: CAPA REFINADA */}
+
+                        {/* PASSO 1: CAPA ORIGINAL RESTAURADA */}
                         {step === 'cover' && (
                             <>
                                 <div className="w-full bg-white rounded-xl shadow-xl border border-slate-100 flex flex-col animate-in fade-in zoom-in-95 duration-500 overflow-hidden border-t-[8px] border-t-[#35b6cf]">
                                     <div className="p-5 sm:p-12 flex flex-col h-full justify-between">
                                         <div>
                                             <h1 className="text-xl sm:text-3xl font-bold text-slate-800 mb-4 sm:mb-8 leading-tight">
-                                                {form?.title}
+                                                {form?.title || 'Carregando Título...'}
                                             </h1>
 
                                             <div className="space-y-4 text-slate-600 text-sm sm:text-lg leading-relaxed whitespace-pre-wrap mb-4 sm:mb-10 max-h-[30vh] sm:max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
-                                                {form?.description}
+                                                {form?.description || 'Carregando descrição...'}
                                             </div>
                                         </div>
 
@@ -408,12 +364,12 @@ export const FormularioPublico: React.FC = () => {
                                         className={`w-full pl-10 pr-4 py-3 bg-slate-50 border-2 ${cpfError ? 'border-red-300 bg-red-50' : 'border-slate-100 focus:border-[#35b6cf]'} rounded-2xl outline-none transition-all text-base font-bold tracking-wider sm:text-xl`}
                                         value={cpf}
                                         onChange={e => {
-                                            const val = e.target.value.replace(/\D/g, ''); // Remove não números
+                                            const val = e.target.value.replace(/\D/g, '');
                                             const formatted = val
                                                 .replace(/(\d{3})(\d)/, '$1.$2')
                                                 .replace(/(\d{3})(\d)/, '$1.$2')
                                                 .replace(/(\d{3})(\d{1,2})/, '$1-$2')
-                                                .replace(/(-\d{2})\d+?$/, '$1'); // Limita em 11 dígitos reais + máscara
+                                                .replace(/(-\d{2})\d+?$/, '$1');
                                             setCpf(formatted);
                                             setCpfError(null);
                                         }}
@@ -444,7 +400,6 @@ export const FormularioPublico: React.FC = () => {
                         )}
                         {step === 'form' && validQuestions.length > 0 && (
                             <div className={`${FORM_WIDTH} flex flex-col gap-6 animate-in fade-in duration-700`}>
-                                {/* Header da Pergunta (Opcional se já tem o fixo, mas mantendo para contexto local) */}
                                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hidden sm:block">
                                     <div className="px-8 py-4 bg-slate-50/50 border-b border-slate-200 flex items-center justify-between">
                                         <span className="text-[10px] font-black text-[#35b6cf] uppercase tracking-widest flex items-center gap-2">
@@ -458,7 +413,6 @@ export const FormularioPublico: React.FC = () => {
                                     </div>
                                 </div>
 
-                                {/* Questão Única */}
                                 {(() => {
                                     const q = validQuestions[currentQuestionIndex];
                                     const optionsList = getOptions(q);
@@ -470,7 +424,6 @@ export const FormularioPublico: React.FC = () => {
                                                 {q.label} {q.required && <span className="text-red-500 ml-1">*</span>}
                                             </label>
 
-                                            {/* SHORT TEXT */}
                                             {q.question_type === 'short_text' && (
                                                 <div className="relative">
                                                     <input
@@ -483,7 +436,6 @@ export const FormularioPublico: React.FC = () => {
                                                 </div>
                                             )}
 
-                                            {/* LONG TEXT */}
                                             {q.question_type === 'long_text' && (
                                                 <textarea
                                                     className="w-full border-2 border-slate-100 bg-slate-50/30 rounded-2xl focus:border-[#35b6cf] focus:bg-white outline-none p-6 text-xl resize-none transition-all placeholder:text-slate-300 font-medium"
@@ -494,7 +446,6 @@ export const FormularioPublico: React.FC = () => {
                                                 />
                                             )}
 
-                                            {/* SELECT (ADAPTIVE LAYOUT) */}
                                             {(q.question_type === 'select' || q.question_type === 'choice') && (
                                                 <div className="flex flex-col sm:flex-row sm:flex-wrap lg:flex-nowrap justify-center gap-2 sm:gap-4 py-4 sm:py-6 pb-2 sm:pb-0 px-1 custom-scrollbar">
                                                     {optionsList.map((opt, oIdx) => {
@@ -523,7 +474,6 @@ export const FormularioPublico: React.FC = () => {
                                                 </div>
                                             )}
 
-                                            {/* RATING / SCALE */}
                                             {(q.question_type === 'rating' || q.question_type === 'scale') && (
                                                 <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
                                                     {Array.from({ length: (q.max_value || 5) - (q.min_value || 1) + 1 }, (_, i) => (q.min_value || 1) + i).map((val) => {
@@ -547,7 +497,6 @@ export const FormularioPublico: React.FC = () => {
                                     );
                                 })()}
 
-                                {/* Navegação Inferior */}
                                 <div className="flex items-center justify-between pt-6 sm:pt-8">
                                     <button
                                         onClick={handleBack}
@@ -569,7 +518,7 @@ export const FormularioPublico: React.FC = () => {
                         )}
                     </div>
                 </div>
-            </main >
-        </div >
+            </main>
+        </div>
     );
 };

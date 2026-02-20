@@ -6,7 +6,8 @@ import type { LucideIcon } from 'lucide-react';
 // Esté componente define as ações individuais dentro do dropdown
 interface DropdownAction {
     label: string; // Texto exibido para a ação
-    onClick: () => void; // Função executada ao clicar
+    onClick?: () => void; // Função executada ao clicar
+    href?: string; // Link opcional para navegação direta
     icon?: LucideIcon; // Ícone opcional da biblioteca lucide-react
     variant?: 'default' | 'danger'; // Variante visual (padrão ou perigo/vermelho)
     show?: boolean; // Controle condicional para exibir ou não a ação
@@ -52,12 +53,36 @@ export const Dropdown: React.FC<DropdownProps> = ({
             // Obtém as coordenadas do botão acionador
             const rect = triggerRef.current?.getBoundingClientRect();
             if (rect) {
+                // Largura estimada do menu (200px definido no estilo)
+                const menuWidth = 200;
+                const gap = 8;
+                const windowWidth = window.innerWidth;
+
+                let left = 0;
+
+                // Lógica de posicionamento horizontal inteligente
+                if (align === 'right') {
+                    // Tenta alinhar à direita do botão
+                    left = rect.right - menuWidth;
+
+                    // Se vazar para a esquerda, ajusta para a borda da tela
+                    if (left < gap) {
+                        left = gap;
+                    }
+                } else {
+                    // Tenta alinhar à esquerda do botão
+                    left = rect.left;
+
+                    // Se vazar para a direita, ajusta para a borda da tela
+                    if (left + menuWidth > windowWidth - gap) {
+                        left = windowWidth - menuWidth - gap;
+                    }
+                }
+
                 // Define a posição baseada no scroll atual da página
                 setPosition({
-                    top: rect.bottom + window.scrollY,
-                    left: align === 'right'
-                        ? rect.right + window.scrollX
-                        : rect.left + window.scrollX
+                    top: rect.bottom + window.scrollY + gap,
+                    left: left + window.scrollX
                 });
                 setIsOpen(true);
             }
@@ -115,37 +140,56 @@ export const Dropdown: React.FC<DropdownProps> = ({
                     ref={menuRef}
                     className="fixed z-[10000] min-w-[200px] bg-white border border-slate-100 shadow-2xl rounded-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
                     style={{
-                        top: `${position.top + 8}px`,
-                        // Lógica de posicionamento baseada no alinhamento (left ou right)
-                        left: align === 'right' ? 'auto' : `${position.left}px`,
-                        right: align === 'right' ? `${window.innerWidth - position.left}px` : 'auto'
+                        top: `${position.top}px`,
+                        left: `${position.left}px`
                     }}
                 >
                     <div className="py-1.5">
                         {visibleActions.map((action, index) => (
                             <React.Fragment key={index}>
                                 {/* Botão de cada item do menu */}
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        action.onClick();
-                                        setIsOpen(false);
-                                    }}
-                                    className={`w-full text-left px-4 py-3 text-sm font-semibold flex items-center gap-3 transition-all
-                                        ${action.variant === 'danger'
-                                            ? 'text-rose-500 hover:bg-rose-50'
-                                            : 'text-slate-600 hover:bg-slate-50 hover:text-[#35b6cf]'}`}
-                                >
-                                    {/* Ícone opcional da ação */}
-                                    {action.icon && (
-                                        <action.icon
-                                            size={18}
-                                            strokeWidth={2.2}
-                                            className={action.variant === 'danger' ? 'text-rose-500' : 'text-slate-400 group-hover:text-[#35b6cf]'}
-                                        />
-                                    )}
-                                    <span className="flex-1">{action.label}</span>
-                                </button>
+                                {action.href ? (
+                                    <a
+                                        href={action.href}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={() => setIsOpen(false)}
+                                        className={`w-full text-left px-4 py-3 text-sm font-semibold flex items-center gap-3 transition-all
+                                            ${action.variant === 'danger'
+                                                ? 'text-rose-500 hover:bg-rose-50'
+                                                : 'text-slate-600 hover:bg-slate-50 hover:text-[#35b6cf]'}`}
+                                    >
+                                        {action.icon && (
+                                            <action.icon
+                                                size={18}
+                                                strokeWidth={2.2}
+                                                className={action.variant === 'danger' ? 'text-rose-500' : 'text-slate-400 group-hover:text-[#35b6cf]'}
+                                            />
+                                        )}
+                                        <span className="flex-1">{action.label}</span>
+                                    </a>
+                                ) : (
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            action.onClick?.();
+                                            setIsOpen(false);
+                                        }}
+                                        className={`w-full text-left px-4 py-3 text-sm font-semibold flex items-center gap-3 transition-all
+                                            ${action.variant === 'danger'
+                                                ? 'text-rose-500 hover:bg-rose-50'
+                                                : 'text-slate-600 hover:bg-slate-50 hover:text-[#35b6cf]'}`}
+                                    >
+                                        {action.icon && (
+                                            <action.icon
+                                                size={18}
+                                                strokeWidth={2.2}
+                                                className={action.variant === 'danger' ? 'text-rose-500' : 'text-slate-400 group-hover:text-[#35b6cf]'}
+                                            />
+                                        )}
+                                        <span className="flex-1">{action.label}</span>
+                                    </button>
+                                )}
                                 {/* Divisor horizontal entre grupos de ações (ex: entre padrão e exclusão) */}
                                 {index < visibleActions.length - 1 && action.variant !== visibleActions[index + 1]?.variant && (
                                     <div className="border-t border-slate-50 my-1 mx-2" />

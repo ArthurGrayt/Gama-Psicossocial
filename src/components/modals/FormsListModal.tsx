@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../services/supabase';
-import { X, FileText, Plus, Calendar, BarChart2, Pencil, Trash2, Check, Link, ExternalLink } from 'lucide-react';
+import { X, FileText, Plus, Calendar, BarChart2, Pencil, Trash2, Check, Link, ExternalLink, Users } from 'lucide-react';
 import { Dropdown } from '../ui/Dropdown';
 import { HSEReportModal } from '../reports/HSEReportModal';
 import type { HSEReportData } from '../reports/HSEReportModal';
@@ -25,6 +25,7 @@ interface Form {
     unidade_id: number;
     created_at: string;
     qtd_respostas: number;
+    colaboladores_inclusos?: string[];
     slug?: string;
     link?: string;
     unidades?: {
@@ -40,6 +41,7 @@ interface FormsListModalProps {
     onClose: () => void;
     company: Company | null;
     onCreateNew: () => void;
+    onEditCollaborators?: (form: any) => void;
     loading?: boolean;
 }
 
@@ -49,6 +51,7 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
     onClose,
     company,
     onCreateNew,
+    onEditCollaborators,
     loading: parentLoading
 }) => {
     const [forms, setForms] = useState<Form[]>([]);
@@ -67,6 +70,22 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [formToDeleteId, setFormToDeleteId] = useState<number | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+
+    // Auxiliar para extrair o slug do link ou retornar o ID como fallback
+    const getFormSlug = (form: Form) => {
+        if (form.link) {
+            // Tenta extrair a última parte da URL (o slug/ID único)
+            const parts = form.link.split('/');
+            return parts[parts.length - 1];
+        }
+        return String(form.id);
+    };
+
+    // Auxiliar para gerar o link dinâmico completo
+    const getDynamicLink = (form: Form) => {
+        const slug = getFormSlug(form);
+        return `${window.location.origin}/form/${slug}`;
+    };
 
     useEffect(() => {
         const fetchForms = async () => {
@@ -192,6 +211,13 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
         }
     };
 
+    const handleEditCollaborators = (form: Form) => {
+        if (onEditCollaborators) {
+            onEditCollaborators(form);
+            onClose(); // Fecha este modal ao abrir o outro
+        }
+    };
+
     if (!isOpen) return null;
 
     return createPortal(
@@ -302,8 +328,8 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
                                         )}
                                         <p className="text-xs text-slate-500 line-clamp-1 mb-1 md:mb-2">{form.description || 'Sem descrição disponível para este formulário.'}</p>
 
-                                        <div className="flex items-center gap-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                            <div className="flex items-center gap-1.5">
+                                        <div className="flex flex-wrap items-center gap-y-2 gap-x-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                            <div className="flex items-center gap-1.5 shrink-0">
                                                 <Calendar size={12} className="text-[#35b6cf]" />
                                                 {new Date(form.created_at).toLocaleDateString()}
                                                 {form.setor_nome && (
@@ -313,39 +339,42 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
                                                     </>
                                                 )}
                                             </div>
-                                            <div className="flex items-center gap-1.5 border-l border-slate-200 pl-4">
+                                            <div className="flex items-center gap-1.5 border-l border-slate-200 pl-4 shrink-0">
                                                 <BarChart2 size={12} className="text-[#35b6cf]" />
-                                                {form.qtd_respostas || 0} respostas
+                                                <span className="text-slate-600">{form.qtd_respostas || 0}</span>
+                                                <span className="hidden md:inline text-slate-400">respostas</span>
+                                            </div>
+                                            <div className="flex items-center gap-1.5 border-l border-slate-200 pl-4 shrink-0">
+                                                {/* Representa a quantidade de colaboradores incluídos neste formulário */}
+                                                <Users size={12} className="text-[#35b6cf]" />
+                                                <span className="text-slate-600">{form.colaboladores_inclusos?.length || 0}</span>
+                                                <span className="hidden md:inline text-slate-400">incluídos</span>
                                             </div>
                                         </div>
                                     </div>
 
                                     {/* Ações Padronizadas conforme modelo da imagem */}
                                     <div className="flex items-center gap-2 pt-2 md:pt-0 md:border-l border-slate-100 md:pl-6 shrink-0 relative">
-                                        {/* Ações Rápidas */}
-                                        {form.link && (
-                                            <>
-                                                <button
-                                                    onClick={() => {
-                                                        navigator.clipboard.writeText(form.link || '');
+                                        {/* Ações de Link (Dropdown) */}
+                                        <Dropdown
+                                            triggerIcon={Link}
+                                            actions={[
+                                                {
+                                                    label: 'Copiar Link',
+                                                    icon: Link,
+                                                    onClick: () => {
+                                                        const dynamicLink = getDynamicLink(form);
+                                                        navigator.clipboard.writeText(dynamicLink);
                                                         alert('Link copiado com sucesso!');
-                                                    }}
-                                                    className="p-2 text-slate-400 hover:text-[#35b6cf] hover:bg-[#35b6cf]/10 rounded-lg transition-all"
-                                                    title="Copiar Link"
-                                                >
-                                                    <Link size={18} />
-                                                </button>
-                                                <a
-                                                    href={form.link}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="p-2 text-slate-400 hover:text-[#35b6cf] hover:bg-[#35b6cf]/10 rounded-lg transition-all"
-                                                    title="Abrir Formulário"
-                                                >
-                                                    <ExternalLink size={18} />
-                                                </a>
-                                            </>
-                                        )}
+                                                    }
+                                                },
+                                                {
+                                                    label: 'Abrir em Nova Guia',
+                                                    icon: ExternalLink,
+                                                    href: getDynamicLink(form)
+                                                }
+                                            ]}
+                                        />
 
                                         <button
                                             onClick={() => handleGenerateReport(form.id)}
@@ -365,6 +394,12 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
                                                         setEditingForm(form);
                                                         setEditFormTitle(form.title);
                                                     },
+                                                    show: true
+                                                },
+                                                {
+                                                    label: 'Editar Colaboradores',
+                                                    icon: Users,
+                                                    onClick: () => handleEditCollaborators(form),
                                                     show: true
                                                 },
                                                 {

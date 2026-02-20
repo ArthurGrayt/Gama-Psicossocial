@@ -115,16 +115,19 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
             // 2. Fetch Collaborators (All in these units)
             const { data: colabs } = await supabase
                 .from('colaboradores')
-                .select('*, cargos(nome)')
+                .select('*, cargos(nome), setor(nome)')
                 .in('unidade_id', unitIds)
                 .order('nome');
 
             // Map relation for safer access
             const mappedColabs = (colabs || []).map(c => {
                 const cargoObj = Array.isArray(c.cargos) ? c.cargos[0] : c.cargos;
+                const setorObj = Array.isArray(c.setor) ? c.setor[0] : c.setor;
                 return {
                     ...c,
-                    cargo_nome: cargoObj?.nome || c.cargo // Priority to relation
+                    cargo_nome: cargoObj?.nome || c.cargo, // Priority to relation
+                    setor_nome: setorObj?.nome || c.setor,
+                    unidade_nome: unitList.find((u: any) => u.id === c.unidade_id)?.nome
                 };
             });
 
@@ -566,6 +569,11 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                                                     <span className="text-xs text-slate-500 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100 flex items-center gap-1">
                                                         <Building size={10} /> {colab.unidade_nome || 'N/A'}
                                                     </span>
+                                                    {colab.setor_nome && (
+                                                        <span className="text-xs text-slate-500 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100 font-medium">
+                                                            {colab.setor_nome}
+                                                        </span>
+                                                    )}
                                                     {colab.cargo_nome && (
                                                         <span className="text-xs text-[#139690] bg-[#139690]/5 px-2 py-0.5 rounded-md border border-[#139690]/10 font-medium">
                                                             {colab.cargo_nome}

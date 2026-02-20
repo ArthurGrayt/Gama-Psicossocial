@@ -1,5 +1,5 @@
-﻿import React, { useState } from 'react';
-import { Building, Search, Filter, Trash2, Users, FileText, ChevronRight, Edit, X, LayoutGrid, List, LayoutTemplate, Settings, FilePlus, Copy, ExternalLink, Check, HelpCircle, Plus, CalendarDays, ChevronDown, ArrowUpDown } from 'lucide-react';
+﻿import React, { useState, useEffect } from 'react';
+import { Building, Search, Filter, Trash2, Users, FileText, ChevronRight, Edit, X, LayoutGrid, List, LayoutTemplate, Settings, FilePlus, Copy, ExternalLink, Check, HelpCircle, Plus, CalendarDays, ArrowUpDown } from 'lucide-react';
 import { CompanyRegistrationModal } from './CompanyRegistrationModal';
 import { CollaboratorManagerModal } from './CollaboratorManagerModal';
 import { FormsListModal } from '../modals/FormsListModal';
@@ -8,6 +8,7 @@ import { supabase } from '../../services/supabase';
 import { ConfirmationModal } from '../ui/ConfirmationModal';
 import { Select } from '../ui/Select';
 import gamaLogo from '../../assets/logo.png';
+import { EditCollaboratorsModal } from '../modals/EditCollaboratorsModal';
 
 // --- Form Dashboard: Main component for managing forms and companies ---
 import { useCompanies } from '../../hooks/useCompanies';
@@ -39,7 +40,7 @@ const MOCK_QUESTIONS = [
 
 // --- REFACTORED: CompanySummary and EmployeeManagement removed as they are replaced by CompanyRegistrationModal ---
 
-export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEditForm, onAnalyzeForm }) => {
+export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onAnalyzeForm }) => {
     const { user } = useAuth();
     const { companies, loading: isLoading, refetch } = useCompanies(user);
     const [searchTerm, setSearchTerm] = useState('');
@@ -65,6 +66,10 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
     const [showFormsListModal, setShowFormsListModal] = useState(false);
     const [selectedCompanyForForms, setSelectedCompanyForForms] = useState<any>(null);
 
+    // Edit Collaborators Modal
+    const [isEditColabsOpen, setIsEditColabsOpen] = useState(false);
+    const [selectedFormForEditColabs, setSelectedFormForEditColabs] = useState<any>(null);
+
     // Summary Modal State
     const [summaryModalOpen, setSummaryModalOpen] = useState(false);
     const [summaryData, setSummaryData] = useState<any>(null);
@@ -75,6 +80,12 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [successModalOpen, setSuccessModalOpen] = useState(false);
     const [selectedCollaborators, setSelectedCollaborators] = useState<Set<number>>(new Set());
+
+    // Dynamic Title Tags State
+    const [showCompanyTag, setShowCompanyTag] = useState(false);
+    const [showUnitTag, setShowUnitTag] = useState(false);
+    const [showSectorTag, setShowSectorTag] = useState(false);
+    const [baseFormTitle, setBaseFormTitle] = useState('Pesquisa de Clima Organizacional 2024');
 
     const [loadingDetailsFor, setLoadingDetailsFor] = useState<string | number | null>(null);
     const [visibleCount, setVisibleCount] = useState(12); // Pagination limit
@@ -366,7 +377,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
             sectorId: sectorId,
             kpiCollaborators: filteredCollaborators.length,
             kpiQuestions: 15, // Mock
-            formTitle: 'Pesquisa de Clima Organizacional 2024',
+            formTitle: baseFormTitle,
             formDesc: 'Avaliação completa de engajamento e satisfação dos colaboradores.',
             publicLink: '' // Will be generated on confirm
         });
@@ -379,7 +390,30 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
         const allIndices = new Set<number>();
         filteredCollaborators.forEach((_: any, idx: number) => allIndices.add(idx));
         setSelectedCollaborators(allIndices);
+
+        // Reset tags when starting a new selection
+        setShowCompanyTag(false);
+        setShowUnitTag(false);
+        setShowSectorTag(false);
     };
+
+    // Effect to handle dynamic title updates
+    useEffect(() => {
+        if (!summaryData) return;
+
+        let newTitle = baseFormTitle;
+        const tags = [];
+
+        if (showCompanyTag && summaryData.company.name) tags.push(summaryData.company.name);
+        if (showUnitTag && summaryData.unit.name) tags.push(summaryData.unit.name);
+        if (showSectorTag && summaryData.sector && summaryData.sector !== 'Geral') tags.push(summaryData.sector);
+
+        if (tags.length > 0) {
+            newTitle = `${baseFormTitle} - ${tags.join(' - ')}`;
+        }
+
+        setSummaryData((prev: any) => prev ? { ...prev, formTitle: newTitle } : null);
+    }, [baseFormTitle, showCompanyTag, showUnitTag, showSectorTag, summaryData?.company.name, summaryData?.unit.name, summaryData?.sector]);
 
     // Filtered Questions Logic
     const filteredQuestions = MOCK_QUESTIONS.filter(q =>
@@ -394,6 +428,7 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
 
         try {
             const uniqueId = Date.now();
+            // Garante que o link use sempre o origin ATUAL (ajuda no localhost vs produção)
             const publicLink = `${window.location.origin}/form/${uniqueId}`;
 
             // Update summary data with REAL link to show in success modal
@@ -459,7 +494,6 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
 
 
 
-    const normalizeText = (text: string) => text.trim().toLowerCase();
 
     const handleUpdateCompany = async (formData: any) => {
         // setIsLoading(true); // Managed by hook
@@ -1653,8 +1687,8 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                             {isEditingTitle ? (
                                                 <input
                                                     type="text"
-                                                    value={summaryData.formTitle}
-                                                    onChange={(e) => setSummaryData({ ...summaryData, formTitle: e.target.value })}
+                                                    value={baseFormTitle}
+                                                    onChange={(e) => setBaseFormTitle(e.target.value)}
                                                     className="w-full px-3 py-2 bg-white border border-[#35b6cf] rounded-lg text-sm font-bold text-slate-800 outline-none shadow-sm shadow-[#35b6cf]/10"
                                                     autoFocus
                                                     onKeyDown={(e) => {
@@ -1665,6 +1699,41 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                                                 <p className="font-bold text-slate-800 mt-1">{summaryData.formTitle}</p>
                                             )}
                                         </div>
+
+                                        {/* Dynamic Title Tags Checkboxes */}
+                                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-2">
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Incluir no Título:</label>
+                                            <div className="flex flex-wrap gap-3">
+                                                <label className="flex items-center gap-2 cursor-pointer group">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={showCompanyTag}
+                                                        onChange={(e) => setShowCompanyTag(e.target.checked)}
+                                                        className="rounded border-slate-300 text-[#35b6cf] focus:ring-[#35b6cf] w-4 h-4"
+                                                    />
+                                                    <span className="text-xs font-semibold text-slate-600 group-hover:text-[#35b6cf] transition-colors">Empresa</span>
+                                                </label>
+                                                <label className="flex items-center gap-2 cursor-pointer group">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={showUnitTag}
+                                                        onChange={(e) => setShowUnitTag(e.target.checked)}
+                                                        className="rounded border-slate-300 text-[#35b6cf] focus:ring-[#35b6cf] w-4 h-4"
+                                                    />
+                                                    <span className="text-xs font-semibold text-slate-600 group-hover:text-[#35b6cf] transition-colors">Unidade</span>
+                                                </label>
+                                                <label className="flex items-center gap-2 cursor-pointer group">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={showSectorTag}
+                                                        onChange={(e) => setShowSectorTag(e.target.checked)}
+                                                        className="rounded border-slate-300 text-[#35b6cf] focus:ring-[#35b6cf] w-4 h-4"
+                                                    />
+                                                    <span className="text-xs font-semibold text-slate-600 group-hover:text-[#35b6cf] transition-colors">Setor</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
                                         <div>
                                             <div className="flex items-center justify-between">
                                                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Descrição</label>
@@ -2082,7 +2151,28 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onEd
                 }}
                 company={selectedCompanyForForms}
                 onCreateNew={handleCreateNewForm}
+                onEditCollaborators={(form) => {
+                    setSelectedFormForEditColabs(form);
+                    setIsEditColabsOpen(true);
+                }}
             />
+
+            {selectedFormForEditColabs && (
+                <EditCollaboratorsModal
+                    isOpen={isEditColabsOpen}
+                    onClose={() => {
+                        setIsEditColabsOpen(false);
+                        setSelectedFormForEditColabs(null);
+                    }}
+                    form={selectedFormForEditColabs}
+                    onSaveSuccess={() => {
+                        // Opcional: Reabrir o FormsListModal se o usuário quiser continuar vendo a lista
+                        // Mas o pedido original era para fechar o de trás. 
+                        // Se quisermos reabrir, poderíamos colocar:
+                        // handleGerarFormulario(selectedCompanyForForms);
+                    }}
+                />
+            )}
 
             {/* Confirmation Modal */}
             <ConfirmationModal
