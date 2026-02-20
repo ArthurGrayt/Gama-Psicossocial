@@ -106,8 +106,12 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
             }
 
             let fetchedRoles: any[] = [];
-            if (allRoleIds.length > 0) {
-                const { data } = await supabase.from('cargos').select('id, nome, setor_id').in('id', allRoleIds);
+            const rolesQueryStr = [];
+            if (allRoleIds.length > 0) rolesQueryStr.push(`id.in.(${allRoleIds.join(',')})`);
+            if (allSectorIds.length > 0) rolesQueryStr.push(`setor_id.in.(${allSectorIds.join(',')})`);
+
+            if (rolesQueryStr.length > 0) {
+                const { data } = await supabase.from('cargos').select('id, nome, setor_id').or(rolesQueryStr.join(','));
                 fetchedRoles = data || [];
             }
             setRefData({ sectors: fetchedSectors, roles: fetchedRoles });
@@ -261,6 +265,29 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
         }
     };
 
+    const handleDeleteCollaborator = async () => {
+        if (!colabToDelete) return;
+        setLoading(true);
+        try {
+            const { error } = await supabase
+                .from('colaboradores')
+                .delete()
+                .eq('id', colabToDelete.id);
+
+            if (error) throw error;
+
+            alert('Colaborador excluído com sucesso!');
+            await fetchInitialData();
+        } catch (error) {
+            console.error('Error deleting collaborator:', error);
+            alert('Erro ao excluir colaborador.');
+        } finally {
+            setLoading(false);
+            setShowDeleteConfirm(false);
+            setColabToDelete(null);
+        }
+    };
+
     const handleEditClick = (colab: any) => {
         setEditingColabId(colab.id);
         setNewColab({
@@ -300,10 +327,10 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
         ? refData.sectors.filter(s => units.find(u => String(u.id) === newColab.unidade_id)?.setores?.includes(s.id))
         : [];
 
-    const availableRoles = newColab.unidade_id && newColab.setor
+    const availableRoles = newColab.unidade_id
         ? refData.roles.filter(r =>
             units.find(u => String(u.id) === newColab.unidade_id)?.cargos?.includes(r.id) &&
-            String(r.setor_id) === newColab.setor
+            (!newColab.setor || String(r.setor_id) === newColab.setor)
         )
         : [];
 
@@ -563,7 +590,7 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                                         onChange={(val) => setNewColab({ ...newColab, cargo: val })}
                                         options={availableRoles.map(r => ({ label: r.nome, value: String(r.id) }))}
                                         placeholder="Selecione o Cargo"
-                                        disabled={(!newColab.setor) || (isFired && !!editingColabId)}
+                                        disabled={isFired && !!editingColabId}
                                     />
                                 </div>
                             </div>
@@ -669,10 +696,7 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
             <ConfirmationModal
                 isOpen={showDeleteConfirm}
                 onClose={() => setShowDeleteConfirm(false)}
-                onConfirm={() => {
-                    // Implement delete logic specific to this modal if needed, or just close
-                    setShowDeleteConfirm(false);
-                }}
+                onConfirm={handleDeleteCollaborator}
                 title="Excluir Colaborador?"
                 description={`Tem certeza que deseja excluir ${colabToDelete?.nome}? Esta ação não pode ser desfeita.`}
                 confirmText="Excluir"

@@ -81,9 +81,10 @@ export const EditFormsModal: React.FC<EditFormsModalProps> = ({
     const units = summaryData?.company?.units || [];
     const selectedUnitForColab = units.find((u: any) => String(u.id) === newColab.unidade_id);
     const availableSectors = selectedUnitForColab?.sectors || [];
-    const availableRoles = newColab.setor
-        ? (selectedUnitForColab?.roles?.filter((r: any) => String(r.setor_id) === newColab.setor) || [])
-        : [];
+    const activeSectorId = summaryData?.sectorId ? String(summaryData.sectorId) : newColab.setor;
+    const availableRoles = selectedUnitForColab?.roles?.filter((r: any) =>
+        !activeSectorId || String(r.setor_id) === activeSectorId
+    ) || [];
 
     // Filtered Questions Logic
     const filteredQuestions = questions.filter(q =>
@@ -262,13 +263,16 @@ export const EditFormsModal: React.FC<EditFormsModalProps> = ({
     };
 
     const handleCreateRole = async () => {
-        if (!newRoleName.trim() || !newColab.setor) return;
+        if (!newRoleName.trim()) return;
 
         setIsSavingNewRole(true);
         try {
             const { data, error } = await supabase
                 .from('cargos')
-                .insert({ nome: newRoleName.trim(), setor_id: Number(newColab.setor) })
+                .insert({
+                    nome: newRoleName.trim(),
+                    setor_id: newColab.setor ? Number(newColab.setor) : null
+                })
                 .select()
                 .single();
 
@@ -345,7 +349,9 @@ export const EditFormsModal: React.FC<EditFormsModalProps> = ({
 
                 if (updateError) throw updateError;
                 alert('Formulário atualizado com sucesso!');
-                onSaveSuccess();
+
+                const countTokensConsumed = Math.max(0, selectedCollaborators.size - (summaryData.initialCollaboratorsCount || 0));
+                onSaveSuccess(countTokensConsumed);
             } else {
                 // Garante que o link use sempre o origin ATUAL
                 const uniqueId = Date.now();
@@ -608,7 +614,16 @@ export const EditFormsModal: React.FC<EditFormsModalProps> = ({
                                     </div>
                                     <div className="flex items-center gap-2 shrink-0">
                                         <button
-                                            onClick={() => setIsAddingColab(true)}
+                                            onClick={() => {
+                                                setNewColab({
+                                                    nome: '', email: '', cpf: '', telefone: '',
+                                                    dataNascimento: '', sexo: '', dataDesligamento: '',
+                                                    cargo: '',
+                                                    setor: String(summaryData?.sectorId || ''),
+                                                    unidade_id: String(summaryData?.unit?.id || '')
+                                                });
+                                                setIsAddingColab(true);
+                                            }}
                                             className="px-3 py-2 bg-[#35b6cf] text-white rounded-lg text-xs font-bold hover:bg-[#2ca3bc] flex items-center gap-1.5 transition-colors shadow-sm"
                                         >
                                             <Plus size={14} /> Novo Colaborador
@@ -716,27 +731,17 @@ export const EditFormsModal: React.FC<EditFormsModalProps> = ({
                                                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#35b6cf]"
                                                 />
                                             </div>
-                                            <div className="md:col-span-8 space-y-1">
-                                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Unidade / Filial</label>
-                                                <Select
-                                                    value={newColab.unidade_id}
-                                                    onChange={(val) => setNewColab(prev => ({ ...prev, unidade_id: val, setor: '', cargo: '' }))}
-                                                    options={units.map((u: any) => ({ label: u.name, value: String(u.id) }))}
-                                                    placeholder="Selecione a Unidade"
-                                                    disabled={!!summaryData?.unit?.id}
-                                                />
-                                            </div>
-                                            <div className="md:col-span-6 space-y-1">
+                                            <div className="md:col-span-4 space-y-1">
                                                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Setor</label>
                                                 <Select
                                                     value={newColab.setor}
                                                     onChange={(val) => setNewColab(prev => ({ ...prev, setor: val, cargo: '' }))}
                                                     options={availableSectors.map((s: any) => ({ label: s.name, value: String(s.id) }))}
                                                     placeholder="Selecione o Setor"
-                                                    disabled={!!summaryData?.sectorId || !newColab.unidade_id}
+                                                    disabled={!!summaryData?.sectorId}
                                                 />
                                             </div>
-                                            <div className="md:col-span-6 space-y-1">
+                                            <div className="md:col-span-4 space-y-1">
                                                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Cargo</label>
                                                 {isCreatingRole ? (
                                                     <div className="flex gap-2">
@@ -783,7 +788,6 @@ export const EditFormsModal: React.FC<EditFormsModalProps> = ({
                                                             { label: '+ Adicionar Cargo', value: 'ADD_NEW' }
                                                         ]}
                                                         placeholder="Selecione o Cargo"
-                                                        disabled={!newColab.setor}
                                                     />
                                                 )}
                                             </div>

@@ -877,15 +877,15 @@ export const LandingPage: React.FC = () => {
                                             <EditableContent
                                                 section="pricing"
                                                 contentKey="plan_3_price"
-                                                defaultContent="3.500,00"
+                                                defaultContent="5,00"
                                                 isEditing={editMode}
                                                 tagName="span"
-                                                initialContent={getContent('pricing', 'plan_3_price', '3.500,00')}
+                                                initialContent={getContent('pricing', 'plan_3_price', '5,00')}
                                             />
                                         </span>
                                     </p>
                                     <span className="text-xs text-primary font-bold mt-2 px-2 py-0.5 bg-primary/5 rounded-md border border-primary/10 w-fit">
-                                        R$ <EditableContent section="pricing" contentKey="plan_3_per_eval" defaultContent="7,00" isEditing={editMode} tagName="span" initialContent={getContent('pricing', 'plan_3_per_eval', '7,00')} />/aval
+                                        R$ <EditableContent section="pricing" contentKey="plan_3_per_eval" defaultContent="0,01" isEditing={editMode} tagName="span" initialContent={getContent('pricing', 'plan_3_per_eval', '0,01')} />/aval
                                     </span>
                                 </div>
                                 <ul className="text-left space-y-3 mt-6 text-sm text-slate-600">
@@ -900,7 +900,7 @@ export const LandingPage: React.FC = () => {
                                 </ul>
                             </div>
                             <button
-                                onClick={() => handlePlanSelect({ id: 'semestral', name: 'Pacote Semestral', tokens: 500, price: '3500.00' })}
+                                onClick={() => handlePlanSelect({ id: 'semestral', name: 'Pacote Semestral', tokens: 500, price: '5.00' })}
                                 className="mt-auto w-full cursor-pointer flex items-center justify-center rounded-xl h-12 px-6 font-bold transition-all bg-slate-50 hover:bg-primary text-slate-600 hover:text-white border border-slate-100 hover:border-primary"
                             >
                                 Selecionar Plano

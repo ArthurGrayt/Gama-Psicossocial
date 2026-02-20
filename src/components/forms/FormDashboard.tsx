@@ -189,13 +189,17 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onAn
             const unitRoleIds = (unitsData || []).flatMap(u => u.cargos || []);
             const unitSectorIds = (unitsData || []).flatMap(u => u.setores || []);
 
-            // Fetch Roles
+            // Fetch Roles (explicitly requested by units or simply belonging to a unit's sector)
             let allRolesRaw: any[] = [];
-            if (unitRoleIds.length > 0) {
+            const rolesQueryStr = [];
+            if (unitRoleIds.length > 0) rolesQueryStr.push(`id.in.(${unitRoleIds.join(',')})`);
+            if (unitSectorIds.length > 0) rolesQueryStr.push(`setor_id.in.(${unitSectorIds.join(',')})`);
+
+            if (rolesQueryStr.length > 0) {
                 const { data: rData } = await supabase
                     .from('cargos')
                     .select('id, nome, setor_id')
-                    .in('id', unitRoleIds);
+                    .or(rolesQueryStr.join(','));
                 allRolesRaw = rData || [];
             }
 
@@ -221,7 +225,10 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onAn
                 const explicitSectorIds = u.setores || [];
                 const unitRolesIds = u.cargos || [];
 
-                const associatedRoles = allRolesRaw.filter(r => unitRolesIds.includes(r.id));
+                const associatedRoles = allRolesRaw.filter(r =>
+                    unitRolesIds.includes(r.id) ||
+                    (r.setor_id && explicitSectorIds.includes(r.setor_id))
+                );
                 const roleSectorIdsFromUnit = associatedRoles.map(r => r.setor_id).filter(Boolean);
 
                 const allUnitSectorIds = Array.from(new Set([...explicitSectorIds, ...roleSectorIdsFromUnit])) as number[];
@@ -1694,7 +1701,6 @@ export const FormDashboard: React.FC<FormDashboardProps> = ({ onCreateForm, onAn
                     refetch(); // Refresh counts
                 }}
                 company={managingCompany}
-                companies={companies} // Pass all companies for global selection
             />
 
             {/* Forms List Modal */}

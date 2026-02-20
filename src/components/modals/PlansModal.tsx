@@ -32,8 +32,8 @@ export const PlansModal: React.FC<PlansModalProps> = ({ isOpen, onClose, onPlanS
         {
             id: 'semestral',
             name: 'Pacote Semestral',
-            price: '3.500,00',
-            pricePerEval: '7,00',
+            price: '5,00',
+            pricePerEval: '0,01',
             tokens: 500,
             features: ['Até 500 avaliações', 'Relatórios Padrão']
         }
