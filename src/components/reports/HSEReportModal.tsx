@@ -55,10 +55,16 @@ export const HSEReportModal: React.FC<HSEReportModalProps> = ({ isOpen, onClose,
         const element = document.getElementById('hse-report-content');
         if (!element) return;
         const opt = {
-            margin: [10, 5, 10, 5] as [number, number, number, number],
+            margin: [0, 0, 0, 0] as [number, number, number, number],
             filename: `Laudo_HSE_${data.companyName.replace(/\s+/g, '_')}_${data.reportDate.replace(/\//g, '-')}.pdf`,
-            image: { type: 'jpeg' as const, quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true, logging: false },
+            image: { type: 'jpeg' as const, quality: 1.0 },
+            html2canvas: {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                windowWidth: 1024,
+                scrollY: 0
+            },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
             pagebreak: { mode: ['css', 'legacy'] }
         };
@@ -120,8 +126,11 @@ export const HSEReportModal: React.FC<HSEReportModalProps> = ({ isOpen, onClose,
                 </div>
 
                 {/* CONTEÚDO DO PDF */}
-                <div className="flex-1 overflow-y-auto bg-slate-100 p-4 sm:p-8">
-                    <div id="hse-report-content" className="bg-white max-w-[210mm] mx-auto min-h-[297mm] p-[10mm] sm:px-[15mm] sm:py-[20mm] shadow-sm text-sm leading-relaxed text-justify text-slate-900 font-sans">
+                <div className="flex-1 overflow-y-auto bg-slate-100 p-0 sm:p-8">
+                    <div
+                        id="hse-report-content"
+                        className="bg-white max-w-[210mm] mx-auto min-h-[297mm] px-[15mm] py-[20mm] shadow-sm text-sm leading-relaxed text-justify text-slate-900 font-sans [print-color-adjust:exact]"
+                    >
 
                         {/* Cabeçalho */}
                         <div className="border-b-2 border-[#35b6cf] pb-4 mb-8">
