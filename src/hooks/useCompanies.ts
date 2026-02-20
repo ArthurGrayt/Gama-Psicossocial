@@ -1,28 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../services/supabase';
-
-// Global cache to persist data between tab switches
-let globalCache: any[] | null = null;
-let lastFetchTime = 0;
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-
 export const useCompanies = (user: any) => {
-    const [companies, setCompanies] = useState<any[]>(globalCache || []);
-    const [loading, setLoading] = useState(!globalCache);
+    const [companies, setCompanies] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
     const [error, setError] = useState<any>(null);
 
-    const fetchCompanies = useCallback(async (force = false) => {
+    const fetchCompanies = useCallback(async () => {
         if (!user) {
-            // Clear cache on logout/no-user
-            globalCache = null;
             setCompanies([]);
-            return;
-        }
-
-        // Use cache if available and fresh, unless forced
-        const now = Date.now();
-        if (!force && globalCache && (now - lastFetchTime < CACHE_DURATION)) {
-            setCompanies(globalCache);
             setLoading(false);
             return;
         }
@@ -40,7 +25,6 @@ export const useCompanies = (user: any) => {
 
             if (!clientsData || clientsData.length === 0) {
                 setCompanies([]);
-                globalCache = [];
                 return;
             }
 
@@ -64,8 +48,6 @@ export const useCompanies = (user: any) => {
             }));
 
             // Update state and cache
-            globalCache = mappedCompanies;
-            lastFetchTime = Date.now();
             setCompanies(mappedCompanies);
             setError(null);
 
@@ -86,19 +68,16 @@ export const useCompanies = (user: any) => {
         fetchCompanies();
     }, [fetchCompanies]);
 
-    // Helper to update a specific company in the list (e.g. after lazy loading details)
+    // Update local state if another component updates the cache locally.
     const updateCompanyInCache = useCallback((updatedCompany: any) => {
-        if (!globalCache) return;
-
-        globalCache = globalCache.map(c => c.id === updatedCompany.id ? updatedCompany : c);
-        setCompanies(globalCache);
+        setCompanies(prev => prev.map(c => c.id === updatedCompany.id ? updatedCompany : c));
     }, []);
 
     return {
         companies,
         loading,
         error,
-        refetch: () => fetchCompanies(true),
+        refetch: fetchCompanies,
         updateCompanyInCache
     };
 };
