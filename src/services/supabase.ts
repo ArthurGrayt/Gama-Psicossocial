@@ -11,6 +11,6 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 export const supabase = createClient(
-    supabaseUrl || 'https://placeholder.supabase.co',
-    supabaseAnonKey || 'placeholder-key'
+    supabaseUrl || 'https://cmworeyixahfymfttazw.supabase.co',
+    supabaseAnonKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtd29yZXlpeGFoZnltZnR0YXp3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxMDI0NTAsImV4cCI6MjA4NTY3ODQ1MH0.vBMGiRObJH90eR86V9n-iefycSB1y400GO8db19CrC4'
 );
