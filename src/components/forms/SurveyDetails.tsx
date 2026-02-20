@@ -263,7 +263,8 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
             // 3. Total Colabs (Denominator)
             let colabQuery = supabase
                 .from('colaboradores')
-                .select('*', { count: 'exact', head: true });
+                .select('*', { count: 'exact', head: true })
+                .is('data_desligamento', null);
 
             if (selectedUnit) {
                 colabQuery = colabQuery.eq('unidade_id', selectedUnit);
@@ -425,7 +426,7 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
 
             let colabQuery = supabase
                 .from('colaboradores')
-                .select('id, nome, email, sexo, data_nascimento, cargo_id, cargo, setor, cargos(nome)')
+                .select('id, nome, email, sexo, data_nascimento, cargo_id, cargo, setor, cargos(nome), data_desligamento')
                 .in('unidade_id', unitIds);
 
             if (sectorId) {
@@ -454,7 +455,7 @@ export const SurveyDetails: React.FC<SurveyDetailsProps> = ({ form, onBack }) =>
 
             // Split into Responded vs Pending
             const participated = relevantCollaborators.filter(c => allRespondentIds.has(String(c.id)));
-            const pending = relevantCollaborators.filter(c => !allRespondentIds.has(String(c.id)));
+            const pending = relevantCollaborators.filter(c => !allRespondentIds.has(String(c.id)) && !c.data_desligamento);
 
             setParticipantsList(participated);
             setPendingList(pending);

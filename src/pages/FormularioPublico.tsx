@@ -125,6 +125,12 @@ export const FormularioPublico: React.FC = () => {
                 return;
             }
 
+            if (colabData.data_desligamento) {
+                setCpfError('Você não tem acesso a este formulário (colaborador inativo).');
+                setCheckingCpf(false);
+                return;
+            }
+
             const allowedIds = (form?.colaboladores_inclusos || []).map(String);
             if (form?.colaboladores_inclusos && form.colaboladores_inclusos.length > 0) {
                 if (!allowedIds.includes(String(colabData.id))) {

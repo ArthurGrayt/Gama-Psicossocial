@@ -83,7 +83,7 @@ export const Select: React.FC<SelectProps> = ({
                 disabled={disabled}
                 type="button" // Important to prevent form submission inside forms
                 className={`
-                    flex items-center justify-between w-full text-left
+                    flex items-center justify-between w-full h-full text-left
                     px-4 py-2.5 rounded-xl border transition-all shadow-sm
                     ${disabled
                         ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'

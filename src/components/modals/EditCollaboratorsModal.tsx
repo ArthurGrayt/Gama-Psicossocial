@@ -12,6 +12,7 @@ interface Collaborator {
     sexo: string;
     cargo: string;
     setor: string;
+    data_desligamento?: string | null;
 }
 
 // Interface para as Props do Modal
@@ -54,7 +55,7 @@ export const EditCollaboratorsModal: React.FC<EditCollaboratorsModalProps> = ({
                 // 1. Buscar colaboradores da unidade/setor do formulário
                 let query = supabase
                     .from('colaboradores')
-                    .select('id, nome, email, sexo, cargos(nome), setor(nome)')
+                    .select('id, nome, email, sexo, cargos(nome), setor(nome), data_desligamento')
                     .eq('unidade_id', form.unidade_id);
 
                 // Se houver setor específico, filtra por ele também
@@ -74,7 +75,8 @@ export const EditCollaboratorsModal: React.FC<EditCollaboratorsModalProps> = ({
                         email: c.email,
                         sexo: c.sexo,
                         cargo: cargoObj?.nome || '-',
-                        setor: setorObj?.nome || '-'
+                        setor: setorObj?.nome || '-',
+                        data_desligamento: c.data_desligamento
                     };
                 });
 
@@ -107,11 +109,16 @@ export const EditCollaboratorsModal: React.FC<EditCollaboratorsModalProps> = ({
     }, [isOpen, form]);
 
     // Função para alternar seleção de um colaborador
-    const toggleCollaborator = (id: string) => {
+    const toggleCollaborator = (id: string, isFired: boolean) => {
         // Bloqueia se o colaborador já respondeu
         if (respondedIds.has(id)) {
             alert('Este colaborador não pode ser removido pois já respondeu ao formulário.');
             return;
+        }
+
+        // Bloqueia se foi desligado
+        if (isFired) {
+            return; // Silent return
         }
 
         const newSelected = new Set(selectedIds);
@@ -263,23 +270,24 @@ export const EditCollaboratorsModal: React.FC<EditCollaboratorsModalProps> = ({
                                     {filteredCollaborators.map((colab) => {
                                         const isSelected = selectedIds.has(colab.id);
                                         const hasResponded = respondedIds.has(colab.id);
+                                        const isFired = !!colab.data_desligamento;
 
                                         return (
                                             <tr
                                                 key={colab.id}
-                                                className={`hover:bg-slate-50 transition-colors ${!isSelected ? 'bg-slate-50/30' : ''} ${hasResponded ? 'opacity-40 grayscale pointer-events-none select-none' : ''}`}
+                                                className={`hover:bg-slate-50 transition-colors ${!isSelected ? 'bg-slate-50/30' : ''} ${hasResponded || isFired ? 'opacity-40 grayscale pointer-events-none select-none' : ''}`}
                                             >
                                                 <td className="px-4 py-3 text-center">
                                                     <input
                                                         type="checkbox"
-                                                        className={`w-4 h-4 rounded border-slate-300 text-[#35b6cf] focus:ring-[#35b6cf] cursor-pointer ${hasResponded ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                        className={`w-4 h-4 rounded border-slate-300 text-[#35b6cf] focus:ring-[#35b6cf] cursor-pointer ${hasResponded || isFired ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                         checked={isSelected}
-                                                        onChange={() => !hasResponded && toggleCollaborator(colab.id)}
-                                                        disabled={hasResponded}
+                                                        onChange={() => !hasResponded && !isFired && toggleCollaborator(colab.id, isFired)}
+                                                        disabled={hasResponded || isFired}
                                                     />
                                                 </td>
                                                 <td className="px-4 py-3">
-                                                    <div className="font-medium text-slate-800">{colab.nome}</div>
+                                                    <div className={`font-medium text-slate-800 ${isFired ? 'line-through decoration-red-500/50' : ''}`}>{colab.nome}</div>
                                                     <div className="text-[10px] text-slate-400 truncate max-w-[150px]">{colab.email || 'Sem email'}</div>
                                                 </td>
                                                 <td className="px-4 py-3">
@@ -287,7 +295,11 @@ export const EditCollaboratorsModal: React.FC<EditCollaboratorsModalProps> = ({
                                                     <div className="text-[10px] text-slate-400 uppercase tracking-wider">{colab.setor || '-'}</div>
                                                 </td>
                                                 <td className="px-4 py-3 text-center">
-                                                    {hasResponded ? (
+                                                    {isFired ? (
+                                                        <span className="px-2 py-0.5 rounded-full bg-red-50 text-red-600 text-[10px] font-bold border border-red-100 uppercase tracking-tight">
+                                                            Desligado
+                                                        </span>
+                                                    ) : hasResponded ? (
                                                         <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-bold border border-emerald-100 uppercase tracking-tight">
                                                             Concluído
                                                         </span>

@@ -118,7 +118,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
 
             {/* Main Content */}
             <main className="flex-1 ml-0 md:ml-64 min-h-screen flex flex-col pt-14 md:pt-0" style={{ paddingBottom: 'calc(4.5rem + env(safe-area-inset-bottom, 0px))' }}>
-                <div className="p-4 md:p-10 max-w-7xl mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="p-4 md:p-10 max-w-7xl mx-auto w-full animate-in fade-in duration-500">
                     {children}
                 </div>
             </main>

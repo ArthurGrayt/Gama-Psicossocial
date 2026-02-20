@@ -11,10 +11,9 @@ interface CollaboratorManagerModalProps {
     isOpen: boolean;
     onClose: () => void;
     company?: any; // Now optional
-    companies?: any[]; // List of available companies for selection
 }
 
-export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> = ({ isOpen, onClose, company, companies = [] }) => {
+export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> = ({ isOpen, onClose, company }) => {
     const [loading, setLoading] = useState(false);
     const [selectedCompany, setSelectedCompany] = useState<any>(null); // Local state for selected company
 
@@ -28,6 +27,7 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
 
     // New Colab State
     const [isAdding, setIsAdding] = useState(false);
+    const [editingColabId, setEditingColabId] = useState<string | null>(null);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [newColab, setNewColab] = useState({
         nome: '',
@@ -45,7 +45,6 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
     // Delete Confirmation State
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [colabToDelete, setColabToDelete] = useState<any>(null);
-    const [isDeleting, setIsDeleting] = useState(false);
 
     // Initialize or Reset
     useEffect(() => {
@@ -60,6 +59,7 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                 setCollaborators([]);
                 setUnits([]);
                 setIsAdding(true); // Always adding in this mode
+                setEditingColabId(null);
             }
         }
     }, [isOpen, company]);
@@ -207,8 +207,7 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
         }
 
         try {
-            // Insert
-            const payload = {
+            let payload: any = {
                 nome: newColab.nome,
                 email: newColab.email || null,
                 cpf: newColab.cpf || null,
@@ -216,12 +215,6 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                 data_nascimento: newColab.dataNascimento || null,
                 sexo: newColab.sexo || null,
                 data_desligamento: newColab.dataDesligamento || null,
-                // Find IDs for sector and role if possible, but we are storing IDs in newColab now?
-                // Wait, newColab state is still strings or we updated it?
-                // We will update newColab to store ID for sector/cargo if selected from dropdown.
-                // But DB expects cargo_id.
-                // And we want to save Text too for legacy support?
-                // We'll calculate the text from the selected ID.
                 cargo_id: newColab.cargo ? Number(newColab.cargo) : null,
                 setor_id: newColab.setor ? Number(newColab.setor) : null,
                 unidade_id: Number(newColab.unidade_id),
@@ -229,33 +222,60 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                 texto_categoria: "Empregado - Geral"
             };
 
-            const { data, error } = await supabase
-                .from('colaboradores')
-                .insert(payload)
-                .select()
-                .single();
+            if (editingColabId) {
+                // Update
+                const { error } = await supabase
+                    .from('colaboradores')
+                    .update(payload)
+                    .eq('id', editingColabId);
 
-            if (error) throw error;
+                if (error) throw error;
+                alert('Colaborador atualizado com sucesso!');
+            } else {
+                // Insert
+                const { error } = await supabase
+                    .from('colaboradores')
+                    .insert(payload)
+                    .select()
+                    .single();
 
-            // Add to list
-            const addedColab = { ...data, cargo_nome: data.cargo || '-' };
-            setCollaborators(prev => [addedColab, ...prev]);
+                if (error) throw error;
+                alert('Colaborador adicionado com sucesso!');
+            }
 
-
+            // Refresh list from DB to ensure associations are correct
+            await fetchInitialData();
 
             // Reset
             setIsAdding(false);
+            setEditingColabId(null);
             setNewColab({
                 nome: '', email: '', cpf: '', telefone: '',
                 dataNascimento: '', sexo: '', dataDesligamento: '',
                 cargo: '', setor: '', unidade_id: ''
             });
-            alert('Colaborador adicionado com sucesso!');
 
         } catch (error) {
-            console.error('Error adding collaborator:', error);
-            alert('Erro ao adicionar colaborador. Verifique se a unidade está correta.');
+            console.error('Error saving collaborator:', error);
+            alert('Erro ao salvar colaborador. Verifique os dados e tente novamente.');
         }
+    };
+
+    const handleEditClick = (colab: any) => {
+        setEditingColabId(colab.id);
+        setNewColab({
+            nome: colab.nome || '',
+            email: colab.email || '',
+            cpf: colab.cpf || '',
+            telefone: colab.telefone || '',
+            dataNascimento: colab.data_nascimento || '',
+            sexo: colab.sexo || '',
+            dataDesligamento: colab.data_desligamento || '',
+            cargo: colab.cargo_id ? String(colab.cargo_id) : '',
+            setor: colab.setor_id ? String(colab.setor_id) : '',
+            unidade_id: colab.unidade_id ? String(colab.unidade_id) : ''
+        });
+        setIsAdding(true);
     };
 
     const filteredCollaborators = collaborators.filter(c => {
@@ -287,7 +307,7 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
         )
         : [];
 
-    if (!isOpen) return null;
+    const isFired = !!newColab.dataDesligamento;
 
     if (!isOpen) return null;
 
@@ -311,7 +331,7 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                 <div className="w-full flex items-center justify-between px-6 py-5 md:px-8 md:py-6 bg-white border-b border-transparent md:border-slate-100 shrink-0 relative z-10 rounded-t-[2rem] md:rounded-t-2xl">
                     <div className="min-w-0 flex flex-col">
                         <h2 className="text-lg md:text-xl font-bold text-slate-800 truncate">
-                            {isAdding ? 'Cadastrar Novo Colaborador' : 'Gerenciar Colaboradores'}
+                            {isAdding ? (editingColabId ? 'Editar Colaborador' : 'Cadastrar Novo Colaborador') : 'Gerenciar Colaboradores'}
                         </h2>
                         {company && <span className="text-xs text-slate-500 truncate">{company.nome_fantasia || company.razao_social}</span>}
                     </div>
@@ -347,7 +367,15 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
 
                                 <div className="flex gap-2 w-full md:w-auto">
                                     <button
-                                        onClick={() => setIsAdding(true)}
+                                        onClick={() => {
+                                            setEditingColabId(null);
+                                            setNewColab({
+                                                nome: '', email: '', cpf: '', telefone: '',
+                                                dataNascimento: '', sexo: '', dataDesligamento: '',
+                                                cargo: '', setor: '', unidade_id: ''
+                                            });
+                                            setIsAdding(true);
+                                        }}
                                         className="flex-1 md:flex-none px-4 py-2 bg-[#139690] hover:bg-teal-700 text-white rounded-xl flex items-center justify-center gap-2 transition-colors shadow-sm shadow-[#139690]/20 text-sm font-bold"
                                     >
                                         <Plus size={18} />
@@ -420,13 +448,19 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                         <div className="animate-in slide-in-from-right-4 duration-300">
                             <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
                                 {/* Nome e Email - Linha inteira ou dividida */}
+                                {isFired && editingColabId && (
+                                    <div className="md:col-span-12 p-3 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm font-medium mb-1">
+                                        Este colaborador possui uma data de desligamento. Apenas a data de desligamento pode ser alterada/removida.
+                                    </div>
+                                )}
                                 <div className="md:col-span-6 space-y-1.5">
                                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Nome Completo</label>
                                     <input
                                         value={newColab.nome}
                                         onChange={e => setNewColab({ ...newColab, nome: e.target.value })}
                                         placeholder="Nome do colaborador"
-                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#139690]/20 focus:border-[#139690] outline-none transition-all"
+                                        disabled={isFired && !!editingColabId}
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#139690]/20 focus:border-[#139690] outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                     />
                                 </div>
                                 <div className="md:col-span-6 space-y-1.5">
@@ -435,7 +469,8 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                                         value={newColab.email}
                                         onChange={e => setNewColab({ ...newColab, email: e.target.value })}
                                         placeholder="email@empresa.com"
-                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#139690]/20 focus:border-[#139690] outline-none transition-all"
+                                        disabled={isFired && !!editingColabId}
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#139690]/20 focus:border-[#139690] outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                     />
                                 </div>
 
@@ -446,7 +481,8 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                                         value={newColab.cpf}
                                         onChange={e => setNewColab({ ...newColab, cpf: e.target.value })}
                                         placeholder="000.000.000-00"
-                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#139690]/20 focus:border-[#139690] outline-none transition-all"
+                                        disabled={isFired && !!editingColabId}
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#139690]/20 focus:border-[#139690] outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                     />
                                 </div>
                                 <div className="md:col-span-3 space-y-1.5">
@@ -455,7 +491,8 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                                         value={newColab.telefone}
                                         onChange={e => setNewColab({ ...newColab, telefone: e.target.value })}
                                         placeholder="(00) 00000-0000"
-                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#139690]/20 focus:border-[#139690] outline-none transition-all"
+                                        disabled={isFired && !!editingColabId}
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#139690]/20 focus:border-[#139690] outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                     />
                                 </div>
 
@@ -466,7 +503,8 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                                         type="date"
                                         value={newColab.dataNascimento}
                                         onChange={e => setNewColab({ ...newColab, dataNascimento: e.target.value })}
-                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#139690]/20 focus:border-[#139690] outline-none transition-all text-slate-600"
+                                        disabled={isFired && !!editingColabId}
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#139690]/20 focus:border-[#139690] outline-none transition-all text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
                                     />
                                 </div>
                                 <div className="md:col-span-3 space-y-1.5">
@@ -480,6 +518,7 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                                             { label: 'Outro', value: 'Outro' }
                                         ]}
                                         placeholder="Selecione"
+                                        disabled={isFired && !!editingColabId}
                                     />
                                 </div>
 
@@ -490,7 +529,7 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                                         type="date"
                                         value={newColab.dataDesligamento}
                                         onChange={e => setNewColab({ ...newColab, dataDesligamento: e.target.value })}
-                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#139690]/20 focus:border-[#139690] outline-none transition-all text-slate-600"
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none transition-all text-slate-600"
                                     />
                                 </div>
 
@@ -502,6 +541,7 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                                         onChange={(val) => setNewColab({ ...newColab, unidade_id: val, setor: '', cargo: '' })}
                                         options={units.map(u => ({ label: u.nome, value: String(u.id) }))}
                                         placeholder="Selecione a Unidade"
+                                        disabled={isFired && !!editingColabId}
                                     />
                                 </div>
 
@@ -513,7 +553,7 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                                         onChange={(val) => setNewColab({ ...newColab, setor: val, cargo: '' })}
                                         options={availableSectors.map(s => ({ label: s.nome, value: String(s.id) }))}
                                         placeholder="Selecione o Setor"
-                                        disabled={!newColab.unidade_id}
+                                        disabled={(!newColab.unidade_id) || (isFired && !!editingColabId)}
                                     />
                                 </div>
                                 <div className="md:col-span-6 space-y-1.5">
@@ -523,7 +563,7 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                                         onChange={(val) => setNewColab({ ...newColab, cargo: val })}
                                         options={availableRoles.map(r => ({ label: r.nome, value: String(r.id) }))}
                                         placeholder="Selecione o Cargo"
-                                        disabled={!newColab.setor}
+                                        disabled={(!newColab.setor) || (isFired && !!editingColabId)}
                                     />
                                 </div>
                             </div>
@@ -557,47 +597,58 @@ export const CollaboratorManagerModal: React.FC<CollaboratorManagerModalProps> =
                                     <p className="text-slate-500 text-sm mt-1">Tente ajustar os filtros ou cadastre um novo.</p>
                                 </div>
                             ) : (
-                                filteredCollaborators.map((colab: any) => (
-                                    <div key={colab.id} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-center justify-between hover:border-[#139690]/30 transition-colors group">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 rounded-full bg-[#139690]/10 text-[#139690] flex items-center justify-center font-bold text-lg">
-                                                {colab.nome.charAt(0).toUpperCase()}
-                                            </div>
-                                            <div>
-                                                <h4 className="font-bold text-slate-800 text-sm md:text-base">{colab.nome}</h4>
-                                                <div className="flex flex-wrap gap-2 mt-1">
-                                                    <span className="text-xs text-slate-500 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100 flex items-center gap-1">
-                                                        <Building size={10} /> {colab.unidade_nome || 'N/A'}
-                                                    </span>
-                                                    {colab.setor_nome && (
-                                                        <span className="text-xs text-slate-500 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100 font-medium">
-                                                            {colab.setor_nome}
+                                filteredCollaborators.map((colab: any) => {
+                                    const isFiredColab = !!colab.data_desligamento;
+                                    return (
+                                        <div key={colab.id} className={`bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-center justify-between hover:border-[#139690]/30 transition-colors group ${isFiredColab ? 'opacity-50 grayscale' : ''}`}>
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-10 h-10 rounded-full bg-[#139690]/10 text-[#139690] flex items-center justify-center font-bold text-lg">
+                                                    {colab.nome.charAt(0).toUpperCase()}
+                                                </div>
+                                                <div>
+                                                    <h4 className={`font-bold text-slate-800 text-sm md:text-base ${isFiredColab ? 'line-through decoration-red-500/50' : ''}`}>{colab.nome}</h4>
+                                                    <div className="flex flex-wrap gap-2 mt-1">
+                                                        <span className="text-xs text-slate-500 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100 flex items-center gap-1">
+                                                            <Building size={10} /> {colab.unidade_nome || 'N/A'}
                                                         </span>
-                                                    )}
-                                                    {colab.cargo_nome && (
-                                                        <span className="text-xs text-[#139690] bg-[#139690]/5 px-2 py-0.5 rounded-md border border-[#139690]/10 font-medium">
-                                                            {colab.cargo_nome}
-                                                        </span>
-                                                    )}
+                                                        {colab.setor_nome && (
+                                                            <span className="text-xs text-slate-500 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100 font-medium">
+                                                                {colab.setor_nome}
+                                                            </span>
+                                                        )}
+                                                        {colab.cargo_nome && (
+                                                            <span className="text-xs text-[#139690] bg-[#139690]/5 px-2 py-0.5 rounded-md border border-[#139690]/10 font-medium">
+                                                                {colab.cargo_nome}
+                                                            </span>
+                                                        )}
+                                                        {isFiredColab && (
+                                                            <span className="text-xs text-red-600 bg-red-50 px-2 py-0.5 rounded-md border border-red-100 font-bold">
+                                                                Desligado
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
+                                            <div className="flex items-center gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button
+                                                    onClick={() => handleEditClick(colab)}
+                                                    className="p-2 text-slate-400 hover:text-[#139690] hover:bg-[#139690]/10 rounded-lg transition-all"
+                                                >
+                                                    <Pencil size={16} />
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        setColabToDelete(colab);
+                                                        setShowDeleteConfirm(true);
+                                                    }}
+                                                    className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
                                         </div>
-                                        <div className="flex items-center gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button className="p-2 text-slate-400 hover:text-[#139690] hover:bg-[#139690]/10 rounded-lg transition-all">
-                                                <Pencil size={16} />
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    setColabToDelete(colab);
-                                                    setShowDeleteConfirm(true);
-                                                }}
-                                                className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))
+                                    )
+                                })
                             )}
                         </div>
                     )}

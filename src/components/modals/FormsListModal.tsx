@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../services/supabase';
-import { X, FileText, Plus, Calendar, BarChart2, Pencil, Trash2, Check, Link, ExternalLink, Users } from 'lucide-react';
+import { X, FileText, Plus, Calendar, BarChart2, Pencil, Trash2, Check, Link, ExternalLink, Users, Edit } from 'lucide-react';
 import { Dropdown } from '../ui/Dropdown';
 import { HSEReportModal } from '../reports/HSEReportModal';
 import type { HSEReportData } from '../reports/HSEReportModal';
@@ -41,7 +41,7 @@ interface FormsListModalProps {
     onClose: () => void;
     company: Company | null;
     onCreateNew: () => void;
-    onEditCollaborators?: (form: any) => void;
+    onEditForm?: (form: any) => void;
     loading?: boolean;
 }
 
@@ -51,7 +51,7 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
     onClose,
     company,
     onCreateNew,
-    onEditCollaborators,
+    onEditForm,
     loading: parentLoading
 }) => {
     const [forms, setForms] = useState<Form[]>([]);
@@ -211,11 +211,8 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
         }
     };
 
-    const handleEditCollaborators = (form: Form) => {
-        if (onEditCollaborators) {
-            onEditCollaborators(form);
-            onClose(); // Fecha este modal ao abrir o outro
-        }
+    const handleEditForm = (form: Form) => {
+        if (onEditForm) onEditForm(form);
     };
 
     if (!isOpen) return null;
@@ -388,18 +385,18 @@ export const FormsListModal: React.FC<FormsListModalProps> = ({
                                         <Dropdown
                                             actions={[
                                                 {
-                                                    label: 'Editar Título',
+                                                    label: 'Editar Formulário',
                                                     icon: Pencil,
+                                                    onClick: () => handleEditForm(form),
+                                                    show: !!onEditForm
+                                                },
+                                                {
+                                                    label: 'Editar Título',
+                                                    icon: Edit,
                                                     onClick: () => {
                                                         setEditingForm(form);
                                                         setEditFormTitle(form.title);
                                                     },
-                                                    show: true
-                                                },
-                                                {
-                                                    label: 'Editar Colaboradores',
-                                                    icon: Users,
-                                                    onClick: () => handleEditCollaborators(form),
                                                     show: true
                                                 },
                                                 {
