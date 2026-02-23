@@ -1,8 +1,10 @@
-import React from 'react';
-import { Settings, LogOut, LayoutDashboard, Building, User } from 'lucide-react';
+import React, { useState } from 'react';
+// Importa ícones do Lucide, incluindo BookOpen para o Manual de Ajuda
+import { Settings, LogOut, LayoutDashboard, Building, User, BookOpen } from 'lucide-react';
 import { useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { FirstAccessModal } from '../components/modals/FirstAccessModal';
+import { HelpPanel } from '../components/ui/HelpPanel'; // Importa o painel de ajuda
 import logo from '../assets/logo.png';
 
 interface DashboardLayoutProps {
@@ -18,6 +20,9 @@ const MENU_ITEMS = [
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     const location = useLocation();
     const { signOut, user, profile } = useAuth();
+
+    // Estado que controla a visibilidade do painel de ajuda
+    const [isHelpOpen, setIsHelpOpen] = useState(false);
 
     // DIAGNOSTIC LOGS
     console.log('🔍 DashboardLayout - Profile State:', {
@@ -84,6 +89,23 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
                         );
                     })}
                 </nav>
+
+                {/* Botão de Manual de Ajuda — abaixo dos itens de menu */}
+                <div className="px-4 mt-2">
+                    <button
+                        onClick={() => setIsHelpOpen(true)} // Abre o painel de ajuda ao clicar
+                        className="
+                            w-full flex items-center gap-3 px-4 py-3.5 rounded-lg text-sm font-medium transition-all duration-200
+                            text-slate-500 hover:bg-slate-50 hover:text-slate-900
+                        "
+                    >
+                        {/* Ícone do livro representando o manual */}
+                        <span className="text-slate-400">
+                            <BookOpen size={18} />
+                        </span>
+                        Manual de Ajuda
+                    </button>
+                </div>
 
                 {/* User Profile Snippet */}
                 <div className="p-6 mt-auto">
@@ -169,6 +191,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
 
             {/* First Access Modal - Only renders if user has primeiro_acesso === true */}
             <FirstAccessModal isOpen={profile?.primeiro_acesso === true} />
+
+            {/* Painel de Manual de Ajuda — desliza pela direita quando aberto */}
+            <HelpPanel isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
         </div>
     );
 };
